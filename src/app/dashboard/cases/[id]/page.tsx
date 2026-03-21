@@ -224,12 +224,6 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                             <span className="rounded-full border border-white/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white">
                                 {formatCaseStatusLabel(caseItem.status)}
                             </span>
-
-                            {formatDecisionStatusLabel(caseItem.decision_status) ? (
-                                <span className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-100">
-                                    {formatDecisionStatusLabel(caseItem.decision_status)}
-                                </span>
-                            ) : null}
                         </div>
 
                         <div>
