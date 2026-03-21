@@ -201,10 +201,41 @@ export async function publishReport(reportId: string, formData: FormData) {
         );
     }
 
-    if (!title || !summary || !fileUrl) {
+    const { data: caseRow, error: caseRowError } = await supabase
+        .from("cases")
+        .select("decision_status, decision_summary")
+        .eq("id", report.case_id)
+        .maybeSingle();
+
+    if (caseRowError) {
+        throw new Error(caseRowError.message);
+    }
+
+    if (!title || !fileUrl) {
         redirect(
             `/admin/cases/${report.case_id}?reportError=${encodeURIComponent(
-                "Publish requires title, summary, and uploaded report file."
+                "Publish requires title and uploaded report file."
+            )}`
+        );
+    }
+
+    if (
+        caseRow &&
+        caseRow.decision_status &&
+        caseRow.decision_status !== "pending" &&
+        !summary
+    ) {
+        redirect(
+            `/admin/cases/${report.case_id}?reportError=${encodeURIComponent(
+                "Published reports must include a summary that aligns with the case decision."
+            )}`
+        );
+    }
+
+    if (!summary) {
+        redirect(
+            `/admin/cases/${report.case_id}?reportError=${encodeURIComponent(
+                "Publish requires report summary."
             )}`
         );
     }

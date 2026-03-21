@@ -938,6 +938,22 @@ export default async function AdminCaseDetailPage({
                                         />
                                     </div>
 
+                                    {caseItem.decision_status &&
+                                        caseItem.decision_status !== "pending" &&
+                                        caseItem.decision_summary ? (
+                                        <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/5 p-4">
+                                            <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-emerald-100/85">
+                                                Case decision reference
+                                            </div>
+                                            <p className="mt-2 text-[11px] text-white/45">
+                                                Keep the executive summary aligned with the current client-facing case conclusion.
+                                            </p>
+                                            <div className="mt-3 whitespace-pre-line rounded-xl border border-white/10 bg-black/10 p-3 text-sm text-white/80">
+                                                {caseItem.decision_summary}
+                                            </div>
+                                        </div>
+                                    ) : null}
+
                                     <div>
                                         <label className="mb-1.5 block text-[11px] font-medium text-white/75">
                                             Executive summary
