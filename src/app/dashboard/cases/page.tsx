@@ -15,6 +15,18 @@ function formatCaseStatusLabel(status: string | null | undefined) {
     return labels[status] ?? status;
 }
 
+function formatDecisionStatusLabel(status: string | null | undefined) {
+    if (!status || status === "pending") return null;
+
+    const labels: Record<string, string> = {
+        recommended: "Recommended",
+        watchlist: "Watchlist",
+        rejected_all: "Rejected",
+    };
+
+    return labels[status] ?? null;
+}
+
 export default async function DashboardCasesPage() {
     const supabase = await createClient();
 
@@ -28,7 +40,7 @@ export default async function DashboardCasesPage() {
 
     const { data: cases, error: casesError } = await supabase
         .from("cases")
-        .select("id, title, status, created_at")
+        .select("id, title, status, created_at, decision_status")
         .eq("client_id", user.id)
         .order("created_at", { ascending: false });
 
@@ -73,9 +85,17 @@ export default async function DashboardCasesPage() {
                                 >
                                     <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                                         <div className="space-y-2">
-                                            <span className="rounded-full border border-white/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white">
-                                                {formatCaseStatusLabel(item.status)}
-                                            </span>
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <span className="rounded-full border border-white/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white">
+                                                    {formatCaseStatusLabel(item.status)}
+                                                </span>
+
+                                                {formatDecisionStatusLabel(item.decision_status) ? (
+                                                    <span className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-100">
+                                                        {formatDecisionStatusLabel(item.decision_status)}
+                                                    </span>
+                                                ) : null}
+                                            </div>
 
                                             <div>
                                                 <p className="text-sm font-semibold text-white">
