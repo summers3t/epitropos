@@ -8,6 +8,7 @@ import ReportsSection from "./ReportsSection";
 import ReportUploadControl from "./ReportUploadControl";
 import DecisionActionButton from "./DecisionActionButton";
 import DecisionRestorePosition from "./DecisionRestorePosition";
+import DecisionFormClient from "./DecisionFormClient";
 import {
     createDraftReport,
     publishReport,
@@ -640,10 +641,15 @@ export default async function AdminCaseDetailPage({
                         </p>
                         <p className="mt-1 text-[11px] text-white/40">
                             {caseItem.decision_updated_at
-                                ? `Last updated ${new Date(caseItem.decision_updated_at)
-                                    .toISOString()
-                                    .slice(0, 16)
-                                    .replace("T", " ")}`
+                                ? `Last updated ${new Intl.DateTimeFormat("sv-SE", {
+                                    timeZone: "Europe/Sofia",
+                                    year: "numeric",
+                                    month: "2-digit",
+                                    day: "2-digit",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                    hour12: false,
+                                }).format(new Date(caseItem.decision_updated_at)).replace(",", "")}`
                                 : "No saved decision yet."}
                         </p>
                     </div>
@@ -660,62 +666,64 @@ export default async function AdminCaseDetailPage({
                         </div>
                     ) : null}
 
-                    <form action={updateCaseDecision} className="space-y-4">
-                        <input type="hidden" name="case_id" value={caseItem.id} />
+                    <DecisionFormClient>
+                        <form action={updateCaseDecision} className="space-y-4">
+                            <input type="hidden" name="case_id" value={caseItem.id} />
 
-                        <div>
-                            <label className="mb-1.5 block text-[11px] font-medium text-white/75">
-                                Decision status
-                            </label>
-                            <select
-                                name="decision_status"
-                                defaultValue={caseItem.decision_status ?? "pending"}
-                                className={selectClass}
-                            >
-                                <option value="pending">Pending</option>
-                                <option value="watchlist">Watchlist</option>
-                                <option value="recommended">Recommended</option>
-                                <option value="rejected_all">Rejected</option>
-                            </select>
-                        </div>
+                            <div>
+                                <label className="mb-1.5 block text-[11px] font-medium text-white/75">
+                                    Decision status
+                                </label>
+                                <select
+                                    name="decision_status"
+                                    defaultValue={caseItem.decision_status ?? "pending"}
+                                    className={selectClass}
+                                >
+                                    <option value="pending">Pending</option>
+                                    <option value="watchlist">Watchlist</option>
+                                    <option value="recommended">Recommended</option>
+                                    <option value="rejected_all">Rejected</option>
+                                </select>
+                            </div>
 
-                        <div>
-                            <label className="mb-1.5 block text-[11px] font-medium text-white/75">
-                                Recommended property
-                            </label>
-                            <select
-                                name="recommended_property_id"
-                                defaultValue={caseItem.recommended_property_id ?? ""}
-                                className={selectClass}
-                            >
-                                <option value="">None</option>
-                                {(properties ?? []).map((p) => (
-                                    <option key={p.id} value={p.id}>
-                                        {p.title || p.address || p.id}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
+                            <div>
+                                <label className="mb-1.5 block text-[11px] font-medium text-white/75">
+                                    Recommended property
+                                </label>
+                                <select
+                                    name="recommended_property_id"
+                                    defaultValue={caseItem.recommended_property_id ?? ""}
+                                    className={selectClass}
+                                >
+                                    <option value="">None</option>
+                                    {(properties ?? []).map((p) => (
+                                        <option key={p.id} value={p.id}>
+                                            {p.title || p.address || p.id}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
 
-                        <div>
-                            <label className="mb-1.5 block text-[11px] font-medium text-white/75">
-                                Decision summary
-                            </label>
-                            <textarea
-                                name="decision_summary"
-                                rows={4}
-                                defaultValue={caseItem.decision_summary ?? ""}
-                                className={textareaClass}
-                                placeholder="Client-facing conclusion..."
-                            />
-                        </div>
+                            <div>
+                                <label className="mb-1.5 block text-[11px] font-medium text-white/75">
+                                    Decision summary
+                                </label>
+                                <textarea
+                                    name="decision_summary"
+                                    rows={4}
+                                    defaultValue={caseItem.decision_summary ?? ""}
+                                    className={textareaClass}
+                                    placeholder="Client-facing conclusion..."
+                                />
+                            </div>
 
-                        <div className="flex justify-end">
-                            <DecisionActionButton className="rounded-md border border-white/15 px-4 py-2 text-xs hover:bg-white/5">
-                                Save Decision
-                            </DecisionActionButton>
-                        </div>
-                    </form>
+                            <div className="flex justify-end">
+                                <DecisionActionButton className="rounded-md border border-white/15 px-4 py-2 text-xs hover:bg-white/5">
+                                    Save Decision
+                                </DecisionActionButton>
+                            </div>
+                        </form>
+                    </DecisionFormClient>
                 </section>
             </section>
 
