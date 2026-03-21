@@ -246,7 +246,7 @@ export default async function AdminCaseDetailPage({
     const { data: caseItem, error: caseError } = await supabase
         .from("cases")
         .select(
-            "id, client_id, order_id, screening_request_id, title, status, created_at"
+            "id, client_id, order_id, screening_request_id, title, status, created_at, decision_status, recommended_property_id, decision_summary, decision_updated_at"
         )
         .eq("id", id)
         .maybeSingle();
@@ -638,6 +638,14 @@ export default async function AdminCaseDetailPage({
                         <p className="mt-1 text-xs text-white/55">
                             Client-facing conclusion for this case
                         </p>
+                        <p className="mt-1 text-[11px] text-white/40">
+                            {caseItem.decision_updated_at
+                                ? `Last updated ${new Date(caseItem.decision_updated_at)
+                                    .toISOString()
+                                    .slice(0, 16)
+                                    .replace("T", " ")}`
+                                : "No saved decision yet."}
+                        </p>
                     </div>
 
                     {decisionError ? (
@@ -661,7 +669,7 @@ export default async function AdminCaseDetailPage({
                             </label>
                             <select
                                 name="decision_status"
-                                defaultValue="pending"
+                                defaultValue={caseItem.decision_status ?? "pending"}
                                 className={selectClass}
                             >
                                 <option value="pending">Pending</option>
@@ -675,7 +683,11 @@ export default async function AdminCaseDetailPage({
                             <label className="mb-1.5 block text-[11px] font-medium text-white/75">
                                 Recommended property
                             </label>
-                            <select name="recommended_property_id" className={selectClass}>
+                            <select
+                                name="recommended_property_id"
+                                defaultValue={caseItem.recommended_property_id ?? ""}
+                                className={selectClass}
+                            >
                                 <option value="">None</option>
                                 {(properties ?? []).map((p) => (
                                     <option key={p.id} value={p.id}>
@@ -692,6 +704,7 @@ export default async function AdminCaseDetailPage({
                             <textarea
                                 name="decision_summary"
                                 rows={4}
+                                defaultValue={caseItem.decision_summary ?? ""}
                                 className={textareaClass}
                                 placeholder="Client-facing conclusion..."
                             />
