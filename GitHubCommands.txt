@@ -1,0 +1,25 @@
+Every change cycle:
+
+git add .
+git commit -m "Describe change"
+git push
+
+-------------------------------------------
+
+At start of each chat:
+
+Repo: summers3t/epitropos
+Branch: dev
+Use as source of truth.
+
+-------------------------------------------
+Optional:
+Create main branch (stable)
+
+git checkout -b main
+git push -u origin main
+
+Then:
+
+dev = working
+main = stable
