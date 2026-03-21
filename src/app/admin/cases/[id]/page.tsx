@@ -54,7 +54,7 @@ function getDecisionHelp(status: string | null | undefined) {
         case "recommended":
             return "Final client conclusion with one selected property.";
         case "rejected_all":
-            return "No property should be recommended for this case.";
+            return "This case should not proceed with any property.";
         case "pending":
         default:
             return "No final client conclusion has been set yet.";
@@ -681,10 +681,10 @@ export default async function AdminCaseDetailPage({
 
                         <div>
                             <h2 className="text-lg font-semibold text-white">
-                                Case Decision
+                                Case Conclusion
                             </h2>
                             <p className="mt-1 text-xs text-white/55">
-                                This is the final decision layer shown to the client portal.
+                                This is the final client-facing conclusion shown in the client portal.
                             </p>
                             <p className="mt-1 text-[11px] text-white/40">
                                 {getDecisionHelp(caseItem.decision_status)}
@@ -724,7 +724,7 @@ export default async function AdminCaseDetailPage({
 
                             <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
                                 <label className="mb-1.5 block text-[11px] font-medium text-white/75">
-                                    Decision status
+                                    Conclusion status
                                 </label>
                                 <select
                                     name="decision_status"
@@ -812,14 +812,14 @@ export default async function AdminCaseDetailPage({
 
                             <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
                                 <label className="mb-1.5 block text-[11px] font-medium text-white/75">
-                                    Decision summary
+                                    Conclusion summary
                                 </label>
                                 <textarea
                                     name="decision_summary"
                                     rows={4}
                                     defaultValue={caseItem.decision_summary ?? ""}
                                     className={textareaClass}
-                                    placeholder="State the conclusion, the main reason, and the next action for the client."
+                                    placeholder="State the final conclusion, key reasoning, and the next step for the client."
                                 />
                             </div>
 
@@ -943,10 +943,10 @@ export default async function AdminCaseDetailPage({
                                         caseItem.decision_summary ? (
                                         <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/5 p-4">
                                             <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-emerald-100/85">
-                                                Case decision reference
+                                                Case conclusion reference
                                             </div>
                                             <p className="mt-2 text-[11px] text-white/45">
-                                                Keep the executive summary aligned with the current client-facing case conclusion.
+                                                Keep the executive summary aligned with the client-facing case conclusion.
                                             </p>
                                             <div className="mt-3 whitespace-pre-line rounded-xl border border-white/10 bg-black/10 p-3 text-sm text-white/80">
                                                 {caseItem.decision_summary}
