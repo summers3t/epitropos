@@ -21,7 +21,7 @@ function formatDecisionStatusLabel(status: string | null | undefined) {
     const labels: Record<string, string> = {
         recommended: "Recommended",
         watchlist: "Watchlist",
-        rejected_all: "Rejected",
+        rejected_all: "Not recommended",
     };
 
     return labels[status] ?? null;
@@ -64,7 +64,7 @@ function getDecisionOutcomeText(status: string | null | undefined) {
         case "watchlist":
             return "This case remains under consideration.";
         case "rejected_all":
-            return "No suitable property was identified for recommendation.";
+            return "This case is not recommended for proceeding.";
         default:
             return null;
     }

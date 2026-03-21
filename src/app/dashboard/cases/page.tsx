@@ -21,7 +21,7 @@ function formatDecisionStatusLabel(status: string | null | undefined) {
     const labels: Record<string, string> = {
         recommended: "Recommended",
         watchlist: "Watchlist",
-        rejected_all: "Rejected",
+        rejected_all: "Not recommended",
     };
 
     return labels[status] ?? null;
