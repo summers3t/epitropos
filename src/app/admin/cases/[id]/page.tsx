@@ -6,6 +6,8 @@ import PropertyWorkspace from "./PropertyWorkspace";
 import ReportActionButton from "./ReportActionButton";
 import ReportsSection from "./ReportsSection";
 import ReportUploadControl from "./ReportUploadControl";
+import DecisionActionButton from "./DecisionActionButton";
+import DecisionRestorePosition from "./DecisionRestorePosition";
 import {
     createDraftReport,
     publishReport,
@@ -627,6 +629,8 @@ export default async function AdminCaseDetailPage({
                     initialExpandedPropertyId={openProperty ?? null}
                 />
                 <section className="space-y-6 rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur">
+                    <DecisionRestorePosition />
+
                     <div>
                         <h2 className="text-lg font-semibold text-white">
                             Case Decision
@@ -694,12 +698,9 @@ export default async function AdminCaseDetailPage({
                         </div>
 
                         <div className="flex justify-end">
-                            <button
-                                type="submit"
-                                className="rounded-md border border-white/15 px-4 py-2 text-xs hover:bg-white/5"
-                            >
+                            <DecisionActionButton className="rounded-md border border-white/15 px-4 py-2 text-xs hover:bg-white/5">
                                 Save Decision
-                            </button>
+                            </DecisionActionButton>
                         </div>
                     </form>
                 </section>

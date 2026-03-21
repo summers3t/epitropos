@@ -27,8 +27,14 @@ async function requireAdmin() {
     return { supabase, user };
 }
 
-export async function updateCaseDecision(caseId: string, formData: FormData) {
+export async function updateCaseDecision(formData: FormData) {
     const { supabase } = await requireAdmin();
+
+    const caseId = String(formData.get("case_id") ?? "").trim();
+
+    if (!caseId) {
+        redirect("/admin/cases");
+    }
 
     const decisionStatus = String(formData.get("decision_status") ?? "").trim();
     const decisionSummary = String(formData.get("decision_summary") ?? "").trim();
