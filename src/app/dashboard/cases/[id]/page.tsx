@@ -27,6 +27,36 @@ function formatDecisionStatusLabel(status: string | null | undefined) {
     return labels[status] ?? null;
 }
 
+function getCaseStageSummary(status: string | null | undefined) {
+    switch (status) {
+        case "active":
+            return "Your case has been opened and review preparation is in progress.";
+        case "analysis":
+            return "Your property analysis is currently in progress.";
+        case "delivered":
+            return "Your report is available and ready for review.";
+        case "closed":
+            return "Your case has been completed.";
+        default:
+            return "Your case is currently being processed.";
+    }
+}
+
+function getCaseNextStep(status: string | null | undefined) {
+    switch (status) {
+        case "active":
+            return "No action is required from you at this stage. We are preparing the review scope and materials.";
+        case "analysis":
+            return "We are completing the analysis. Please monitor this page for the final report and case conclusion.";
+        case "delivered":
+            return "Open the published report below and review the final conclusion for this case.";
+        case "closed":
+            return "This case is complete. Refer to your report and case conclusion if you need to revisit the outcome.";
+        default:
+            return "Please monitor this page for updates.";
+    }
+}
+
 type PageProps = {
     params: Promise<{
         id: string;
@@ -121,7 +151,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                 </h1>
 
                 <p className="max-w-3xl text-sm leading-6 text-white/72">
-                    Check the current stage of your case, available reports, and next steps.
+                    Review your case status, final conclusion, available reports, and the next step.
                 </p>
             </div>
 
@@ -150,14 +180,12 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                         </div>
                     </div>
 
-                    <div className="text-sm text-white/70 md:text-right">
-                        <div>
-                            This section shows the current stage of your case.
-                        </div>
+                    <div className="max-w-sm text-sm text-white/70 md:text-right">
+                        <div>{getCaseStageSummary(caseItem.status)}</div>
                     </div>
                 </div>
 
-                <div className="mt-6 grid gap-4 md:grid-cols-2">
+                <div className="mt-6 grid gap-4 md:grid-cols-3">
                     <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
                         <dt className="text-xs uppercase tracking-[0.14em] text-white/45">
                             Review focus
@@ -173,6 +201,15 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                         </dt>
                         <dd className="mt-1 text-sm text-white/80">
                             {screening?.plan_interest || "—"}
+                        </dd>
+                    </div>
+
+                    <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/5 p-4">
+                        <dt className="text-xs uppercase tracking-[0.14em] text-emerald-100/80">
+                            Next step
+                        </dt>
+                        <dd className="mt-1 text-sm text-white/80">
+                            {getCaseNextStep(caseItem.status)}
                         </dd>
                     </div>
                 </div>
