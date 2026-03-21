@@ -70,7 +70,7 @@ export default async function DashboardCasesPage() {
                 </h1>
 
                 <p className="max-w-3xl text-sm leading-6 text-white/72">
-                    Open a case to check its current stage, available reports, and next steps.
+                    Open a case to review its status, conclusion, available reports, and next step.
                 </p>
             </div>
 
@@ -102,7 +102,7 @@ export default async function DashboardCasesPage() {
                                                     {item.title || "Case"}
                                                 </p>
                                                 <p className="text-xs text-white/60">
-                                                    Current engagement stage
+                                                    Case status and conclusion
                                                 </p>
                                                 <p className="text-xs text-white/50">
                                                     Created {new Date(item.created_at).toLocaleString()}
@@ -126,7 +126,7 @@ export default async function DashboardCasesPage() {
                         <div className="rounded-2xl border border-white/10 bg-black/10 p-5">
                             <p className="font-medium text-white">No cases available yet.</p>
                             <p className="mt-2 text-sm text-white/65">
-                                Your case will appear here after payment is confirmed and the review is opened.
+                                Your case will appear here after payment is confirmed and the review begins.
                             </p>
                         </div>
                     )}
