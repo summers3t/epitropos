@@ -16,6 +16,7 @@ import {
     deleteCaseAdmin,
     deleteDraftReport,
 } from "./adminCleanupActions";
+import { updateCaseDecision } from "./decisionActions";
 
 function formatCaseStatusLabel(status: string | null | undefined) {
     if (!status) return "—";
@@ -39,6 +40,8 @@ type PageProps = {
         openProperty?: string;
         reportError?: string;
         reportNotice?: string;
+        decisionError?: string;
+        decisionNotice?: string;
     }>;
 };
 
@@ -54,8 +57,14 @@ export default async function AdminCaseDetailPage({
     searchParams,
 }: PageProps) {
     const { id } = await params;
-    const { openAddProperty, openProperty, reportError, reportNotice } =
-        await searchParams;
+    const {
+        openAddProperty,
+        openProperty,
+        reportError,
+        reportNotice,
+        decisionError,
+        decisionNotice,
+    } = await searchParams;
 
     async function updateCaseStatus(formData: FormData) {
         "use server";
@@ -617,6 +626,83 @@ export default async function AdminCaseDetailPage({
                     initialProperties={properties ?? []}
                     initialExpandedPropertyId={openProperty ?? null}
                 />
+                <section className="space-y-6 rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur">
+                    <div>
+                        <h2 className="text-lg font-semibold text-white">
+                            Case Decision
+                        </h2>
+                        <p className="mt-1 text-xs text-white/55">
+                            Client-facing conclusion for this case
+                        </p>
+                    </div>
+
+                    {decisionError ? (
+                        <div className="rounded-2xl border border-red-400/30 bg-red-500/10 p-4 text-sm text-red-100">
+                            {decisionError}
+                        </div>
+                    ) : null}
+
+                    {decisionNotice ? (
+                        <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-4 text-sm text-emerald-100">
+                            {decisionNotice}
+                        </div>
+                    ) : null}
+
+                    <form action={updateCaseDecision} className="space-y-4">
+                        <input type="hidden" name="case_id" value={caseItem.id} />
+
+                        <div>
+                            <label className="mb-1.5 block text-[11px] font-medium text-white/75">
+                                Decision status
+                            </label>
+                            <select
+                                name="decision_status"
+                                defaultValue="pending"
+                                className={selectClass}
+                            >
+                                <option value="pending">Pending</option>
+                                <option value="watchlist">Watchlist</option>
+                                <option value="recommended">Recommended</option>
+                                <option value="rejected_all">Rejected</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="mb-1.5 block text-[11px] font-medium text-white/75">
+                                Recommended property
+                            </label>
+                            <select name="recommended_property_id" className={selectClass}>
+                                <option value="">None</option>
+                                {(properties ?? []).map((p) => (
+                                    <option key={p.id} value={p.id}>
+                                        {p.title || p.address || p.id}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="mb-1.5 block text-[11px] font-medium text-white/75">
+                                Decision summary
+                            </label>
+                            <textarea
+                                name="decision_summary"
+                                rows={4}
+                                className={textareaClass}
+                                placeholder="Client-facing conclusion..."
+                            />
+                        </div>
+
+                        <div className="flex justify-end">
+                            <button
+                                type="submit"
+                                className="rounded-md border border-white/15 px-4 py-2 text-xs hover:bg-white/5"
+                            >
+                                Save Decision
+                            </button>
+                        </div>
+                    </form>
+                </section>
             </section>
 
             <ReportsSection reportCount={reportCount}>

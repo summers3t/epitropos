@@ -1,21 +1,21 @@
 Every change cycle:
-
+-------------------------------------------
 git add .
-git commit -m "Describe change"
+git commit -m "Initial Push 1.0"
 git push
 
--------------------------------------------
+
 
 At start of each chat:
-
+-------------------------------------------
 Repo: summers3t/epitropos
 Branch: dev
 Use as source of truth.
 
--------------------------------------------
+
 Optional:
 Create main branch (stable)
-
+-------------------------------------------
 git checkout -b main
 git push -u origin main
 
