@@ -34,6 +34,33 @@ function formatCaseStatusLabel(status: string | null | undefined) {
     return labels[status] ?? status;
 }
 
+function formatDecisionStatusLabel(status: string | null | undefined) {
+    if (!status) return "Pending";
+
+    const labels: Record<string, string> = {
+        pending: "Pending",
+        watchlist: "Watchlist",
+        recommended: "Recommended",
+        rejected_all: "Rejected all",
+    };
+
+    return labels[status] ?? status;
+}
+
+function getDecisionHelp(status: string | null | undefined) {
+    switch (status) {
+        case "watchlist":
+            return "Promising case, but not ready for a final recommendation yet.";
+        case "recommended":
+            return "Final client conclusion with one selected property.";
+        case "rejected_all":
+            return "No property should be recommended for this case.";
+        case "pending":
+        default:
+            return "No final client conclusion has been set yet.";
+    }
+}
+
 type PageProps = {
     params: Promise<{
         id: string;
@@ -629,29 +656,54 @@ export default async function AdminCaseDetailPage({
                     initialProperties={properties ?? []}
                     initialExpandedPropertyId={openProperty ?? null}
                 />
-                <section className="space-y-6 rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur">
+
+                <div className="flex items-center gap-3 border-t border-white/10 pt-2">
+                    <span className="rounded-full border border-white/10 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-white/55">
+                        Final step
+                    </span>
+                    <p className="text-[11px] text-white/40">
+                        Internal analysis above. Client-facing conclusion below.
+                    </p>
+                </div>
+
+                <section className="space-y-6 rounded-3xl border border-emerald-400/20 bg-white/5 p-6 backdrop-blur">
                     <DecisionRestorePosition />
 
-                    <div>
-                        <h2 className="text-lg font-semibold text-white">
-                            Case Decision
-                        </h2>
-                        <p className="mt-1 text-xs text-white/55">
-                            Client-facing conclusion for this case
-                        </p>
-                        <p className="mt-1 text-[11px] text-white/40">
-                            {caseItem.decision_updated_at
-                                ? `Last updated ${new Intl.DateTimeFormat("sv-SE", {
-                                    timeZone: "Europe/Sofia",
-                                    year: "numeric",
-                                    month: "2-digit",
-                                    day: "2-digit",
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                    hour12: false,
-                                }).format(new Date(caseItem.decision_updated_at)).replace(",", "")}`
-                                : "No saved decision yet."}
-                        </p>
+                    <div className="space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2 py-1 text-[10px] uppercase tracking-[0.14em] text-emerald-100">
+                                Final client conclusion
+                            </span>
+                            <span className="rounded-full border border-white/10 px-2 py-1 text-[10px] uppercase tracking-[0.14em] text-white/70">
+                                {formatDecisionStatusLabel(caseItem.decision_status)}
+                            </span>
+                        </div>
+
+                        <div>
+                            <h2 className="text-lg font-semibold text-white">
+                                Case Decision
+                            </h2>
+                            <p className="mt-1 text-xs text-white/55">
+                                This is the final decision layer shown to the client portal.
+                            </p>
+                            <p className="mt-1 text-[11px] text-white/40">
+                                {getDecisionHelp(caseItem.decision_status)}
+                            </p>
+                            <p className="mt-1 text-[11px] text-white/40">
+                                {caseItem.decision_updated_at
+                                    ? `Last updated ${new Intl.DateTimeFormat("sv-SE", {
+                                        timeZone: "Europe/Sofia",
+                                        year: "numeric",
+                                        month: "2-digit",
+                                        day: "2-digit",
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                        hour12: false,
+                                    }).format(new Date(caseItem.decision_updated_at)).replace(
+                                        ",", "")}`
+                                    : "No saved decision yet."}
+                            </p>
+                        </div>
                     </div>
 
                     {decisionError ? (
@@ -670,7 +722,7 @@ export default async function AdminCaseDetailPage({
                         <form action={updateCaseDecision} className="space-y-4">
                             <input type="hidden" name="case_id" value={caseItem.id} />
 
-                            <div>
+                            <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
                                 <label className="mb-1.5 block text-[11px] font-medium text-white/75">
                                     Decision status
                                 </label>
@@ -682,11 +734,38 @@ export default async function AdminCaseDetailPage({
                                     <option value="pending">Pending</option>
                                     <option value="watchlist">Watchlist</option>
                                     <option value="recommended">Recommended</option>
-                                    <option value="rejected_all">Rejected</option>
+                                    <option value="rejected_all">Rejected all</option>
                                 </select>
+
+                                <div className="mt-2 space-y-1 text-[11px] text-white/45">
+                                    <p data-decision-help="pending">
+                                        No final client conclusion has been set yet.
+                                    </p>
+                                    <p
+                                        data-decision-help="watchlist"
+                                        className="hidden"
+                                    >
+                                        Promising case, but not ready for a final recommendation yet.
+                                    </p>
+                                    <p
+                                        data-decision-help="recommended"
+                                        className="hidden"
+                                    >
+                                        Final client conclusion with one selected property.
+                                    </p>
+                                    <p
+                                        data-decision-help="rejected_all"
+                                        className="hidden"
+                                    >
+                                        No property should be recommended for this case.
+                                    </p>
+                                </div>
                             </div>
 
-                            <div>
+                            <div
+                                data-decision-when="recommended"
+                                className={`${caseItem.decision_status === "recommended" ? "" : "hidden "}rounded-2xl border border-white/10 bg-black/10 p-4`}
+                            >
                                 <label className="mb-1.5 block text-[11px] font-medium text-white/75">
                                     Recommended property
                                 </label>
@@ -702,9 +781,36 @@ export default async function AdminCaseDetailPage({
                                         </option>
                                     ))}
                                 </select>
+                                <p className="mt-2 text-[11px] text-white/45">
+                                    Required when the case decision is marked as recommended.
+                                </p>
                             </div>
 
-                            <div>
+                            <div
+                                data-decision-when="watchlist"
+                                className={`${caseItem.decision_status === "watchlist" ? "" : "hidden "}rounded-2xl border border-white/10 bg-black/10 p-4`}
+                            >
+                                <label className="mb-1.5 block text-[11px] font-medium text-white/75">
+                                    Watchlist lead property
+                                </label>
+                                <select
+                                    name="recommended_property_id"
+                                    defaultValue={caseItem.recommended_property_id ?? ""}
+                                    className={selectClass}
+                                >
+                                    <option value="">None</option>
+                                    {(properties ?? []).map((p) => (
+                                        <option key={p.id} value={p.id}>
+                                            {p.title || p.address || p.id}
+                                        </option>
+                                    ))}
+                                </select>
+                                <p className="mt-2 text-[11px] text-white/45">
+                                    Optional. Leave empty unless one property should be identified as the lead watchlist candidate.
+                                </p>
+                            </div>
+
+                            <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
                                 <label className="mb-1.5 block text-[11px] font-medium text-white/75">
                                     Decision summary
                                 </label>
@@ -713,7 +819,7 @@ export default async function AdminCaseDetailPage({
                                     rows={4}
                                     defaultValue={caseItem.decision_summary ?? ""}
                                     className={textareaClass}
-                                    placeholder="Client-facing conclusion..."
+                                    placeholder="State the conclusion, the main reason, and the next action for the client."
                                 />
                             </div>
 

@@ -16,36 +16,63 @@ export default function DecisionFormClient({ children }: Props) {
         const form = container.querySelector("form");
         if (!form) return;
 
-        const statusSelectElement = form.querySelector(
+        const statusSelect = form.querySelector(
             'select[name="decision_status"]'
         ) as HTMLSelectElement | null;
 
-        const propertySelectElement = form.querySelector(
-            'select[name="recommended_property_id"]'
-        ) as HTMLSelectElement | null;
+        const propertySelects = Array.from(
+            form.querySelectorAll('select[name="recommended_property_id"]')
+        ) as HTMLSelectElement[];
 
-        if (!statusSelectElement || !propertySelectElement) return;
+        const helpItems = Array.from(
+            form.querySelectorAll("[data-decision-help]")
+        ) as HTMLElement[];
 
-        const statusSelect = statusSelectElement;
-        const propertySelect = propertySelectElement;
+        const conditionalBlocks = Array.from(
+            form.querySelectorAll("[data-decision-when]")
+        ) as HTMLElement[];
+
+        if (!statusSelect || propertySelects.length === 0) return;
+
+        const decisionStatusSelect = statusSelect;
 
         function syncState() {
-            const status = statusSelect.value;
+            const status = decisionStatusSelect.value;
 
-            if (status === "rejected_all") {
-                propertySelect.value = "";
-                propertySelect.disabled = true;
-            } else {
-                propertySelect.disabled = false;
-            }
+            helpItems.forEach((item) => {
+                const itemStatus = item.getAttribute("data-decision-help");
+                item.classList.toggle("hidden", itemStatus !== status);
+            });
+
+            conditionalBlocks.forEach((block) => {
+                const blockStatus = block.getAttribute("data-decision-when");
+                const isActive = blockStatus === status;
+
+                block.classList.toggle("hidden", !isActive);
+
+                const blockSelect = block.querySelector(
+                    'select[name="recommended_property_id"]'
+                ) as HTMLSelectElement | null;
+
+                if (!blockSelect) return;
+
+                if (isActive) {
+                    blockSelect.disabled = false;
+                } else {
+                    blockSelect.disabled = true;
+
+                    if (status === "pending" || status === "rejected_all") {
+                        blockSelect.value = "";
+                    }
+                }
+            });
         }
 
         syncState();
-
-        statusSelect.addEventListener("change", syncState);
+        decisionStatusSelect.addEventListener("change", syncState);
 
         return () => {
-            statusSelect.removeEventListener("change", syncState);
+            decisionStatusSelect.removeEventListener("change", syncState);
         };
     }, []);
 
