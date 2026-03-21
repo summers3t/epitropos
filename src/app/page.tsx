@@ -1,65 +1,76 @@
-import Image from "next/image";
+import Link from "next/link";
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <>
+      {/* HERO */}
+      <section className="relative min-h-[calc(100vh-72px)] overflow-hidden rounded-2xl">
+        {/* Background */}
+        <div className="absolute inset-0">
+          <div className="absolute inset-0 bg-black/35" />
+          <img
+            src="https://huggingface.co/spaces/summers3t/aegean-dreams-digital-streams/resolve/main/images/Thessaloniki-Sunset-From-Eptapyrgio-Castle.jpg"
+            alt="Thessaloniki"
+            className="h-full w-full object-cover opacity-75"
+          />
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
+
+        {/* Content wrapper */}
+        <div className="relative z-10 flex min-h-[calc(100vh-72px)] items-center justify-center px-6">
+          <div className="w-full max-w-3xl">
+            <div className="backdrop-blur-sm bg-white/10 p-8 md:p-10 rounded-2xl shadow-glass border border-white/15 transform transition-all duration-700 hover:scale-[1.02]">
+              <h1 className="text-4xl md:text-6xl font-bold mb-4 animate-fadeIn">
+                Before You Buy Property in Northern Greece,
+                <span className="text-gold"> Make Sure It Is Not a Bad Deal.</span>
+              </h1>
+
+              <p className="text-lg md:text-xl opacity-85 mb-8 animate-fadeIn delay-100">
+                Independent investment analysis before you commit capital.
+                No brokerage. No commissions. No hidden incentives.
+              </p>
+
+              <div className="flex flex-wrap gap-4 animate-fadeIn delay-200">
+                <Link
+                  href="/screening"
+                  className="px-8 py-3 rounded-xl font-medium transition-all duration-300 transform hover:-translate-y-1 shadow-glass bg-stone text-navy hover:opacity-95"
+                >
+                  Apply for Screening
+                </Link>
+
+                <Link
+                  href="/process"
+                  className="px-8 py-3 border border-white/20 hover:bg-white/10 rounded-xl font-medium transition-all duration-300"
+                >
+                  How It Works
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          {/* Scroll hint - pinned to bottom of hero, not overlapping buttons */}
           <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            href="#next"
+            className="absolute bottom-8 left-1/2 -translate-x-1/2 p-3 rounded-full bg-white/10 backdrop-blur-sm border border-white/15 hover:bg-white/15 transition z-20"
+            aria-label="Scroll down"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
+            ↓
           </a>
         </div>
-      </main>
-    </div>
+      </section>
+
+      {/* BELOW HERO */}
+      <section id="next" className="mt-24 max-w-3xl">
+        <h2 className="text-2xl font-semibold">What You Get</h2>
+        <ul className="mt-6 space-y-3 opacity-85">
+          <li>A clear decision before you commit money.</li>
+          <li>Independent review of risk, price and investment logic.</li>
+          <li>A written verdict: Buy, Buy Only Below Price, or Do Not Buy.</li>
+        </ul>
+      </section>
+
+      <p className="mt-8 text-sm opacity-65">
+        We work with a limited number of clients each month.
+      </p>
+    </>
   );
 }

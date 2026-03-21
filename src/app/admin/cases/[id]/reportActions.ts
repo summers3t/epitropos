@@ -1,0 +1,278 @@
+"use server";
+
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+
+function getReportsStoragePathFromPublicUrl(fileUrl: string | null | undefined) {
+    if (!fileUrl) {
+        return null;
+    }
+
+    const marker = "/storage/v1/object/public/reports/";
+    const markerIndex = fileUrl.indexOf(marker);
+
+    if (markerIndex === -1) {
+        return null;
+    }
+
+    const rawPath = fileUrl.slice(markerIndex + marker.length);
+
+    if (!rawPath) {
+        return null;
+    }
+
+    return decodeURIComponent(rawPath);
+}
+
+async function requireAdmin() {
+    const supabase = await createClient();
+
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+        redirect("/auth/login");
+    }
+
+    const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .maybeSingle();
+
+    if (profileError || !profile || profile.role !== "admin") {
+        redirect("/dashboard");
+    }
+
+    return { supabase, user };
+}
+
+export async function createDraftReport(caseId: string) {
+    const { supabase, user } = await requireAdmin();
+
+    const { data: caseRow, error: caseError } = await supabase
+        .from("cases")
+        .select("id, title")
+        .eq("id", caseId)
+        .maybeSingle();
+
+    if (caseError) {
+        throw new Error(caseError.message);
+    }
+
+    if (!caseRow) {
+        redirect("/admin/cases");
+    }
+
+    const { data: existingDraft, error: existingDraftError } = await supabase
+        .from("reports")
+        .select("id")
+        .eq("case_id", caseId)
+        .eq("published", false)
+        .maybeSingle();
+
+    if (existingDraftError) {
+        throw new Error(existingDraftError.message);
+    }
+
+    if (!existingDraft) {
+        const defaultTitle = caseRow.title
+            ? `${caseRow.title} Report`
+            : "Advisory Report";
+
+        const { error: insertError } = await supabase.from("reports").insert({
+            case_id: caseId,
+            title: defaultTitle,
+            summary: null,
+            file_url: null,
+            published: false,
+            created_by: user.id,
+        });
+
+        if (insertError) {
+            throw new Error(insertError.message);
+        }
+    }
+
+    redirect(`/admin/cases/${caseId}`);
+}
+
+export async function updateDraftReport(reportId: string, formData: FormData) {
+    const { supabase } = await requireAdmin();
+
+    const title = String(formData.get("title") ?? "").trim();
+    const summary = String(formData.get("summary") ?? "").trim();
+    const fileUrl = String(formData.get("file_url") ?? "").trim();
+
+    const { data: report, error: reportError } = await supabase
+        .from("reports")
+        .select("id, case_id, published, file_url")
+        .eq("id", reportId)
+        .maybeSingle();
+
+    if (reportError) {
+        throw new Error(reportError.message);
+    }
+
+    if (!report) {
+        redirect("/admin/cases");
+    }
+
+    if (report.published) {
+        redirect(
+            `/admin/cases/${report.case_id}?reportError=${encodeURIComponent(
+                "Published reports are read-only. Unpublish first if you need to edit."
+            )}`
+        );
+    }
+
+    if (!title) {
+        redirect(
+            `/admin/cases/${report.case_id}?reportError=${encodeURIComponent(
+                "Report title is required."
+            )}`
+        );
+    }
+
+    const previousStoragePath = getReportsStoragePathFromPublicUrl(report.file_url);
+    const nextStoragePath = getReportsStoragePathFromPublicUrl(fileUrl || null);
+
+    if (
+        previousStoragePath &&
+        nextStoragePath &&
+        previousStoragePath !== nextStoragePath
+    ) {
+        const { error: removeError } = await supabase.storage
+            .from("reports")
+            .remove([previousStoragePath]);
+
+        if (removeError) {
+            throw new Error(removeError.message);
+        }
+    }
+
+    const { error: updateError } = await supabase
+        .from("reports")
+        .update({
+            title,
+            summary: summary || null,
+            file_url: fileUrl || null,
+        })
+        .eq("id", report.id);
+
+    if (updateError) {
+        throw new Error(updateError.message);
+    }
+
+    redirect(
+        `/admin/cases/${report.case_id}?reportNotice=${encodeURIComponent(
+            "Draft saved."
+        )}`
+    );
+}
+
+export async function publishReport(reportId: string, formData: FormData) {
+    const { supabase } = await requireAdmin();
+
+    const title = String(formData.get("title") ?? "").trim();
+    const summary = String(formData.get("summary") ?? "").trim();
+    const fileUrl = String(formData.get("file_url") ?? "").trim();
+
+    const { data: report, error: reportError } = await supabase
+        .from("reports")
+        .select("id, case_id, published")
+        .eq("id", reportId)
+        .maybeSingle();
+
+    if (reportError) {
+        throw new Error(reportError.message);
+    }
+
+    if (!report) {
+        redirect("/admin/cases");
+    }
+
+    if (report.published) {
+        redirect(
+            `/admin/cases/${report.case_id}?reportError=${encodeURIComponent(
+                "This report is already published."
+            )}`
+        );
+    }
+
+    if (!title || !summary || !fileUrl) {
+        redirect(
+            `/admin/cases/${report.case_id}?reportError=${encodeURIComponent(
+                "Publish requires title, summary, and uploaded report file."
+            )}`
+        );
+    }
+
+    if (!fileUrl.includes("/storage/v1/object/public/reports/")) {
+        redirect(
+            `/admin/cases/${report.case_id}?reportError=${encodeURIComponent(
+                "Invalid report file. Upload the PDF through the platform before publishing."
+            )}`
+        );
+    }
+
+    const { error: updateError } = await supabase
+        .from("reports")
+        .update({
+            title,
+            summary,
+            file_url: fileUrl,
+            published: true,
+            published_at: new Date().toISOString(),
+        })
+        .eq("id", report.id);
+
+    if (updateError) {
+        throw new Error(updateError.message);
+    }
+
+    redirect(
+        `/admin/cases/${report.case_id}?reportNotice=${encodeURIComponent(
+            "Report published."
+        )}`
+    );
+}
+
+export async function unpublishReport(reportId: string) {
+    const { supabase } = await requireAdmin();
+
+    const { data: report, error: reportError } = await supabase
+        .from("reports")
+        .select("id, case_id, published")
+        .eq("id", reportId)
+        .maybeSingle();
+
+    if (reportError) {
+        throw new Error(reportError.message);
+    }
+
+    if (!report) {
+        redirect("/admin/cases");
+    }
+
+    if (report.published) {
+        const { error: updateError } = await supabase
+            .from("reports")
+            .update({
+                published: false,
+                published_at: null,
+            })
+            .eq("id", report.id);
+
+        if (updateError) {
+            throw new Error(updateError.message);
+        }
+    }
+
+    redirect(
+        `/admin/cases/${report.case_id}?reportNotice=${encodeURIComponent(
+            "Report unpublished."
+        )}`
+    );
+}

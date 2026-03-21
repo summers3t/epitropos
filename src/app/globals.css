@@ -1,26 +1,50 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  --color-navy: #0F1C2E;
+  --color-charcoal: #2B2F33;
+  --color-stone: #D6CFC4;
+  --color-gold: #A68B4A;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Base page styling (your current file sets white/black and overrides look) */
+html,
+body {
+  height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: radial-gradient(1200px 700px at 20% 10%, rgba(166, 139, 74, 0.14), transparent 60%),
+    radial-gradient(1000px 600px at 80% 0%, rgba(214, 207, 196, 0.10), transparent 55%),
+    linear-gradient(180deg, rgba(15, 28, 46, 1) 0%, rgba(15, 28, 46, 0.98) 100%);
+  color: var(--color-stone);
+  font-family: var(--font-inter), ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial,
+  "Apple Color Emoji", "Segoe UI Emoji";
+  line-height: 1.6;
+  scroll-behavior: smooth;
 }
+
+h1, h2, h3, h4 {
+  font-family: var(--font-montserrat), ui-sans-serif, system-ui;
+  letter-spacing: -0.02em;
+}
+
+/* Animations (from your template, kept minimal) */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 1s ease-out forwards;
+}
+
+.delay-100 { animation-delay: 0.1s; }
+.delay-200 { animation-delay: 0.2s; }
+.delay-300 { animation-delay: 0.3s; }
+
+/* Subtle scrollbar */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.06); }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.18); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.28); }
