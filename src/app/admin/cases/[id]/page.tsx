@@ -61,6 +61,18 @@ function getDecisionHelp(status: string | null | undefined) {
     }
 }
 
+function getReportSectionHelp(reportCount: number) {
+    if (reportCount > 0) {
+        return "Draft, review, publish, and manage the written client deliverable for this case.";
+    }
+
+    return "Create the written client deliverable for this case once the conclusion is ready.";
+}
+
+function getReportSummaryLabel() {
+    return "Report summary";
+}
+
 type PageProps = {
     params: Promise<{
         id: string;
@@ -684,9 +696,9 @@ export default async function AdminCaseDetailPage({
                                 Case Conclusion
                             </h2>
                             <p className="mt-1 text-xs text-white/55">
-                                This is the final client-facing conclusion shown in the client portal.
+                                Define the final client-facing conclusion that appears in the client portal.
                             </p>
-                            <p className="mt-1 text-[11px] text-white/40">
+                            <p className="mt-1 text-[11px] leading-5 text-white/40">
                                 {getDecisionHelp(caseItem.decision_status)}
                             </p>
                             <p className="mt-1 text-[11px] text-white/40">
@@ -701,7 +713,7 @@ export default async function AdminCaseDetailPage({
                                         hour12: false,
                                     }).format(new Date(caseItem.decision_updated_at)).replace(
                                         ",", "")}`
-                                    : "No saved decision yet."}
+                                    : "No saved conclusion yet."}
                             </p>
                         </div>
                     </div>
@@ -737,7 +749,7 @@ export default async function AdminCaseDetailPage({
                                     <option value="rejected_all">Rejected all</option>
                                 </select>
 
-                                <div className="mt-2 space-y-1 text-[11px] text-white/45">
+                                <div className="mt-2 space-y-1 text-[11px] leading-5 text-white/45">
                                     <p data-decision-help="pending">
                                         No final client conclusion has been set yet.
                                     </p>
@@ -745,19 +757,19 @@ export default async function AdminCaseDetailPage({
                                         data-decision-help="watchlist"
                                         className="hidden"
                                     >
-                                        Promising case, but not ready for a final recommendation yet.
+                                        Promising case, but not ready for a final client conclusion yet.
                                     </p>
                                     <p
                                         data-decision-help="recommended"
                                         className="hidden"
                                     >
-                                        Final client conclusion with one selected property.
+                                        Final client conclusion with one recommended property.
                                     </p>
                                     <p
                                         data-decision-help="rejected_all"
                                         className="hidden"
                                     >
-                                        No property should be recommended for this case.
+                                        This case should not proceed with any property.
                                     </p>
                                 </div>
                             </div>
@@ -781,8 +793,8 @@ export default async function AdminCaseDetailPage({
                                         </option>
                                     ))}
                                 </select>
-                                <p className="mt-2 text-[11px] text-white/45">
-                                    Required when the case decision is marked as recommended.
+                                <p className="mt-2 text-[11px] leading-5 text-white/45">
+                                    Required when the conclusion status is set to recommended.
                                 </p>
                             </div>
 
@@ -805,8 +817,8 @@ export default async function AdminCaseDetailPage({
                                         </option>
                                     ))}
                                 </select>
-                                <p className="mt-2 text-[11px] text-white/45">
-                                    Optional. Leave empty unless one property should be identified as the lead watchlist candidate.
+                                <p className="mt-2 text-[11px] leading-5 text-white/45">
+                                    Optional. Leave empty unless one property should be marked as the lead watchlist candidate.
                                 </p>
                             </div>
 
@@ -834,13 +846,19 @@ export default async function AdminCaseDetailPage({
             </section>
 
             <ReportsSection reportCount={reportCount}>
-                <div className="flex items-center justify-between gap-3">
-                    <div />
-                    <form action={createDraftReport.bind(null, caseItem.id)}>
-                        <ReportActionButton className="rounded-md border border-white/15 px-4 py-2 text-xs hover:bg-white/5">
-                            Create Draft Report
-                        </ReportActionButton>
-                    </form>
+                <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                        <div>
+                            <p className="text-xs text-white/55">
+                                {getReportSectionHelp(reportCount)}
+                            </p>
+                        </div>
+                        <form action={createDraftReport.bind(null, caseItem.id)}>
+                            <ReportActionButton className="rounded-md border border-white/15 px-4 py-2 text-xs hover:bg-white/5">
+                                Create Draft Report
+                            </ReportActionButton>
+                        </form>
+                    </div>
                 </div>
 
                 <div className="mt-4 space-y-4">
@@ -956,7 +974,7 @@ export default async function AdminCaseDetailPage({
 
                                     <div>
                                         <label className="mb-1.5 block text-[11px] font-medium text-white/75">
-                                            Executive summary
+                                            {getReportSummaryLabel()}
                                         </label>
                                         <textarea
                                             name="summary"
