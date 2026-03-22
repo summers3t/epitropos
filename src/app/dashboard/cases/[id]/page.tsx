@@ -70,6 +70,28 @@ function getDecisionOutcomeText(status: string | null | undefined) {
     }
 }
 
+function formatClientDateTime(value: string | null | undefined) {
+    if (!value) return "—";
+
+    const parts = new Intl.DateTimeFormat("en-GB", {
+        timeZone: "Europe/Sofia",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+    }).formatToParts(new Date(value));
+
+    const day = parts.find((part) => part.type === "day")?.value ?? "--";
+    const month = parts.find((part) => part.type === "month")?.value ?? "--";
+    const year = parts.find((part) => part.type === "year")?.value ?? "----";
+    const hour = parts.find((part) => part.type === "hour")?.value ?? "--";
+    const minute = parts.find((part) => part.type === "minute")?.value ?? "--";
+
+    return `${day}.${month}.${year} ${hour}:${minute}`;
+}
+
 type PageProps = {
     params: Promise<{
         id: string;
@@ -231,7 +253,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                                 {caseItem.title || "Case"}
                             </p>
                             <p className="text-sm text-white/60">
-                                Created {new Date(caseItem.created_at).toLocaleString()}
+                                Created {formatClientDateTime(caseItem.created_at)}
                             </p>
                         </div>
                     </div>
@@ -289,10 +311,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                                             {report.title}
                                         </p>
                                         <p className="mt-1 text-xs text-white/55">
-                                            Published{" "}
-                                            {report.published_at
-                                                ? new Date(report.published_at).toLocaleString()
-                                                : "—"}
+                                            Published {formatClientDateTime(report.published_at)}
                                         </p>
                                     </div>
 
