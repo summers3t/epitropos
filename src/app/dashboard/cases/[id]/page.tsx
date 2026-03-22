@@ -70,6 +70,27 @@ function getDecisionOutcomeText(status: string | null | undefined) {
     }
 }
 
+function getDecisionSummaryFallback(status: string | null | undefined) {
+    switch (status) {
+        case "recommended":
+            return "A final recommendation has been recorded for this case.";
+        case "watchlist":
+            return "This case remains on watchlist status pending further review.";
+        case "rejected_all":
+            return "No suitable property was approved for proceeding in this case.";
+        default:
+            return null;
+    }
+}
+
+function getReviewFocusLabel() {
+    return "Client objective";
+}
+
+function getSelectedServiceLabel() {
+    return "Selected service";
+}
+
 function formatClientDateTime(value: string | null | undefined) {
     if (!value) return "—";
 
@@ -186,7 +207,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                 </h1>
 
                 <p className="max-w-3xl text-sm leading-6 text-white/72">
-                    Review your case status, final conclusion, available reports, and the next step.
+                    Review your case status, final conclusion, published reports, and next step.
                 </p>
             </div>
 
@@ -211,7 +232,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                             </h2>
 
                             {getDecisionOutcomeText(caseItem.decision_status) ? (
-                                <p className="text-sm font-medium text-white/88">
+                                <p className="text-sm font-medium leading-6 text-white/88">
                                     {getDecisionOutcomeText(caseItem.decision_status)}
                                 </p>
                             ) : null}
@@ -232,8 +253,12 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                     ) : null}
 
                     {caseItem.decision_summary ? (
-                        <div className="whitespace-pre-line rounded-2xl border border-white/10 bg-black/10 p-4 text-sm text-white/80">
+                        <div className="whitespace-pre-line rounded-2xl border border-white/10 bg-black/10 p-4 text-sm leading-6 text-white/80">
                             {caseItem.decision_summary}
+                        </div>
+                    ) : getDecisionSummaryFallback(caseItem.decision_status) ? (
+                        <div className="rounded-2xl border border-white/10 bg-black/10 p-4 text-sm leading-6 text-white/70">
+                            {getDecisionSummaryFallback(caseItem.decision_status)}
                         </div>
                     ) : null}
                 </section>
@@ -332,7 +357,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                                         </a>
                                     ) : (
                                         <span className="rounded-xl border border-white/10 px-4 py-2 text-xs text-white/45">
-                                            Report file pending
+                                            Report pending
                                         </span>
                                     )}
                                 </div>

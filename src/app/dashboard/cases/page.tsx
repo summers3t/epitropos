@@ -49,6 +49,21 @@ function formatClientDateTime(value: string | null | undefined) {
     return `${day}.${month}.${year} ${hour}:${minute}`;
 }
 
+function getCaseListStatusText(status: string | null | undefined) {
+    switch (status) {
+        case "active":
+            return "Review preparation in progress";
+        case "analysis":
+            return "Analysis in progress";
+        case "delivered":
+            return "Report available";
+        case "closed":
+            return "Case completed";
+        default:
+            return "Case in progress";
+    }
+}
+
 export default async function DashboardCasesPage() {
     const supabase = await createClient();
 
@@ -113,18 +128,18 @@ export default async function DashboardCasesPage() {
                                                 </span>
 
                                                 {formatDecisionStatusLabel(item.decision_status) ? (
-                                                    <span className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-100">
+                                                    <span className="rounded-full border border-emerald-400/20 bg-emerald-500/5 px-2 py-1 text-[10px] uppercase tracking-[0.14em] text-emerald-100/90">
                                                         {formatDecisionStatusLabel(item.decision_status)}
                                                     </span>
                                                 ) : null}
                                             </div>
 
-                                            <div>
+                                            <div className="space-y-1">
                                                 <p className="text-sm font-semibold text-white">
                                                     {item.title || "Case"}
                                                 </p>
                                                 <p className="text-xs text-white/60">
-                                                    Case status and conclusion
+                                                    {getCaseListStatusText(item.status)}
                                                 </p>
                                                 <p className="text-xs text-white/50">
                                                     Created {formatClientDateTime(item.created_at)}
@@ -149,6 +164,9 @@ export default async function DashboardCasesPage() {
                             <p className="font-medium text-white">No cases available yet.</p>
                             <p className="mt-2 text-sm text-white/65">
                                 Your case will appear here after payment is confirmed and the review begins.
+                            </p>
+                            <p className="mt-1 text-xs text-white/45">
+                                Once available, each case will show its current status, conclusion, and report access.
                             </p>
                         </div>
                     )}
