@@ -295,8 +295,14 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
 
             <section className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur">
                 <h2 className="text-lg font-semibold text-white">
-                    Reports
+                    Case Reports
                 </h2>
+
+                {reports && reports.length > 0 ? (
+                    <p className="mt-2 text-sm text-white/65">
+                        Open the published report for the full written analysis.
+                    </p>
+                ) : null}
 
                 <div className="mt-4 space-y-4">
                     {reports && reports.length > 0 ? (
@@ -334,7 +340,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                         ))
                     ) : (
                         <div className="rounded-2xl border border-white/10 bg-black/10 p-4 text-sm text-white/65">
-                            No report is available for this case yet.
+                            The report is not available yet. It will appear here once the analysis is complete.
                         </div>
                     )}
                 </div>
