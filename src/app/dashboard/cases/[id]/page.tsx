@@ -195,7 +195,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                     <div className="space-y-3">
                         <div className="flex flex-wrap items-center gap-2">
                             <span className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2 py-1 text-[10px] uppercase tracking-[0.14em] text-emerald-100">
-                                Final decision
+                                Final conclusion
                             </span>
 
                             {formatDecisionStatusLabel(caseItem.decision_status) ? (
@@ -221,7 +221,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                     {caseItem.decision_status === "recommended" && recommendedProperty ? (
                         <div className="rounded-2xl border border-white/10 bg-black/10 p-4 text-sm text-white/80">
                             <div className="mb-1 text-xs text-white/45">
-                                Recommended property
+                                Selected property
                             </div>
                             <div className="font-medium">
                                 {recommendedProperty.title ||

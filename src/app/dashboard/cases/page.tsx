@@ -137,7 +137,7 @@ export default async function DashboardCasesPage() {
                                                 href={`/dashboard/cases/${item.id}`}
                                                 className="rounded-xl border border-white/15 px-4 py-2 text-xs hover:bg-white/5 transition"
                                             >
-                                                Open Case
+                                                View Case
                                             </Link>
                                         </div>
                                     </div>
