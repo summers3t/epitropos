@@ -106,6 +106,8 @@ type PageProps = {
         reportNotice?: string;
         decisionError?: string;
         decisionNotice?: string;
+        caseStatusError?: string;
+        caseStatusNotice?: string;
     }>;
 };
 
@@ -128,6 +130,8 @@ export default async function AdminCaseDetailPage({
         reportNotice,
         decisionError,
         decisionNotice,
+        caseStatusError,
+        caseStatusNotice,
     } = await searchParams;
 
     async function updateCaseStatus(formData: FormData) {
@@ -163,7 +167,73 @@ export default async function AdminCaseDetailPage({
         const allowedStatuses = ["active", "analysis", "delivered", "closed"];
 
         if (!allowedStatuses.includes(newStatus)) {
-            throw new Error("Invalid case status.");
+            redirect(
+                `/admin/cases/${caseId}?caseStatusError=${encodeURIComponent(
+                    "Invalid case status."
+                )}`
+            );
+        }
+
+        const { data: currentCase, error: currentCaseError } = await supabase
+            .from("cases")
+            .select("id, status, decision_status")
+            .eq("id", caseId)
+            .maybeSingle();
+
+        if (currentCaseError) {
+            throw new Error(currentCaseError.message);
+        }
+
+        if (!currentCase) {
+            redirect("/admin/cases");
+        }
+
+        const allowedTransitions: Record<string, string[]> = {
+            active: ["analysis"],
+            analysis: ["delivered"],
+            delivered: ["closed"],
+            closed: [],
+        };
+
+        if (!allowedTransitions[currentCase.status]?.includes(newStatus)) {
+            redirect(
+                `/admin/cases/${caseId}?caseStatusError=${encodeURIComponent(
+                    `Invalid case transition: ${currentCase.status} → ${newStatus}`
+                )}`
+            );
+        }
+
+        if (newStatus === "delivered") {
+            const [{ data: publishedReport, error: publishedReportError }] =
+                await Promise.all([
+                    supabase
+                        .from("reports")
+                        .select("id")
+                        .eq("case_id", caseId)
+                        .eq("published", true)
+                        .limit(1)
+                        .maybeSingle(),
+                ]);
+
+            if (publishedReportError) {
+                throw new Error(publishedReportError.message);
+            }
+
+            if (!publishedReport) {
+                redirect(
+                    `/admin/cases/${caseId}?caseStatusError=${encodeURIComponent(
+                        "Case cannot be delivered without at least one published report."
+                    )}`
+                );
+            }
+
+            if (!currentCase.decision_status || currentCase.decision_status === "pending") {
+                redirect(
+                    `/admin/cases/${caseId}?caseStatusError=${encodeURIComponent(
+                        "Case cannot be delivered without a final conclusion."
+                    )}`
+                );
+            }
         }
 
         const { error } = await supabase
@@ -178,7 +248,11 @@ export default async function AdminCaseDetailPage({
             throw new Error(error.message);
         }
 
-        redirect(`/admin/cases/${caseId}`);
+        redirect(
+            `/admin/cases/${caseId}?caseStatusNotice=${encodeURIComponent(
+                "Case status updated."
+            )}`
+        );
     }
 
     async function createCaseProperty(formData: FormData) {
@@ -480,22 +554,52 @@ export default async function AdminCaseDetailPage({
 
                             <select
                                 name="status"
-                                defaultValue={caseItem.status ?? "active"}
+                                defaultValue=""
                                 className={selectClass}
                             >
-                                <option value="active">Active</option>
-                                <option value="analysis">Analysis</option>
-                                <option value="delivered">Delivered</option>
-                                <option value="closed">Closed</option>
+                                <option value="" disabled>
+                                    Select next status
+                                </option>
+
+                                {caseItem.status === "active" ? (
+                                    <option value="analysis">Analysis</option>
+                                ) : null}
+
+                                {caseItem.status === "analysis" ? (
+                                    <option value="delivered">Delivered</option>
+                                ) : null}
+
+                                {caseItem.status === "delivered" ? (
+                                    <option value="closed">Closed</option>
+                                ) : null}
                             </select>
 
                             <button
                                 type="submit"
-                                className="rounded-md border border-white/15 px-3 py-1 text-xs hover:bg-white/5"
+                                disabled={caseItem.status === "closed"}
+                                className="rounded-md border border-white/15 px-3 py-1 text-xs hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40"
                             >
                                 Update
                             </button>
                         </form>
+
+                        <div className="space-y-2">
+                            <p className="text-[11px] text-white/45">
+                                Flow: Active → Analysis → Delivered → Closed. Delivery requires a final conclusion and at least one published report.
+                            </p>
+
+                            {caseStatusError ? (
+                                <div className="rounded-md border border-red-400/30 bg-red-500/10 px-3 py-2 text-xs text-red-100">
+                                    {caseStatusError}
+                                </div>
+                            ) : null}
+
+                            {caseStatusNotice ? (
+                                <div className="rounded-md border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-100">
+                                    {caseStatusNotice}
+                                </div>
+                            ) : null}
+                        </div>
 
                         <form action={deleteCaseAdmin.bind(null, caseItem.id)}>
                             <ConfirmSubmitButton
