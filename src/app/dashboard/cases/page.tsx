@@ -107,7 +107,7 @@ export default async function DashboardCasesPage() {
                 </h1>
 
                 <p className="max-w-3xl text-sm leading-6 text-white/72">
-                    Open a case to review its status, conclusion, available reports, and next step.
+                    Review each case status, final conclusion, published reports, and next step.
                 </p>
             </div>
 
@@ -165,8 +165,8 @@ export default async function DashboardCasesPage() {
                             <p className="mt-2 text-sm text-white/65">
                                 Your case will appear here after payment is confirmed and the review begins.
                             </p>
-                            <p className="mt-1 text-xs text-white/45">
-                                Once available, each case will show its current status, conclusion, and report access.
+                            <p className="mt-1 text-xs text-white/50">
+                                Once available, each case will show its status, conclusion, and report access.
                             </p>
                         </div>
                     )}

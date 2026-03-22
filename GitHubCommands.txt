@@ -1,7 +1,7 @@
 Every change cycle:
 -------------------------------------------
 git add .
-git commit -m "Initial Push 20"
+git commit -m "Initial Push 21"
 git push
 
 

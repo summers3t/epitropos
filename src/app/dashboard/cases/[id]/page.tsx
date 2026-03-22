@@ -203,7 +203,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                     className="text-4xl font-black tracking-tight"
                     style={{ fontFamily: "var(--font-montserrat)" }}
                 >
-                    Case Overview
+                    {caseItem.title || "Case Overview"}
                 </h1>
 
                 <p className="max-w-3xl text-sm leading-6 text-white/72">
@@ -241,7 +241,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
 
                     {caseItem.decision_status === "recommended" && recommendedProperty ? (
                         <div className="rounded-2xl border border-white/10 bg-black/10 p-4 text-sm text-white/80">
-                            <div className="mb-1 text-xs text-white/45">
+                            <div className="mb-1 text-xs text-white/50">
                                 Selected property
                             </div>
                             <div className="font-medium">
@@ -290,7 +290,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
 
                 <div className="mt-6 grid gap-4 md:grid-cols-3">
                     <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
-                        <dt className="text-xs uppercase tracking-[0.14em] text-white/45">
+                        <dt className="text-xs uppercase tracking-[0.14em] text-white/50">
                             {getReviewFocusLabel()}
                         </dt>
                         <dd className="mt-1 text-sm leading-6 text-white/80">
@@ -299,7 +299,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                     </div>
 
                     <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
-                        <dt className="text-xs uppercase tracking-[0.14em] text-white/45">
+                        <dt className="text-xs uppercase tracking-[0.14em] text-white/50">
                             {getSelectedServiceLabel()}
                         </dt>
                         <dd className="mt-1 text-sm leading-6 text-white/80">
@@ -327,7 +327,11 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                     <p className="mt-2 text-sm text-white/65">
                         Open the published report for the full written analysis and supporting detail.
                     </p>
-                ) : null}
+                ) : (
+                    <p className="mt-2 text-sm text-white/65">
+                        The written report will appear here once the analysis is complete.
+                    </p>
+                )}
 
                 <div className="mt-4 space-y-4">
                     {reports && reports.length > 0 ? (
@@ -365,7 +369,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                         ))
                     ) : (
                         <div className="rounded-2xl border border-white/10 bg-black/10 p-4 text-sm text-white/65">
-                            The report is not available yet. It will appear here once the analysis is complete.
+                            No published report is available yet.
                         </div>
                     )}
                 </div>
