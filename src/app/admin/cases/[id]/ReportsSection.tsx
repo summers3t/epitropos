@@ -40,13 +40,8 @@ export default function ReportsSection({
     children: React.ReactNode;
     reportCount: number;
 }) {
-    const [open, setOpen] = useState(() => {
-        if (typeof window === "undefined") {
-            return false;
-        }
-
-        return window.sessionStorage.getItem(REPORTS_OPEN_KEY) === "true";
-    });
+    const [open, setOpen] = useState(false);
+    const [ready, setReady] = useState(false);
 
     const containerRef = useRef<HTMLDivElement | null>(null);
     const restoredOnceRef = useRef(false);
@@ -60,11 +55,23 @@ export default function ReportsSection({
     }
 
     useEffect(() => {
-        window.sessionStorage.setItem(REPORTS_OPEN_KEY, String(open));
-    }, [open]);
+        const storedOpen =
+            window.sessionStorage.getItem(REPORTS_OPEN_KEY) === "true";
+
+        setOpen(storedOpen);
+        setReady(true);
+    }, []);
 
     useEffect(() => {
-        if (!open || restoredOnceRef.current) {
+        if (!ready) {
+            return;
+        }
+
+        window.sessionStorage.setItem(REPORTS_OPEN_KEY, String(open));
+    }, [open, ready]);
+
+    useEffect(() => {
+        if (!ready || !open || restoredOnceRef.current) {
             return;
         }
 
@@ -155,11 +162,11 @@ export default function ReportsSection({
                     }}
                     className="rounded-full border border-white/10 px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-white/70"
                 >
-                    {open ? "Collapse" : "Expand"}
+                    {ready && open ? "Collapse" : "Expand"}
                 </button>
             </div>
 
-            {open ? (
+            {ready && open ? (
                 <div className="border-t border-white/10 p-6 pt-4">
                     {children}
                 </div>
