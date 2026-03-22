@@ -283,7 +283,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                         </div>
                     </div>
 
-                    <div className="max-w-sm text-sm text-white/70 md:text-right">
+                    <div className="max-w-sm text-sm leading-6 text-white/70 md:text-right">
                         <div>{getCaseStageSummary(caseItem.status)}</div>
                     </div>
                 </div>
@@ -291,18 +291,18 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                 <div className="mt-6 grid gap-4 md:grid-cols-3">
                     <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
                         <dt className="text-xs uppercase tracking-[0.14em] text-white/45">
-                            Review focus
+                            {getReviewFocusLabel()}
                         </dt>
-                        <dd className="mt-1 text-sm text-white/80">
+                        <dd className="mt-1 text-sm leading-6 text-white/80">
                             {screening?.goal || "—"}
                         </dd>
                     </div>
 
                     <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
                         <dt className="text-xs uppercase tracking-[0.14em] text-white/45">
-                            Selected service
+                            {getSelectedServiceLabel()}
                         </dt>
-                        <dd className="mt-1 text-sm text-white/80">
+                        <dd className="mt-1 text-sm leading-6 text-white/80">
                             {screening?.plan_interest || "—"}
                         </dd>
                     </div>
@@ -311,7 +311,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                         <dt className="text-xs uppercase tracking-[0.14em] text-emerald-100/80">
                             Next step
                         </dt>
-                        <dd className="mt-1 text-sm text-white/80">
+                        <dd className="mt-1 text-sm leading-6 text-white/80">
                             {getCaseNextStep(caseItem.status)}
                         </dd>
                     </div>
@@ -325,7 +325,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
 
                 {reports && reports.length > 0 ? (
                     <p className="mt-2 text-sm text-white/65">
-                        Open the published report for the full written analysis.
+                        Open the published report for the full written analysis and supporting detail.
                     </p>
                 ) : null}
 
@@ -337,11 +337,11 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                                 className="rounded-2xl border border-white/10 bg-black/10 p-4"
                             >
                                 <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                                    <div>
+                                    <div className="space-y-1">
                                         <p className="text-sm font-semibold text-white">
                                             {report.title}
                                         </p>
-                                        <p className="mt-1 text-xs text-white/55">
+                                        <p className="text-xs text-white/55">
                                             Published {formatClientDateTime(report.published_at)}
                                         </p>
                                     </div>
