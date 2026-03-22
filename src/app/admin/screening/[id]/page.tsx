@@ -151,25 +151,36 @@ export default async function AdminScreeningDetailPage({ params }: PageProps) {
                             >
                                 <select
                                     name="status"
-                                    defaultValue={request.status}
+                                    defaultValue=""
                                     className="rounded-lg border border-white/15 bg-black/30 px-2 py-1 text-xs"
                                 >
-                                    <option value="new">New</option>
-                                    <option value="accepted">Accepted</option>
-                                    <option value="rejected">Rejected</option>
-                                    <option value="offer_sent">Offer sent</option>
+                                    <option value="" disabled>
+                                        Select next status
+                                    </option>
+
+                                    {request.status === "new" ? (
+                                        <option value="offer_sent">Offer sent</option>
+                                    ) : null}
+
+                                    {request.status === "offer_sent" ? (
+                                        <>
+                                            <option value="accepted">Accepted</option>
+                                            <option value="rejected">Rejected</option>
+                                        </>
+                                    ) : null}
                                 </select>
 
                                 <button
                                     type="submit"
-                                    className="rounded-lg border border-white/15 px-3 py-1 text-xs hover:bg-white/5 transition"
+                                    disabled={request.status === "accepted" || request.status === "rejected"}
+                                    className="rounded-lg border border-white/15 px-3 py-1 text-xs hover:bg-white/5 transition disabled:cursor-not-allowed disabled:opacity-40"
                                 >
                                     Update
                                 </button>
                             </form>
 
                             <div className="flex flex-wrap items-center gap-2 pt-2">
-                                {request.status === "accepted" && !sentOffer && !draftOffer ? (
+                                {request.status === "new" && !sentOffer && !draftOffer && !acceptedOffer ? (
                                     <Link
                                         href={`/admin/offers/new?screening=${request.id}`}
                                         className="inline-flex rounded-xl border border-white/15 px-4 py-2 text-xs hover:bg-white/5 transition"

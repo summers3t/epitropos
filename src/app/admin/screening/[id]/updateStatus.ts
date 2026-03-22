@@ -13,6 +13,12 @@ export async function updateScreeningStatus(
         redirect(`/admin/screening/${requestId}`);
     }
 
+    const allowedStatuses = ["new", "offer_sent", "accepted", "rejected"];
+
+    if (!allowedStatuses.includes(status)) {
+        throw new Error("Invalid screening status.");
+    }
+
     const supabase = await createClient();
 
     const {
@@ -31,6 +37,33 @@ export async function updateScreeningStatus(
 
     if (!profile || profile.role !== "admin") {
         redirect("/dashboard");
+    }
+
+    const { data: request, error: requestError } = await supabase
+        .from("screening_requests")
+        .select("id, status")
+        .eq("id", requestId)
+        .maybeSingle();
+
+    if (requestError) {
+        throw new Error(requestError.message);
+    }
+
+    if (!request) {
+        redirect("/admin/screening");
+    }
+
+    const allowedTransitions: Record<string, string[]> = {
+        new: ["offer_sent"],
+        offer_sent: ["accepted", "rejected"],
+        accepted: [],
+        rejected: [],
+    };
+
+    if (!allowedTransitions[request.status]?.includes(status)) {
+        throw new Error(
+            `Invalid screening transition: ${request.status} → ${status}`
+        );
     }
 
     const { error } = await supabase
