@@ -13,7 +13,7 @@ export async function updateScreeningStatus(
         redirect(`/admin/screening/${requestId}`);
     }
 
-    const allowedStatuses = ["new", "offer_sent", "accepted", "rejected"];
+    const allowedStatuses = ["new", "accepted", "rejected", "offer_sent"];
 
     if (!allowedStatuses.includes(status)) {
         throw new Error("Invalid screening status.");
@@ -54,10 +54,10 @@ export async function updateScreeningStatus(
     }
 
     const allowedTransitions: Record<string, string[]> = {
-        new: ["offer_sent"],
-        offer_sent: ["accepted", "rejected"],
+        new: ["accepted", "rejected"],
         accepted: [],
-        rejected: [],
+        rejected: ["new"],
+        offer_sent: [],
     };
 
     if (!allowedTransitions[request.status]?.includes(status)) {

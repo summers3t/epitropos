@@ -42,6 +42,24 @@ export async function sendOffer(offerId: string) {
         redirect(`/admin/offers/${offer.id}`);
     }
 
+    const { data: screening, error: screeningError } = await supabase
+        .from("screening_requests")
+        .select("id, status")
+        .eq("id", offer.screening_request_id)
+        .maybeSingle();
+
+    if (screeningError) {
+        throw new Error(screeningError.message);
+    }
+
+    if (!screening) {
+        redirect("/admin/screening");
+    }
+
+    if (screening.status !== "accepted") {
+        throw new Error("Only accepted screening requests can send an offer.");
+    }
+
     const { error: updateOfferError } = await supabase
         .from("offers")
         .update({

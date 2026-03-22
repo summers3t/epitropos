@@ -159,20 +159,20 @@ export default async function AdminScreeningDetailPage({ params }: PageProps) {
                                     </option>
 
                                     {request.status === "new" ? (
-                                        <option value="offer_sent">Offer sent</option>
-                                    ) : null}
-
-                                    {request.status === "offer_sent" ? (
                                         <>
                                             <option value="accepted">Accepted</option>
                                             <option value="rejected">Rejected</option>
                                         </>
                                     ) : null}
+
+                                    {request.status === "rejected" ? (
+                                        <option value="new">Reopen</option>
+                                    ) : null}
                                 </select>
 
                                 <button
                                     type="submit"
-                                    disabled={request.status === "accepted" || request.status === "rejected"}
+                                    disabled={request.status === "accepted" || request.status === "offer_sent"}
                                     className="rounded-lg border border-white/15 px-3 py-1 text-xs hover:bg-white/5 transition disabled:cursor-not-allowed disabled:opacity-40"
                                 >
                                     Update
@@ -180,7 +180,7 @@ export default async function AdminScreeningDetailPage({ params }: PageProps) {
                             </form>
 
                             <div className="flex flex-wrap items-center gap-2 pt-2">
-                                {request.status === "new" && !sentOffer && !draftOffer && !acceptedOffer ? (
+                                {request.status === "accepted" && !sentOffer && !draftOffer && !acceptedOffer ? (
                                     <Link
                                         href={`/admin/offers/new?screening=${request.id}`}
                                         className="inline-flex rounded-xl border border-white/15 px-4 py-2 text-xs hover:bg-white/5 transition"
@@ -225,7 +225,7 @@ export default async function AdminScreeningDetailPage({ params }: PageProps) {
 
                             {request.status === "accepted" && sentOffer ? (
                                 <div className="pt-2 text-xs text-white/55">
-                                    A sent offer already exists for this screening request.
+                                    A sent offer already exists. Sending an offer should move this screening to Offer sent.
                                 </div>
                             ) : null}
 
