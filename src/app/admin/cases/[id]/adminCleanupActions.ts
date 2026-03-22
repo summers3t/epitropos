@@ -3,7 +3,14 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
-function getReportsStoragePathFromPublicUrl(fileUrl: string | null | undefined) {
+function getReportStoragePath(
+    storagePath: string | null | undefined,
+    fileUrl: string | null | undefined
+) {
+    if (storagePath) {
+        return storagePath;
+    }
+
     if (!fileUrl) {
         return null;
     }
@@ -31,7 +38,7 @@ async function deleteReportFilesByCaseId(
 ) {
     const { data: reports, error: reportsError } = await supabase
         .from("reports")
-        .select("file_url")
+        .select("storage_path, file_url")
         .eq("case_id", caseId);
 
     if (reportsError) {
@@ -39,7 +46,7 @@ async function deleteReportFilesByCaseId(
     }
 
     const storagePaths = (reports ?? [])
-        .map((report) => getReportsStoragePathFromPublicUrl(report.file_url))
+        .map((report) => getReportStoragePath(report.storage_path, report.file_url))
         .filter((path): path is string => !!path);
 
     if (storagePaths.length === 0) {
@@ -121,36 +128,8 @@ export async function deleteCaseAdmin(caseId: string) {
     const isPaidOrder = paidOrder?.payment_status === "paid";
 
     if (hasPublishedReport || isPaidOrder) {
-        await deleteReportFilesByCaseId(supabase, caseId);
-
-        const { error: deleteReportsError } = await supabase
-            .from("reports")
-            .delete()
-            .eq("case_id", caseId);
-
-        if (deleteReportsError) {
-            throw new Error(deleteReportsError.message);
-        }
-
-        const { error: deleteCasePropertiesError } = await supabase
-            .from("case_properties")
-            .delete()
-            .eq("case_id", caseId);
-
-        if (deleteCasePropertiesError) {
-            throw new Error(deleteCasePropertiesError.message);
-        }
-
-        const { error: deleteCaseError } = await supabase
-            .from("cases")
-            .delete()
-            .eq("id", caseId);
-
-        if (deleteCaseError) {
-            throw new Error(deleteCaseError.message);
-        }
-
-        redirect("/admin/cases");
+        // Current workflow still allows controlled cleanup/testing deletion.
+        // The UI warning remains the operator safeguard.
     }
 
     await deleteReportFilesByCaseId(supabase, caseId);
@@ -290,7 +269,7 @@ export async function deleteDraftReport(reportId: string) {
 
     const { data: report, error: reportError } = await supabase
         .from("reports")
-        .select("id, case_id, published, file_url")
+        .select("id, case_id, published, storage_path, file_url")
         .eq("id", reportId)
         .maybeSingle();
 
@@ -306,7 +285,10 @@ export async function deleteDraftReport(reportId: string) {
         throw new Error("Published reports cannot be deleted directly.");
     }
 
-    const storagePath = getReportsStoragePathFromPublicUrl(report.file_url);
+    const storagePath = getReportStoragePath(
+        report.storage_path,
+        report.file_url
+    );
 
     if (storagePath) {
         const { error: removeError } = await supabase.storage

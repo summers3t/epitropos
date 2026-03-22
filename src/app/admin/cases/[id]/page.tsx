@@ -73,6 +73,28 @@ function getReportSummaryLabel() {
     return "Report summary";
 }
 
+function formatAdminDateTime(value: string | null | undefined) {
+    if (!value) return "—";
+
+    const parts = new Intl.DateTimeFormat("en-GB", {
+        timeZone: "Europe/Sofia",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+    }).formatToParts(new Date(value));
+
+    const day = parts.find((part) => part.type === "day")?.value ?? "--";
+    const month = parts.find((part) => part.type === "month")?.value ?? "--";
+    const year = parts.find((part) => part.type === "year")?.value ?? "----";
+    const hour = parts.find((part) => part.type === "hour")?.value ?? "--";
+    const minute = parts.find((part) => part.type === "minute")?.value ?? "--";
+
+    return `${day}.${month}.${year} ${hour}:${minute}`;
+}
+
 type PageProps = {
     params: Promise<{
         id: string;
@@ -392,7 +414,7 @@ export default async function AdminCaseDetailPage({
     const { data: reports, error: reportsError } = await supabase
         .from("reports")
         .select(
-            "id, case_id, title, summary, file_url, published, created_by, created_at, published_at"
+            "id, case_id, title, summary, storage_path, file_url, published, created_by, created_at, published_at"
         )
         .eq("case_id", caseItem.id)
         .order("created_at", { ascending: false });
@@ -449,7 +471,7 @@ export default async function AdminCaseDetailPage({
                     ) : null}
 
                     <span>
-                        Created {new Date(caseItem.created_at).toISOString().slice(0, 16).replace("T", " ")}
+                        Created {formatAdminDateTime(caseItem.created_at)}
                     </span>
 
                     <div className="flex flex-wrap items-center gap-2">
@@ -703,16 +725,7 @@ export default async function AdminCaseDetailPage({
                             </p>
                             <p className="mt-1 text-[11px] text-white/40">
                                 {caseItem.decision_updated_at
-                                    ? `Last updated ${new Intl.DateTimeFormat("sv-SE", {
-                                        timeZone: "Europe/Sofia",
-                                        year: "numeric",
-                                        month: "2-digit",
-                                        day: "2-digit",
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                        hour12: false,
-                                    }).format(new Date(caseItem.decision_updated_at)).replace(
-                                        ",", "")}`
+                                    ? `Last updated ${formatAdminDateTime(caseItem.decision_updated_at)}`
                                     : "No saved conclusion yet."}
                             </p>
                         </div>
@@ -837,7 +850,7 @@ export default async function AdminCaseDetailPage({
 
                             <div className="flex justify-end">
                                 <DecisionActionButton className="rounded-md border border-white/15 px-4 py-2 text-xs hover:bg-white/5">
-                                    Save Decision
+                                    Save Conclusion
                                 </DecisionActionButton>
                             </div>
                         </form>
@@ -887,28 +900,20 @@ export default async function AdminCaseDetailPage({
                                         </span>
 
                                         <div className="text-xs text-white/55">
-                                            Created{" "}
-                                            {new Date(report.created_at)
-                                                .toISOString()
-                                                .slice(0, 16)
-                                                .replace("T", " ")}
+                                            Created {formatAdminDateTime(report.created_at)}
                                         </div>
 
                                         {report.published_at ? (
                                             <div className="text-xs text-white/55">
-                                                Published{" "}
-                                                {new Date(report.published_at)
-                                                    .toISOString()
-                                                    .slice(0, 16)
-                                                    .replace("T", " ")}
+                                                Published {formatAdminDateTime(report.published_at)}
                                             </div>
                                         ) : null}
                                     </div>
 
                                     <div className="flex flex-wrap items-center gap-2">
-                                        {report.file_url ? (
+                                        {report.storage_path ? (
                                             <a
-                                                href={report.file_url}
+                                                href={`/api/reports/${report.id}/download`}
                                                 target="_blank"
                                                 rel="noreferrer"
                                                 className="rounded-md border border-white/15 px-4 py-2 text-xs hover:bg-white/5"
@@ -986,10 +991,10 @@ export default async function AdminCaseDetailPage({
                                     </div>
 
                                     <ReportUploadControl
-                                        key={`report-upload-${report.id}-${report.file_url ?? "empty"}`}
+                                        key={`report-upload-${report.id}-${report.storage_path ?? report.file_url ?? "empty"}`}
                                         caseId={caseItem.id}
                                         reportId={report.id}
-                                        initialFileUrl={report.file_url ?? ""}
+                                        initialStoragePath={report.storage_path ?? ""}
                                         published={report.published}
                                         inputClass={inputClass}
                                     />

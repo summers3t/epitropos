@@ -3,7 +3,14 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
-function getReportsStoragePathFromPublicUrl(fileUrl: string | null | undefined) {
+function getReportsStoragePath(
+    storagePath: string | null | undefined,
+    fileUrl: string | null | undefined
+) {
+    if (storagePath) {
+        return storagePath;
+    }
+
     if (!fileUrl) {
         return null;
     }
@@ -103,11 +110,11 @@ export async function updateDraftReport(reportId: string, formData: FormData) {
 
     const title = String(formData.get("title") ?? "").trim();
     const summary = String(formData.get("summary") ?? "").trim();
-    const fileUrl = String(formData.get("file_url") ?? "").trim();
+    const storagePath = String(formData.get("storage_path") ?? "").trim();
 
     const { data: report, error: reportError } = await supabase
         .from("reports")
-        .select("id, case_id, published, file_url")
+        .select("id, case_id, published, storage_path, file_url")
         .eq("id", reportId)
         .maybeSingle();
 
@@ -135,8 +142,11 @@ export async function updateDraftReport(reportId: string, formData: FormData) {
         );
     }
 
-    const previousStoragePath = getReportsStoragePathFromPublicUrl(report.file_url);
-    const nextStoragePath = getReportsStoragePathFromPublicUrl(fileUrl || null);
+    const previousStoragePath = getReportsStoragePath(
+        report.storage_path,
+        report.file_url
+    );
+    const nextStoragePath = storagePath || null;
 
     if (
         previousStoragePath &&
@@ -157,7 +167,8 @@ export async function updateDraftReport(reportId: string, formData: FormData) {
         .update({
             title,
             summary: summary || null,
-            file_url: fileUrl || null,
+            storage_path: storagePath || null,
+            file_url: null,
         })
         .eq("id", report.id);
 
@@ -177,7 +188,7 @@ export async function publishReport(reportId: string, formData: FormData) {
 
     const title = String(formData.get("title") ?? "").trim();
     const summary = String(formData.get("summary") ?? "").trim();
-    const fileUrl = String(formData.get("file_url") ?? "").trim();
+    const storagePath = String(formData.get("storage_path") ?? "").trim();
 
     const { data: report, error: reportError } = await supabase
         .from("reports")
@@ -211,7 +222,7 @@ export async function publishReport(reportId: string, formData: FormData) {
         throw new Error(caseRowError.message);
     }
 
-    if (!title || !fileUrl) {
+    if (!title || !storagePath) {
         redirect(
             `/admin/cases/${report.case_id}?reportError=${encodeURIComponent(
                 "Publish requires title and uploaded report file."
@@ -240,7 +251,7 @@ export async function publishReport(reportId: string, formData: FormData) {
         );
     }
 
-    if (!fileUrl.includes("/storage/v1/object/public/reports/")) {
+    if (!storagePath.startsWith(`case-${report.case_id}/report-${report.id}/`)) {
         redirect(
             `/admin/cases/${report.case_id}?reportError=${encodeURIComponent(
                 "Invalid report file. Upload the PDF through the platform before publishing."
@@ -253,7 +264,8 @@ export async function publishReport(reportId: string, formData: FormData) {
         .update({
             title,
             summary,
-            file_url: fileUrl,
+            storage_path: storagePath,
+            file_url: null,
             published: true,
             published_at: new Date().toISOString(),
         })

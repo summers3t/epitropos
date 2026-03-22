@@ -157,7 +157,7 @@ export async function updateCaseDecision(formData: FormData) {
 
     redirect(
         `/admin/cases/${caseId}?decisionNotice=${encodeURIComponent(
-            "Decision updated."
+            "Conclusion updated."
         )}`
     );
 }

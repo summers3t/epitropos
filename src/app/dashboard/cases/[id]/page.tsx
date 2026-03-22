@@ -176,7 +176,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
 
     const { data: reports, error: reportsError } = await supabase
         .from("reports")
-        .select("id, title, published, published_at, file_url")
+        .select("id, title, published, published_at, storage_path")
         .eq("case_id", caseItem.id)
         .eq("published", true)
         .order("published_at", { ascending: false });
@@ -350,9 +350,9 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                                         </p>
                                     </div>
 
-                                    {report.file_url ? (
+                                    {report.storage_path ? (
                                         <a
-                                            href={report.file_url}
+                                            href={`/api/reports/${report.id}/download`}
                                             target="_blank"
                                             rel="noreferrer"
                                             className="rounded-xl border border-white/15 px-4 py-2 text-xs hover:bg-white/5 transition"

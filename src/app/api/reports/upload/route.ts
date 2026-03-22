@@ -1,6 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
+function getReportsStoragePathFromPublicUrl(fileUrl: string | null | undefined) {
+    if (!fileUrl) {
+        return null;
+    }
+
+    const marker = "/storage/v1/object/public/reports/";
+    const markerIndex = fileUrl.indexOf(marker);
+
+    if (markerIndex === -1) {
+        return null;
+    }
+
+    const rawPath = fileUrl.slice(markerIndex + marker.length);
+
+    if (!rawPath) {
+        return null;
+    }
+
+    return decodeURIComponent(rawPath);
+}
+
 export async function POST(request: NextRequest) {
     const supabase = await createClient();
 
@@ -42,6 +63,40 @@ export async function POST(request: NextRequest) {
         );
     }
 
+    const { data: report, error: reportError } = await supabase
+        .from("reports")
+        .select("id, case_id, published, storage_path, file_url")
+        .eq("id", reportId)
+        .maybeSingle();
+
+    if (reportError) {
+        return NextResponse.json(
+            { error: reportError.message },
+            { status: 400 }
+        );
+    }
+
+    if (!report) {
+        return NextResponse.json(
+            { error: "Report not found." },
+            { status: 404 }
+        );
+    }
+
+    if (report.case_id !== caseId) {
+        return NextResponse.json(
+            { error: "Report does not belong to the provided case." },
+            { status: 400 }
+        );
+    }
+
+    if (report.published) {
+        return NextResponse.json(
+            { error: "Published reports are locked. Unpublish first." },
+            { status: 400 }
+        );
+    }
+
     const extension =
         file.name.includes(".") ? file.name.split(".").pop()?.toLowerCase() : "";
 
@@ -60,6 +115,10 @@ export async function POST(request: NextRequest) {
 
     const timestamp = Date.now();
 
+    const previousStoragePath =
+        report.storage_path ||
+        getReportsStoragePathFromPublicUrl(report.file_url);
+
     const storagePath = `case-${caseId}/report-${reportId}/${timestamp}-${sanitizedName}`;
 
     const { error: uploadError } = await supabase.storage
@@ -77,13 +136,21 @@ export async function POST(request: NextRequest) {
         );
     }
 
-    const { data: publicUrlData } = supabase.storage
-        .from("reports")
-        .getPublicUrl(storagePath);
+    if (previousStoragePath && previousStoragePath !== storagePath) {
+        const { error: removeError } = await supabase.storage
+            .from("reports")
+            .remove([previousStoragePath]);
+
+        if (removeError) {
+            return NextResponse.json(
+                { error: removeError.message },
+                { status: 400 }
+            );
+        }
+    }
 
     return NextResponse.json({
         ok: true,
-        file_url: publicUrlData.publicUrl,
         storage_path: storagePath,
         file_name: file.name,
     });

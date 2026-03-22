@@ -5,7 +5,7 @@ import { useState } from "react";
 type ReportUploadControlProps = {
     caseId: string;
     reportId: string;
-    initialFileUrl: string;
+    initialStoragePath: string;
     published: boolean;
     inputClass: string;
 };
@@ -13,11 +13,11 @@ type ReportUploadControlProps = {
 export default function ReportUploadControl({
     caseId,
     reportId,
-    initialFileUrl,
+    initialStoragePath,
     published,
     inputClass,
 }: ReportUploadControlProps) {
-    const [fileUrl, setFileUrl] = useState(initialFileUrl);
+    const [storagePath, setStoragePath] = useState(initialStoragePath);
     const [uploading, setUploading] = useState(false);
     const [notice, setNotice] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -53,7 +53,7 @@ export default function ReportUploadControl({
                 throw new Error(result.error || "Upload failed.");
             }
 
-            setFileUrl(result.file_url);
+            setStoragePath(result.storage_path);
             setNotice("Report uploaded. Save Draft or Publish to persist it.");
         } catch (uploadError) {
             setError(
@@ -73,7 +73,12 @@ export default function ReportUploadControl({
                 Report file
             </label>
 
-            <input type="hidden" name="file_url" value={fileUrl} readOnly />
+            <input
+                type="hidden"
+                name="storage_path"
+                value={storagePath}
+                readOnly
+            />
 
             {!published ? (
                 <div className="space-y-3">
@@ -97,9 +102,9 @@ export default function ReportUploadControl({
                         <div className="text-xs text-red-300">{error}</div>
                     ) : null}
 
-                    {fileUrl ? (
+                    {storagePath ? (
                         <div className="text-xs text-white/60">
-                            Current file linked below.
+                            Current file is attached to this draft.
                         </div>
                     ) : (
                         <div className="text-xs text-white/45">
