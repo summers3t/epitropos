@@ -60,6 +60,18 @@ export async function updateCaseDecision(formData: FormData) {
         redirect("/admin/cases");
     }
 
+    if (caseRow.status === "closed") {
+        redirect(
+            `/admin/cases/${caseId}?decisionError=${encodeURIComponent(
+                "Closed cases cannot be modified."
+            )}`
+        );
+    }
+
+    if (!caseRow) {
+        redirect("/admin/cases");
+    }
+
     // 2. Validate status
     const allowedStatuses = [
         "pending",
