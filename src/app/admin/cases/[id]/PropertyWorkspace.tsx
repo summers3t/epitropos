@@ -1978,7 +1978,8 @@ export default function PropertyWorkspace({
                                         <select
                                             value={draft.analyst_verdict}
                                             onChange={(e) => updateField(p.id, "analyst_verdict", e.target.value)}
-                                            className={selectClass}
+                                            disabled={isLocked}
+                                            className={`${selectClass} ${isLocked ? "cursor-not-allowed bg-white/5 text-white/70" : ""}`}
                                         >
                                             <option value="">Select verdict</option>
                                             <option value="buy">Buy</option>
