@@ -48,7 +48,7 @@ export async function updateCaseDecision(formData: FormData) {
     // 1. Load case
     const { data: caseRow, error: caseError } = await supabase
         .from("cases")
-        .select("id")
+        .select("id, status")
         .eq("id", caseId)
         .maybeSingle();
 
@@ -138,6 +138,28 @@ export async function updateCaseDecision(formData: FormData) {
                 )}`
             );
         }
+    }
+
+    if (
+        (caseRow.status === "delivered" || caseRow.status === "closed") &&
+        decisionStatus === "pending"
+    ) {
+        redirect(
+            `/admin/cases/${caseId}?decisionError=${encodeURIComponent(
+                "Delivered or closed cases cannot return to pending conclusion."
+            )}`
+        );
+    }
+
+    if (
+        (caseRow.status === "delivered" || caseRow.status === "closed") &&
+        !decisionSummary
+    ) {
+        redirect(
+            `/admin/cases/${caseId}?decisionError=${encodeURIComponent(
+                "Delivered or closed cases must keep a conclusion summary."
+            )}`
+        );
     }
 
     // 6. Update

@@ -230,6 +230,14 @@ export async function publishReport(reportId: string, formData: FormData) {
         );
     }
 
+    if (caseRow && (!caseRow.decision_status || caseRow.decision_status === "pending")) {
+        redirect(
+            `/admin/cases/${report.case_id}?reportError=${encodeURIComponent(
+                "Publish requires a saved final conclusion first."
+            )}`
+        );
+    }
+
     if (
         caseRow &&
         caseRow.decision_status &&
@@ -297,6 +305,42 @@ export async function unpublishReport(reportId: string) {
 
     if (!report) {
         redirect("/admin/cases");
+    }
+
+    const { data: caseRow, error: caseRowError } = await supabase
+        .from("cases")
+        .select("id, status")
+        .eq("id", report.case_id)
+        .maybeSingle();
+
+    if (caseRowError) {
+        throw new Error(caseRowError.message);
+    }
+
+    if (!caseRow) {
+        redirect("/admin/cases");
+    }
+
+    const { count: publishedCount, error: publishedCountError } = await supabase
+        .from("reports")
+        .select("id", { count: "exact", head: true })
+        .eq("case_id", report.case_id)
+        .eq("published", true);
+
+    if (publishedCountError) {
+        throw new Error(publishedCountError.message);
+    }
+
+    if (
+        report.published &&
+        (caseRow.status === "delivered" || caseRow.status === "closed") &&
+        (publishedCount ?? 0) <= 1
+    ) {
+        redirect(
+            `/admin/cases/${report.case_id}?reportError=${encodeURIComponent(
+                "Delivered or closed cases must keep at least one published report."
+            )}`
+        );
     }
 
     if (report.published) {
