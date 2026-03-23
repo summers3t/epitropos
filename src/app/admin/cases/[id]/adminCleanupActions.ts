@@ -281,6 +281,28 @@ export async function deleteDraftReport(reportId: string) {
         redirect("/admin/cases");
     }
 
+    const { data: caseRow, error: caseRowError } = await supabase
+        .from("cases")
+        .select("id, status")
+        .eq("id", report.case_id)
+        .maybeSingle();
+
+    if (caseRowError) {
+        throw new Error(caseRowError.message);
+    }
+
+    if (!caseRow) {
+        redirect("/admin/cases");
+    }
+
+    if (caseRow.status === "closed") {
+        redirect(
+            `/admin/cases/${report.case_id}?reportError=${encodeURIComponent(
+                "Closed cases cannot be modified."
+            )}`
+        );
+    }
+
     if (report.published) {
         throw new Error("Published reports cannot be deleted directly.");
     }

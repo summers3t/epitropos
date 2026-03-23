@@ -83,6 +83,33 @@ export async function POST(request: NextRequest) {
         );
     }
 
+    const { data: caseRow, error: caseError } = await supabase
+        .from("cases")
+        .select("id, status")
+        .eq("id", report.case_id)
+        .maybeSingle();
+
+    if (caseError) {
+        return NextResponse.json(
+            { error: caseError.message },
+            { status: 400 }
+        );
+    }
+
+    if (!caseRow) {
+        return NextResponse.json(
+            { error: "Case not found." },
+            { status: 404 }
+        );
+    }
+
+    if (caseRow.status === "closed") {
+        return NextResponse.json(
+            { error: "Closed cases cannot be modified." },
+            { status: 400 }
+        );
+    }
+
     if (report.case_id !== caseId) {
         return NextResponse.json(
             { error: "Report does not belong to the provided case." },

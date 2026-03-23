@@ -60,7 +60,7 @@ export async function createDraftReport(caseId: string) {
 
     const { data: caseRow, error: caseError } = await supabase
         .from("cases")
-        .select("id, title")
+        .select("id, title, status")
         .eq("id", caseId)
         .maybeSingle();
 
@@ -70,6 +70,14 @@ export async function createDraftReport(caseId: string) {
 
     if (!caseRow) {
         redirect("/admin/cases");
+    }
+
+    if (caseRow.status === "closed") {
+        redirect(
+            `/admin/cases/${caseId}?reportError=${encodeURIComponent(
+                "Closed cases cannot be modified."
+            )}`
+        );
     }
 
     const { data: existingDraft, error: existingDraftError } = await supabase
@@ -124,6 +132,28 @@ export async function updateDraftReport(reportId: string, formData: FormData) {
 
     if (!report) {
         redirect("/admin/cases");
+    }
+
+    const { data: caseRow, error: caseRowError } = await supabase
+        .from("cases")
+        .select("id, status")
+        .eq("id", report.case_id)
+        .maybeSingle();
+
+    if (caseRowError) {
+        throw new Error(caseRowError.message);
+    }
+
+    if (!caseRow) {
+        redirect("/admin/cases");
+    }
+
+    if (caseRow.status === "closed") {
+        redirect(
+            `/admin/cases/${report.case_id}?reportError=${encodeURIComponent(
+                "Closed cases cannot be modified."
+            )}`
+        );
     }
 
     if (report.published) {
@@ -214,12 +244,20 @@ export async function publishReport(reportId: string, formData: FormData) {
 
     const { data: caseRow, error: caseRowError } = await supabase
         .from("cases")
-        .select("decision_status, decision_summary")
+        .select("status, decision_status, decision_summary")
         .eq("id", report.case_id)
         .maybeSingle();
 
     if (caseRowError) {
         throw new Error(caseRowError.message);
+    }
+
+    if (caseRow?.status === "closed") {
+        redirect(
+            `/admin/cases/${report.case_id}?reportError=${encodeURIComponent(
+                "Closed cases cannot be modified."
+            )}`
+        );
     }
 
     if (!title || !storagePath) {
@@ -319,6 +357,14 @@ export async function unpublishReport(reportId: string) {
 
     if (!caseRow) {
         redirect("/admin/cases");
+    }
+
+    if (caseRow.status === "closed") {
+        redirect(
+            `/admin/cases/${report.case_id}?reportError=${encodeURIComponent(
+                "Closed cases cannot be modified."
+            )}`
+        );
     }
 
     const { count: publishedCount, error: publishedCountError } = await supabase
