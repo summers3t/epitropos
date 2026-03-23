@@ -292,6 +292,28 @@ export default async function AdminCaseDetailPage({
             redirect("/admin/cases");
         }
 
+        const { data: caseRow, error: caseRowError } = await supabase
+            .from("cases")
+            .select("id, status")
+            .eq("id", caseId)
+            .maybeSingle();
+
+        if (caseRowError) {
+            throw new Error(caseRowError.message);
+        }
+
+        if (!caseRow) {
+            redirect("/admin/cases");
+        }
+
+        if (caseRow.status === "delivered" || caseRow.status === "closed") {
+            redirect(
+                `/admin/cases/${caseId}?caseStatusError=${encodeURIComponent(
+                    "Properties cannot be modified after delivery."
+                )}`
+            );
+        }
+
         const askingPrice =
             askingPriceRaw.length > 0 ? Number(askingPriceRaw) : null;
         const sizeSqm = sizeSqmRaw.length > 0 ? Number(sizeSqmRaw) : null;
@@ -691,108 +713,113 @@ export default async function AdminCaseDetailPage({
                     </div>
                 </div>
 
-                <details
-                    id="add-property"
-                    open={openAddProperty === "1"}
-                    className="rounded-xl border border-white/10 bg-black/10"
-                >
-                    <summary className="cursor-pointer list-none p-4">
-                        <div className="flex items-center justify-between gap-3">
-                            <div>
-                                <div className="font-semibold text-white">
-                                    Add Property
+                {caseItem.status !== "delivered" && caseItem.status !== "closed" ? (
+                    <details
+                        id="add-property"
+                        open={openAddProperty === "1"}
+                        className="rounded-xl border border-white/10 bg-black/10"
+                    >
+                        <summary className="cursor-pointer list-none p-4">
+                            <div className="flex items-center justify-between gap-3">
+                                <div>
+                                    <div className="font-semibold text-white">
+                                        Add Property
+                                    </div>
+                                    <div className="mt-1 text-xs text-white/60">
+                                        Add a new candidate property to this case
+                                    </div>
                                 </div>
-                                <div className="mt-1 text-xs text-white/60">
-                                    Add a new candidate property to this case
-                                </div>
+
+                                <span className="rounded-full border border-white/10 px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-white/70">
+                                    Expand
+                                </span>
+                            </div>
+                        </summary>
+
+                        <form
+                            action={createCaseProperty}
+                            className="space-y-4 border-t border-white/10 p-4"
+                        >
+                            <input type="hidden" name="case_id" value={caseItem.id} />
+
+                            <div className="grid gap-3 md:grid-cols-2">
+                                <input
+                                    name="title"
+                                    placeholder="Property title"
+                                    className={inputClass}
+                                />
+
+                                <input
+                                    name="listing_url"
+                                    placeholder="Listing URL"
+                                    className={inputClass}
+                                />
                             </div>
 
-                            <span className="rounded-full border border-white/10 px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-white/70">
-                                Expand
-                            </span>
-                        </div>
-                    </summary>
+                            <div className="grid gap-3 md:grid-cols-3">
+                                <input
+                                    name="address"
+                                    placeholder="Address"
+                                    className={inputClass}
+                                />
 
-                    <form
-                        action={createCaseProperty}
-                        className="space-y-4 border-t border-white/10 p-4"
-                    >
-                        <input type="hidden" name="case_id" value={caseItem.id} />
+                                <input
+                                    name="city"
+                                    placeholder="City"
+                                    className={inputClass}
+                                />
 
-                        <div className="grid gap-3 md:grid-cols-2">
-                            <input
-                                name="title"
-                                placeholder="Property title"
-                                className={inputClass}
+                                <input
+                                    name="area"
+                                    placeholder="Area / district"
+                                    className={inputClass}
+                                />
+                            </div>
+
+                            <div className="grid gap-3 md:grid-cols-2">
+                                <input
+                                    name="asking_price"
+                                    placeholder="Asking price"
+                                    type="number"
+                                    step="0.01"
+                                    className={inputClass}
+                                />
+
+                                <input
+                                    name="size_sqm"
+                                    placeholder="Size (sqm)"
+                                    type="number"
+                                    step="0.01"
+                                    className={inputClass}
+                                />
+                            </div>
+
+                            <textarea
+                                name="notes"
+                                placeholder="Initial notes"
+                                className={textareaClass}
+                                rows={3}
                             />
 
-                            <input
-                                name="listing_url"
-                                placeholder="Listing URL"
-                                className={inputClass}
-                            />
-                        </div>
-
-                        <div className="grid gap-3 md:grid-cols-3">
-                            <input
-                                name="address"
-                                placeholder="Address"
-                                className={inputClass}
-                            />
-
-                            <input
-                                name="city"
-                                placeholder="City"
-                                className={inputClass}
-                            />
-
-                            <input
-                                name="area"
-                                placeholder="Area / district"
-                                className={inputClass}
-                            />
-                        </div>
-
-                        <div className="grid gap-3 md:grid-cols-2">
-                            <input
-                                name="asking_price"
-                                placeholder="Asking price"
-                                type="number"
-                                step="0.01"
-                                className={inputClass}
-                            />
-
-                            <input
-                                name="size_sqm"
-                                placeholder="Size (sqm)"
-                                type="number"
-                                step="0.01"
-                                className={inputClass}
-                            />
-                        </div>
-
-                        <textarea
-                            name="notes"
-                            placeholder="Initial notes"
-                            className={textareaClass}
-                            rows={3}
-                        />
-
-                        <div className="flex justify-end">
-                            <button
-                                type="submit"
-                                className="rounded-md border border-white/15 px-4 py-2 text-xs hover:bg-white/5"
-                            >
-                                Add Property
-                            </button>
-                        </div>
-                    </form>
-                </details>
+                            <div className="flex justify-end">
+                                <button
+                                    type="submit"
+                                    className="rounded-md border border-white/15 px-4 py-2 text-xs hover:bg-white/5"
+                                >
+                                    Add Property
+                                </button>
+                            </div>
+                        </form>
+                    </details>
+                ) : null}
 
                 <PropertyWorkspace
                     caseId={caseItem.id}
                     initialProperties={properties ?? []}
                     initialExpandedPropertyId={openProperty ?? null}
+                    isLocked={
+                        caseItem.status === "delivered" || caseItem.status === "closed"
+                    }
                 />
 
                 <div className="flex items-center gap-3 border-t border-white/10 pt-2">

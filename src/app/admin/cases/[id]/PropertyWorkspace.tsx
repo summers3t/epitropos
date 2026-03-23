@@ -65,6 +65,7 @@ type PropertyWorkspaceProps = {
     caseId: string;
     initialProperties: PropertyItem[];
     initialExpandedPropertyId?: string | null;
+    isLocked: boolean;
 };
 
 const inputClass =
@@ -488,6 +489,7 @@ export default function PropertyWorkspace({
     caseId,
     initialProperties,
     initialExpandedPropertyId = null,
+    isLocked,
 }: PropertyWorkspaceProps) {
     const initialNormalizedById = useMemo(() => {
         return Object.fromEntries(
@@ -1012,6 +1014,12 @@ export default function PropertyWorkspace({
 
     return (
         <div id="properties-list" className="space-y-6">
+            {isLocked ? (
+                <div className="rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-100">
+                    Property changes are locked after delivery.
+                </div>
+            ) : null}
+
             <section className="space-y-4 rounded-2xl border border-white/10 bg-black/10 p-4 md:p-5">
                 <div className="flex flex-col gap-1">
                     <h3 className="text-sm font-semibold uppercase tracking-[0.12em] text-white/80">
@@ -1961,9 +1969,9 @@ export default function PropertyWorkspace({
                                         <button
                                             type="button"
                                             onClick={() => saveProperty(p.id)}
-                                            disabled={!dirty || busy}
+                                            disabled={isLocked || !dirty || busy}
                                             className={
-                                                dirty && !busy
+                                                !isLocked && dirty && !busy
                                                     ? "rounded-md bg-blue-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-blue-600"
                                                     : "rounded-md border border-white/10 px-4 py-2 text-xs text-white/35 cursor-not-allowed"
                                             }
@@ -1974,9 +1982,17 @@ export default function PropertyWorkspace({
                                         <button
                                             type="button"
                                             onClick={() => setPrimaryProperty(p.id)}
-                                            disabled={busy || p.is_primary || hasAnyUnsavedChanges}
+                                            disabled={
+                                                isLocked ||
+                                                busy ||
+                                                p.is_primary ||
+                                                hasAnyUnsavedChanges
+                                            }
                                             className={
-                                                !busy && !p.is_primary && !hasAnyUnsavedChanges
+                                                !isLocked &&
+                                                !busy &&
+                                                !p.is_primary &&
+                                                !hasAnyUnsavedChanges
                                                     ? "rounded-md border border-emerald-400/30 px-4 py-2 text-xs text-emerald-100 hover:bg-emerald-500/10"
                                                     : p.is_primary
                                                         ? "rounded-md border border-emerald-400/20 bg-emerald-500/10 px-4 py-2 text-xs text-emerald-100 cursor-not-allowed"
@@ -2005,12 +2021,14 @@ export default function PropertyWorkspace({
                                                 type="button"
                                                 onClick={() => reorderProperty(p.id, "up")}
                                                 disabled={
+                                                    isLocked ||
                                                     busy ||
                                                     p.is_primary ||
                                                     isFirstNonPrimary ||
                                                     hasAnyUnsavedChanges
                                                 }
                                                 className={
+                                                    !isLocked &&
                                                     !busy &&
                                                         !p.is_primary &&
                                                         !isFirstNonPrimary &&
@@ -2026,12 +2044,14 @@ export default function PropertyWorkspace({
                                                 type="button"
                                                 onClick={() => reorderProperty(p.id, "down")}
                                                 disabled={
+                                                    isLocked ||
                                                     busy ||
                                                     p.is_primary ||
                                                     isLastNonPrimary ||
                                                     hasAnyUnsavedChanges
                                                 }
                                                 className={
+                                                    !isLocked &&
                                                     !busy &&
                                                         !p.is_primary &&
                                                         !isLastNonPrimary &&
@@ -2046,9 +2066,9 @@ export default function PropertyWorkspace({
                                             <button
                                                 type="button"
                                                 onClick={() => deleteProperty(p.id)}
-                                                disabled={busy}
+                                                disabled={isLocked || busy}
                                                 className={
-                                                    !busy
+                                                    !isLocked && !busy
                                                         ? "rounded-md border border-red-400/30 px-4 py-2 text-xs text-red-200 hover:bg-red-500/10"
                                                         : "rounded-md border border-white/10 px-4 py-2 text-xs text-white/35 cursor-not-allowed"
                                                 }

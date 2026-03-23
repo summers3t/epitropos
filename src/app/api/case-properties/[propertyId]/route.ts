@@ -146,6 +146,33 @@ export async function PATCH(
             );
         }
 
+        const { data: caseRow, error: caseRowError } = await supabase
+            .from("cases")
+            .select("id, status")
+            .eq("id", currentProperty.case_id)
+            .maybeSingle();
+
+        if (caseRowError) {
+            return NextResponse.json(
+                { error: caseRowError.message },
+                { status: 400 }
+            );
+        }
+
+        if (!caseRow) {
+            return NextResponse.json(
+                { error: "Case not found." },
+                { status: 404 }
+            );
+        }
+
+        if (caseRow.status === "delivered" || caseRow.status === "closed") {
+            return NextResponse.json(
+                { error: "Properties cannot be modified after delivery." },
+                { status: 400 }
+            );
+        }
+
         if (action === "set_primary") {
             const timestamp = new Date().toISOString();
 
@@ -255,6 +282,53 @@ export async function PATCH(
         }
 
         return NextResponse.json({ ok: true });
+    }
+
+    const { data: currentProperty, error: currentPropertyError } = await supabase
+        .from("case_properties")
+        .select("id, case_id")
+        .eq("id", propertyId)
+        .maybeSingle();
+
+    if (currentPropertyError) {
+        return NextResponse.json(
+            { error: currentPropertyError.message },
+            { status: 400 }
+        );
+    }
+
+    if (!currentProperty) {
+        return NextResponse.json(
+            { error: "Property not found." },
+            { status: 404 }
+        );
+    }
+
+    const { data: caseRow, error: caseRowError } = await supabase
+        .from("cases")
+        .select("id, status")
+        .eq("id", currentProperty.case_id)
+        .maybeSingle();
+
+    if (caseRowError) {
+        return NextResponse.json(
+            { error: caseRowError.message },
+            { status: 400 }
+        );
+    }
+
+    if (!caseRow) {
+        return NextResponse.json(
+            { error: "Case not found." },
+            { status: 404 }
+        );
+    }
+
+    if (caseRow.status === "delivered" || caseRow.status === "closed") {
+        return NextResponse.json(
+            { error: "Properties cannot be modified after delivery." },
+            { status: 400 }
+        );
     }
 
     const locationScore = riskLevelToScore(body.location_risk_level ?? null);
@@ -372,6 +446,53 @@ export async function DELETE(
 
     if (profileError || !profile || profile.role !== "admin") {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const { data: currentProperty, error: currentPropertyError } = await supabase
+        .from("case_properties")
+        .select("id, case_id")
+        .eq("id", propertyId)
+        .maybeSingle();
+
+    if (currentPropertyError) {
+        return NextResponse.json(
+            { error: currentPropertyError.message },
+            { status: 400 }
+        );
+    }
+
+    if (!currentProperty) {
+        return NextResponse.json(
+            { error: "Property not found." },
+            { status: 404 }
+        );
+    }
+
+    const { data: caseRow, error: caseRowError } = await supabase
+        .from("cases")
+        .select("id, status")
+        .eq("id", currentProperty.case_id)
+        .maybeSingle();
+
+    if (caseRowError) {
+        return NextResponse.json(
+            { error: caseRowError.message },
+            { status: 400 }
+        );
+    }
+
+    if (!caseRow) {
+        return NextResponse.json(
+            { error: "Case not found." },
+            { status: 404 }
+        );
+    }
+
+    if (caseRow.status === "delivered" || caseRow.status === "closed") {
+        return NextResponse.json(
+            { error: "Properties cannot be modified after delivery." },
+            { status: 400 }
+        );
     }
 
     const { error } = await supabase
