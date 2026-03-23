@@ -535,6 +535,10 @@ export default function PropertyWorkspace({
     }, [initialExpandedPropertyId]);
 
     function updateField(propertyId: string, field: string, value: string) {
+        if (isLocked) {
+            return;
+        }
+
         setDraftsById((current) => {
             const nextDraft = {
                 ...current[propertyId],
@@ -601,7 +605,7 @@ export default function PropertyWorkspace({
 
     useEffect(() => {
         function handleBeforeUnload(event: BeforeUnloadEvent) {
-            if (!hasAnyUnsavedChanges) {
+            if (isLocked || !hasAnyUnsavedChanges) {
                 return;
             }
 
@@ -617,7 +621,7 @@ export default function PropertyWorkspace({
     }, [hasAnyUnsavedChanges]);
 
     function attemptCollapse(propertyId: string) {
-        if (isDirty(propertyId)) {
+        if (!isLocked && isDirty(propertyId)) {
             const shouldDiscard = window.confirm(
                 "You have unsaved changes for this property. Collapse anyway and keep changes only locally until you save?"
             );
@@ -1185,7 +1189,7 @@ export default function PropertyWorkspace({
 
                                     setExpandedPropertyId((current) => {
                                         if (current === p.id) {
-                                            if (isDirty(p.id)) {
+                                            if (!isLocked && isDirty(p.id)) {
                                                 const shouldCollapse = window.confirm(
                                                     "You have unsaved changes for this property. Collapse anyway and keep changes only locally until you save?"
                                                 );
@@ -1198,7 +1202,7 @@ export default function PropertyWorkspace({
                                             return null;
                                         }
 
-                                        if (current && isDirty(current)) {
+                                        if (!isLocked && current && isDirty(current)) {
                                             const shouldSwitch = window.confirm(
                                                 "You have unsaved changes in the currently open property. Switch anyway and keep changes only locally until you save?"
                                             );
@@ -1282,7 +1286,7 @@ export default function PropertyWorkspace({
                                             >
                                                 Signal: {displayedSignal}
                                             </span>
-                                            {dirty ? (
+                                            {!isLocked && dirty ? (
                                                 <span className="rounded-full border border-amber-400/30 bg-amber-500/10 px-2 py-1 text-amber-100">
                                                     Unsaved
                                                 </span>
@@ -1345,7 +1349,8 @@ export default function PropertyWorkspace({
                                                 onChange={(e) =>
                                                     updateField(p.id, "title", e.target.value)
                                                 }
-                                                className={inputClass}
+                                                disabled={isLocked}
+                                                className={`${inputClass} ${isLocked ? "cursor-not-allowed bg-white/5 text-white/70" : ""}`}
                                             />
                                         </div>
 
@@ -1356,6 +1361,7 @@ export default function PropertyWorkspace({
                                                 onChange={(e) =>
                                                     updateField(p.id, "address", e.target.value)
                                                 }
+                                                disabled={isLocked}
                                                 className={inputClass}
                                             />
                                         </div>
@@ -1367,6 +1373,7 @@ export default function PropertyWorkspace({
                                                 onChange={(e) =>
                                                     updateField(p.id, "city", e.target.value)
                                                 }
+                                                disabled={isLocked}
                                                 className={inputClass}
                                             />
                                         </div>
@@ -1378,6 +1385,7 @@ export default function PropertyWorkspace({
                                                 onChange={(e) =>
                                                     updateField(p.id, "area", e.target.value)
                                                 }
+                                                disabled={isLocked}
                                                 className={inputClass}
                                             />
                                         </div>
@@ -1389,6 +1397,7 @@ export default function PropertyWorkspace({
                                                 onChange={(e) =>
                                                     updateField(p.id, "listing_url", e.target.value)
                                                 }
+                                                disabled={isLocked}
                                                 className={inputClass}
                                             />
                                         </div>
@@ -1402,6 +1411,7 @@ export default function PropertyWorkspace({
                                                 }
                                                 type="number"
                                                 step="0.01"
+                                                disabled={isLocked}
                                                 className={inputClass}
                                             />
                                         </div>
@@ -1415,6 +1425,7 @@ export default function PropertyWorkspace({
                                                 }
                                                 type="number"
                                                 step="0.01"
+                                                disabled={isLocked}
                                                 className={inputClass}
                                             />
                                         </div>
@@ -1432,6 +1443,7 @@ export default function PropertyWorkspace({
                                                 }
                                                 type="number"
                                                 step="0.01"
+                                                disabled={isLocked}
                                                 className={inputClass}
                                             />
                                         </div>
@@ -1445,6 +1457,7 @@ export default function PropertyWorkspace({
                                                 }
                                                 type="number"
                                                 step="0.01"
+                                                disabled={isLocked}
                                                 className={inputClass}
                                             />
                                         </div>
@@ -1458,6 +1471,7 @@ export default function PropertyWorkspace({
                                                 }
                                                 type="number"
                                                 step="0.01"
+                                                disabled={isLocked}
                                                 className={inputClass}
                                             />
                                         </div>
@@ -1471,6 +1485,7 @@ export default function PropertyWorkspace({
                                                 }
                                                 type="number"
                                                 step="0.01"
+                                                disabled={isLocked}
                                                 className={inputClass}
                                             />
                                         </div>
@@ -1484,6 +1499,7 @@ export default function PropertyWorkspace({
                                                 }
                                                 type="number"
                                                 step="0.01"
+                                                disabled={isLocked}
                                                 className={inputClass}
                                             />
                                         </div>
@@ -1512,6 +1528,7 @@ export default function PropertyWorkspace({
                                                 }
                                                 type="number"
                                                 step="0.01"
+                                                disabled={isLocked}
                                                 className={inputClass}
                                             />
                                         </div>
@@ -1525,6 +1542,7 @@ export default function PropertyWorkspace({
                                                 }
                                                 type="number"
                                                 step="0.01"
+                                                disabled={isLocked}
                                                 className={inputClass}
                                             />
                                         </div>
@@ -1538,6 +1556,7 @@ export default function PropertyWorkspace({
                                                 }
                                                 type="number"
                                                 step="0.01"
+                                                disabled={isLocked}
                                                 className={inputClass}
                                             />
                                         </div>
@@ -1551,6 +1570,7 @@ export default function PropertyWorkspace({
                                                 }
                                                 type="number"
                                                 step="0.01"
+                                                disabled={isLocked}
                                                 className={inputClass}
                                             />
                                         </div>
@@ -1564,6 +1584,7 @@ export default function PropertyWorkspace({
                                                 }
                                                 type="number"
                                                 step="0.01"
+                                                disabled={isLocked}
                                                 className={inputClass}
                                             />
                                         </div>
@@ -1731,7 +1752,8 @@ export default function PropertyWorkspace({
                                                 onChange={(e) =>
                                                     updateField(p.id, "location_risk_level", e.target.value)
                                                 }
-                                                className={selectClass}
+                                                disabled={isLocked}
+                                                className={`${selectClass} ${isLocked ? "cursor-not-allowed bg-white/5 text-white/70" : ""}`}
                                             >
                                                 <option value="">Select risk level</option>
                                                 <option value="low">Low</option>
@@ -1747,6 +1769,7 @@ export default function PropertyWorkspace({
                                                 onChange={(e) =>
                                                     updateField(p.id, "liquidity_risk_level", e.target.value)
                                                 }
+                                                disabled={isLocked}
                                                 className={selectClass}
                                             >
                                                 <option value="">Select risk level</option>
@@ -1763,6 +1786,7 @@ export default function PropertyWorkspace({
                                                 onChange={(e) =>
                                                     updateField(p.id, "renovation_risk_level", e.target.value)
                                                 }
+                                                disabled={isLocked}
                                                 className={selectClass}
                                             >
                                                 <option value="">Select risk level</option>
@@ -1779,6 +1803,7 @@ export default function PropertyWorkspace({
                                                 onChange={(e) =>
                                                     updateField(p.id, "financing_risk_level", e.target.value)
                                                 }
+                                                disabled={isLocked}
                                                 className={selectClass}
                                             >
                                                 <option value="">Select risk level</option>
@@ -1795,6 +1820,7 @@ export default function PropertyWorkspace({
                                                 onChange={(e) =>
                                                     updateField(p.id, "building_condition_level", e.target.value)
                                                 }
+                                                disabled={isLocked}
                                                 className={selectClass}
                                             >
                                                 <option value="">Select condition</option>
@@ -1897,7 +1923,8 @@ export default function PropertyWorkspace({
                                         <textarea
                                             value={draft.risk_summary}
                                             onChange={(e) => updateField(p.id, "risk_summary", e.target.value)}
-                                            className={textareaClass}
+                                            disabled={isLocked}
+                                            className={`${textareaClass} ${isLocked ? "cursor-not-allowed bg-white/5 text-white/70" : ""}`}
                                             rows={3}
                                         />
                                     </div>
@@ -1907,6 +1934,7 @@ export default function PropertyWorkspace({
                                         <textarea
                                             value={draft.building_condition_notes}
                                             onChange={(e) => updateField(p.id, "building_condition_notes", e.target.value)}
+                                            disabled={isLocked}
                                             className={textareaClass}
                                             rows={3}
                                         />
@@ -1917,6 +1945,7 @@ export default function PropertyWorkspace({
                                         <textarea
                                             value={draft.financing_notes}
                                             onChange={(e) => updateField(p.id, "financing_notes", e.target.value)}
+                                            disabled={isLocked}
                                             className={textareaClass}
                                             rows={3}
                                         />
@@ -1927,6 +1956,7 @@ export default function PropertyWorkspace({
                                         <textarea
                                             value={draft.analyst_notes}
                                             onChange={(e) => updateField(p.id, "analyst_notes", e.target.value)}
+                                            disabled={isLocked}
                                             className={textareaClass}
                                             rows={4}
                                         />
@@ -1937,6 +1967,7 @@ export default function PropertyWorkspace({
                                         <textarea
                                             value={draft.notes}
                                             onChange={(e) => updateField(p.id, "notes", e.target.value)}
+                                            disabled={isLocked}
                                             className={textareaClass}
                                             rows={3}
                                         />
@@ -1990,9 +2021,9 @@ export default function PropertyWorkspace({
                                             }
                                             className={
                                                 !isLocked &&
-                                                !busy &&
-                                                !p.is_primary &&
-                                                !hasAnyUnsavedChanges
+                                                    !busy &&
+                                                    !p.is_primary &&
+                                                    !hasAnyUnsavedChanges
                                                     ? "rounded-md border border-emerald-400/30 px-4 py-2 text-xs text-emerald-100 hover:bg-emerald-500/10"
                                                     : p.is_primary
                                                         ? "rounded-md border border-emerald-400/20 bg-emerald-500/10 px-4 py-2 text-xs text-emerald-100 cursor-not-allowed"
@@ -2029,7 +2060,7 @@ export default function PropertyWorkspace({
                                                 }
                                                 className={
                                                     !isLocked &&
-                                                    !busy &&
+                                                        !busy &&
                                                         !p.is_primary &&
                                                         !isFirstNonPrimary &&
                                                         !hasAnyUnsavedChanges
@@ -2052,7 +2083,7 @@ export default function PropertyWorkspace({
                                                 }
                                                 className={
                                                     !isLocked &&
-                                                    !busy &&
+                                                        !busy &&
                                                         !p.is_primary &&
                                                         !isLastNonPrimary &&
                                                         !hasAnyUnsavedChanges
@@ -2082,7 +2113,7 @@ export default function PropertyWorkspace({
                                                 <span className="text-red-300">{error}</span>
                                             ) : saved ? (
                                                 <span className="text-white/60">Saved</span>
-                                            ) : hasAnyUnsavedChanges ? (
+                                            ) : !isLocked && hasAnyUnsavedChanges ? (
                                                 <span className="text-white/45">
                                                     Save or discard unsaved changes before reordering or changing primary.
                                                 </span>
