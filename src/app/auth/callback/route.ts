@@ -9,6 +9,20 @@ function getSafeRedirectPath(value: string | null) {
   return value;
 }
 
+function getUserFullName(user: {
+  user_metadata?: Record<string, unknown> | null;
+}) {
+  const metadata = user.user_metadata ?? {};
+
+  const fullName = typeof metadata.full_name === "string" ? metadata.full_name.trim() : "";
+  if (fullName) return fullName;
+
+  const name = typeof metadata.name === "string" ? metadata.name.trim() : "";
+  if (name) return name;
+
+  return null;
+}
+
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
@@ -47,6 +61,29 @@ export async function GET(request: Request) {
     return NextResponse.redirect(
       new URL(`/auth/login?error=${encodeURIComponent(error.message)}`, requestUrl.origin)
     );
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    const fullName = getUserFullName(user);
+
+    if (fullName) {
+      const { error: profileUpdateError } = await supabase
+        .from("profiles")
+        .update({
+          full_name: fullName,
+          email: user.email ?? null,
+        })
+        .eq("id", user.id)
+        .or(`full_name.is.null,full_name.eq.""`);
+
+      if (profileUpdateError) {
+        console.error("Profile hydration failed:", profileUpdateError.message);
+      }
+    }
   }
 
   return NextResponse.redirect(new URL(redirectTo, requestUrl.origin));
