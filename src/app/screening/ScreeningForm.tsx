@@ -80,6 +80,34 @@ export default function ScreeningForm({ isLoggedIn, action }: Props) {
 
     const loginUrl = useMemo(() => "/auth/login?redirect=/screening", []);
 
+    const hasCaseLabel = draft.case_label.trim().length > 0;
+    const hasBudgetRange = draft.budget_range.trim().length > 0;
+    const hasFinancingType = draft.financing_type.trim().length > 0;
+    const hasGoal = draft.goal.trim().length > 0;
+    const hasPropertyIdentified = draft.property_identified.trim().length > 0;
+    const needsListingUrl = draft.property_identified === "yes";
+    const hasListingUrl = draft.listing_url.trim().length > 0;
+    const hasPlanInterest = draft.plan_interest.trim().length > 0;
+
+    const unlockBudgetRange = hasCaseLabel;
+    const unlockFinancingType = hasBudgetRange;
+    const unlockGoal = hasFinancingType;
+    const unlockPropertyIdentified = hasGoal;
+    const unlockListingUrl = unlockPropertyIdentified && needsListingUrl;
+    const unlockPlanInterest =
+        draft.property_identified === "no"
+            ? hasPropertyIdentified
+            : hasListingUrl;
+    const unlockNotes = hasPlanInterest;
+    const canSubmit =
+        hasCaseLabel &&
+        hasBudgetRange &&
+        hasFinancingType &&
+        hasGoal &&
+        hasPropertyIdentified &&
+        (draft.property_identified === "no" || hasListingUrl) &&
+        hasPlanInterest;
+
     return (
         <>
             {!isLoggedIn && (
@@ -106,7 +134,7 @@ export default function ScreeningForm({ isLoggedIn, action }: Props) {
                     />
                 </label>
 
-                <label className="block text-sm">
+                <label className={`block text-sm ${unlockBudgetRange ? "" : "opacity-50"}`}>
                     Budget range
                     <input
                         name="budget_range"
@@ -114,12 +142,13 @@ export default function ScreeningForm({ isLoggedIn, action }: Props) {
                         onChange={(e) =>
                             setDraft((d) => ({ ...d, budget_range: e.target.value }))
                         }
-                        className="mt-2 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 outline-none"
+                        disabled={!unlockBudgetRange}
+                        className="mt-2 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 outline-none disabled:cursor-not-allowed disabled:opacity-60"
                         placeholder="e.g. €80k–€120k"
                     />
                 </label>
 
-                <label className="block text-sm">
+                <label className={`block text-sm ${unlockFinancingType ? "" : "opacity-50"}`}>
                     Financing
                     <select
                         name="financing_type"
@@ -127,7 +156,8 @@ export default function ScreeningForm({ isLoggedIn, action }: Props) {
                         onChange={(e) =>
                             setDraft((d) => ({ ...d, financing_type: e.target.value }))
                         }
-                        className="mt-2 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 outline-none"
+                        disabled={!unlockFinancingType}
+                        className="mt-2 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 outline-none disabled:cursor-not-allowed disabled:opacity-60"
                     >
                         <option value="">Select</option>
                         <option value="cash">Cash</option>
@@ -136,7 +166,7 @@ export default function ScreeningForm({ isLoggedIn, action }: Props) {
                     </select>
                 </label>
 
-                <label className="block text-sm">
+                <label className={`block text-sm ${unlockGoal ? "" : "opacity-50"}`}>
                     Goal
                     <select
                         name="goal"
@@ -144,7 +174,8 @@ export default function ScreeningForm({ isLoggedIn, action }: Props) {
                         onChange={(e) =>
                             setDraft((d) => ({ ...d, goal: e.target.value }))
                         }
-                        className="mt-2 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 outline-none"
+                        disabled={!unlockGoal}
+                        className="mt-2 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 outline-none disabled:cursor-not-allowed disabled:opacity-60"
                     >
                         <option value="">Select</option>
                         <option value="investment">Investment</option>
@@ -153,7 +184,7 @@ export default function ScreeningForm({ isLoggedIn, action }: Props) {
                     </select>
                 </label>
 
-                <label className="block text-sm">
+                <label className={`block text-sm ${unlockPropertyIdentified ? "" : "opacity-50"}`}>
                     Property already identified?
                     <select
                         name="property_identified"
@@ -161,7 +192,8 @@ export default function ScreeningForm({ isLoggedIn, action }: Props) {
                         onChange={(e) =>
                             setDraft((d) => ({ ...d, property_identified: e.target.value }))
                         }
-                        className="mt-2 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 outline-none"
+                        disabled={!unlockPropertyIdentified}
+                        className="mt-2 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 outline-none disabled:cursor-not-allowed disabled:opacity-60"
                     >
                         <option value="no">No</option>
                         <option value="yes">Yes</option>
@@ -169,21 +201,22 @@ export default function ScreeningForm({ isLoggedIn, action }: Props) {
                 </label>
 
                 {draft.property_identified === "yes" ? (
-                    <label className="block text-sm">
-                        Listing URL (optional)
+                    <label className={`block text-sm ${unlockListingUrl ? "" : "opacity-50"}`}>
+                        Listing URL
                         <input
                             name="listing_url"
                             value={draft.listing_url}
                             onChange={(e) =>
                                 setDraft((d) => ({ ...d, listing_url: e.target.value }))
                             }
-                            className="mt-2 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 outline-none"
+                            disabled={!unlockListingUrl}
+                            className="mt-2 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 outline-none disabled:cursor-not-allowed disabled:opacity-60"
                             placeholder="Paste a property link if you already have one"
                         />
                     </label>
                 ) : null}
 
-                <label className="block text-sm">
+                <label className={`block text-sm ${unlockPlanInterest ? "" : "opacity-50"}`}>
                     Plan interest
                     <select
                         name="plan_interest"
@@ -191,7 +224,8 @@ export default function ScreeningForm({ isLoggedIn, action }: Props) {
                         onChange={(e) =>
                             setDraft((d) => ({ ...d, plan_interest: e.target.value }))
                         }
-                        className="mt-2 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 outline-none"
+                        disabled={!unlockPlanInterest}
+                        className="mt-2 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 outline-none disabled:cursor-not-allowed disabled:opacity-60"
                     >
                         <option value="">Select</option>
                         <option value="core">Core Analysis</option>
@@ -200,21 +234,23 @@ export default function ScreeningForm({ isLoggedIn, action }: Props) {
                     </select>
                 </label>
 
-                <label className="block text-sm">
+                <label className={`block text-sm ${unlockNotes ? "" : "opacity-50"}`}>
                     Short description <span className="opacity-60">(optional)</span>
                     <textarea
                         name="notes"
                         rows={5}
                         value={draft.notes}
                         onChange={(e) => setDraft((d) => ({ ...d, notes: e.target.value }))}
-                        className="mt-2 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 outline-none"
+                        disabled={!unlockNotes}
+                        className="mt-2 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 outline-none disabled:cursor-not-allowed disabled:opacity-60"
                     />
                 </label>
 
                 {isLoggedIn ? (
                     <button
                         type="submit"
-                        className="rounded-xl bg-stone px-5 py-3 text-sm font-medium text-navy shadow-glass hover:opacity-95 transition"
+                        disabled={!canSubmit}
+                        className="rounded-xl bg-stone px-5 py-3 text-sm font-medium text-navy shadow-glass hover:opacity-95 transition disabled:cursor-not-allowed disabled:opacity-60"
                     >
                         Apply for Screening
                     </button>
