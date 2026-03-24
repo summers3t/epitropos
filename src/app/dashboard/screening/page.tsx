@@ -13,8 +13,6 @@ function formatStatusLabel(status: string | null | undefined) {
         accepted: "Accepted",
         rejected: "Rejected",
         offer_sent: "Offer sent",
-        scheduled: "Call scheduled",
-        completed: "Screening completed",
     };
 
     return labels[status] ?? status;
@@ -24,10 +22,6 @@ function getStatusHelp(status: string | null | undefined) {
     switch (status) {
         case "new":
             return "Your screening request has been submitted and is waiting for review.";
-        case "scheduled":
-            return "Your screening request is under way and the call has been scheduled.";
-        case "completed":
-            return "Your screening call is complete and the final review outcome is pending.";
         case "accepted":
             return "Your screening has been accepted. The next step is the commercial offer.";
         case "offer_sent":

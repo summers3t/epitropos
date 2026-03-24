@@ -20,7 +20,7 @@ export default async function DashboardReportsPage() {
             id,
             title,
             summary,
-            file_url,
+            storage_path,
             published,
             created_at,
             published_at,
@@ -115,9 +115,9 @@ export default async function DashboardReportsPage() {
                                                 Open Case
                                             </Link>
 
-                                            {report.file_url ? (
+                                            {report.storage_path ? (
                                                 <a
-                                                    href={report.file_url}
+                                                    href={`/api/reports/${report.id}/download`}
                                                     target="_blank"
                                                     rel="noreferrer"
                                                     className="inline-flex rounded-xl border border-white/15 px-4 py-2 text-xs hover:bg-white/5 transition"
