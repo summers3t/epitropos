@@ -1,9 +1,8 @@
 Every change cycle:
 -------------------------------------------
 git add .
-git commit -m "Initial Push 29.0"
+git commit -m "Initial Push 29.1"
 git push
-
 
 
 At start of each chat:
@@ -13,13 +12,25 @@ Branch: dev
 Use as source of truth.
 
 
-Optional:
-Create main branch (stable)
+Development
 -------------------------------------------
-git checkout -b main
-git push -u origin main
+git checkout dev
+# work here
+git commit
+git push
 
-Then:
+Release to production
+-------------------------------------------
+git checkout main
+git merge dev
+git push
 
-dev = working
-main = stable
+(That push triggers Vercel deploy.)
+
+
+Never:
+git commit directly on main
+
+Always:
+work in dev
+merge into main
