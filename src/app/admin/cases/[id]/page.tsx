@@ -549,6 +549,15 @@ export default async function AdminCaseDetailPage({
                     {formatCaseTitle(caseItem.title)}
                 </h1>
 
+                <div className="space-y-1 text-sm text-white/70">
+                    <p className="text-sm text-white/80">
+                        {clientProfile?.full_name || "—"}
+                    </p>
+                    <p className="text-xs text-white/55">
+                        {clientProfile?.email || screening?.email || "—"}
+                    </p>
+                </div>
+
                 <div className="flex flex-wrap items-center gap-3 text-sm text-white/70">
                     <span className="rounded-full border border-white/15 px-2 py-1 text-[10px] uppercase tracking-[0.14em]">
                         {formatCaseStatusLabel(caseItem.status)}
