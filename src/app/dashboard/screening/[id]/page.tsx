@@ -32,40 +32,77 @@ function getStatusHelp(status: string | null | undefined) {
     }
 }
 
-function getScreeningProgressSteps(status: string | null | undefined) {
+function getScreeningProgressSteps({
+    screeningStatus,
+    paymentPending,
+    paymentPaid,
+    caseStatus,
+}: {
+    screeningStatus: string | null | undefined;
+    paymentPending: boolean;
+    paymentPaid: boolean;
+    caseStatus: string | null | undefined;
+}) {
     const base = [
         { key: "submitted", label: "Submitted", state: "upcoming" as "done" | "current" | "upcoming" },
         { key: "review", label: "Under review", state: "upcoming" as "done" | "current" | "upcoming" },
-        { key: "offer", label: "Offer stage", state: "upcoming" as "done" | "current" | "upcoming" },
-        { key: "outcome", label: "Outcome", state: "upcoming" as "done" | "current" | "upcoming" },
+        { key: "offer", label: "Offer issued", state: "upcoming" as "done" | "current" | "upcoming" },
+        { key: "payment", label: "Payment confirmed", state: "upcoming" as "done" | "current" | "upcoming" },
+        { key: "analysis", label: "In analysis", state: "upcoming" as "done" | "current" | "upcoming" },
+        { key: "outcome", label: "Outcome delivered", state: "upcoming" as "done" | "current" | "upcoming" },
     ];
 
-    switch (status) {
-        case "new":
-            base[0].state = "done";
-            base[1].state = "current";
-            break;
-        case "accepted":
-            base[0].state = "done";
-            base[1].state = "done";
-            base[2].state = "current";
-            break;
-        case "offer_sent":
-            base[0].state = "done";
-            base[1].state = "done";
-            base[2].state = "done";
-            base[3].state = "current";
-            break;
-        case "rejected":
-            base[0].state = "done";
-            base[1].state = "done";
-            base[3].state = "current";
-            break;
-        default:
-            base[0].state = "current";
-            break;
+    if (screeningStatus === "rejected") {
+        base[0].state = "done";
+        base[1].state = "current";
+        return base;
     }
 
+    base[0].state = "done";
+
+    if (screeningStatus === "new") {
+        base[1].state = "current";
+        return base;
+    }
+
+    base[1].state = "done";
+
+    if (screeningStatus === "accepted") {
+        base[2].state = "current";
+        return base;
+    }
+
+    if (screeningStatus === "offer_sent") {
+        base[2].state = "done";
+
+        if (paymentPending) {
+            base[3].state = "current";
+            return base;
+        }
+
+        if (paymentPaid) {
+            base[3].state = "done";
+
+            if (caseStatus === "active" || caseStatus === "analysis") {
+                base[4].state = "current";
+                return base;
+            }
+
+            if (caseStatus === "delivered" || caseStatus === "closed") {
+                base[4].state = "done";
+                base[5].state = "current";
+                return base;
+            }
+
+            base[4].state = "current";
+            return base;
+        }
+
+        base[3].state = "upcoming";
+        return base;
+    }
+
+    base[1].state = "current";
     return base;
 }
 
@@ -109,6 +146,47 @@ export default async function DashboardScreeningDetailPage({
 
     const canDelete = ["new"].includes(request.status ?? "");
 
+    const { data: relatedOffer, error: relatedOfferError } = await supabase
+        .from("offers")
+        .select("id, status")
+        .eq("screening_request_id", request.id)
+        .in("status", ["sent", "accepted"])
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+    if (relatedOfferError) {
+        throw new Error(relatedOfferError.message);
+    }
+
+    const { data: relatedOrder, error: relatedOrderError } = relatedOffer
+        ? await supabase
+            .from("orders")
+            .select("id, payment_status")
+            .eq("offer_id", relatedOffer.id)
+            .maybeSingle()
+        : { data: null, error: null as null | Error };
+
+    if (relatedOrderError) {
+        throw new Error(relatedOrderError.message);
+    }
+
+    const { data: relatedCase, error: relatedCaseError } = relatedOrder
+        ? await supabase
+            .from("cases")
+            .select("id, status")
+            .eq("order_id", relatedOrder.id)
+            .eq("client_id", user.id)
+            .maybeSingle()
+        : { data: null, error: null as null | Error };
+
+    if (relatedCaseError) {
+        throw new Error(relatedCaseError.message);
+    }
+
+    const paymentPending = relatedOrder?.payment_status === "pending";
+    const paymentPaid = relatedOrder?.payment_status === "paid";
+
     return (
         <section className="space-y-8">
             <div className="space-y-3">
@@ -151,27 +229,48 @@ export default async function DashboardScreeningDetailPage({
                     </div>
                 </div>
 
-                <div className="mt-6 grid gap-3 md:grid-cols-4">
-                    {getScreeningProgressSteps(request.status).map((step) => (
+                <div className="mt-6 grid gap-2 md:grid-cols-6">
+                    {getScreeningProgressSteps({
+                        screeningStatus: request.status,
+                        paymentPending,
+                        paymentPaid,
+                        caseStatus: relatedCase?.status,
+                    }).map((step) => (
                         <div
                             key={step.key}
                             className={[
-                                "rounded-2xl border p-4",
+                                "rounded-xl border px-3 py-3",
                                 step.state === "done"
-                                    ? "border-emerald-400/30 bg-emerald-500/10"
+                                    ? "border-emerald-400/35 bg-emerald-500/12"
                                     : step.state === "current"
-                                        ? "border-white/20 bg-white/10"
+                                        ? "border-sky-300/45 bg-sky-400/12 ring-1 ring-sky-300/30"
                                         : "border-white/10 bg-black/10",
                             ].join(" ")}
                         >
-                            <div className="text-[10px] uppercase tracking-[0.14em] text-white/45">
+                            <div
+                                className={[
+                                    "text-[10px] uppercase tracking-[0.14em]",
+                                    step.state === "done"
+                                        ? "text-emerald-100/90"
+                                        : step.state === "current"
+                                            ? "text-sky-100"
+                                            : "text-white/40",
+                                ].join(" ")}
+                            >
                                 {step.state === "done"
                                     ? "Completed"
                                     : step.state === "current"
                                         ? "Current"
                                         : "Upcoming"}
                             </div>
-                            <div className="mt-2 text-sm font-medium text-white">
+                            <div
+                                className={[
+                                    "mt-1 text-xs font-medium leading-5",
+                                    step.state === "current"
+                                        ? "text-white"
+                                        : "text-white/78",
+                                ].join(" ")}
+                            >
                                 {step.label}
                             </div>
                         </div>

@@ -54,8 +54,26 @@ function getScreeningStatusHelp(status: string | null | undefined) {
     }
 }
 
-function getScreeningNextStepTitle(status: string | null | undefined) {
-    switch (status) {
+function getScreeningNextStepTitle({
+    screeningStatus,
+    paymentPending,
+    paymentPaid,
+    hasCase,
+}: {
+    screeningStatus: string | null | undefined;
+    paymentPending: boolean;
+    paymentPaid: boolean;
+    hasCase: boolean;
+}) {
+    if (paymentPaid && hasCase) {
+        return "Current stage";
+    }
+
+    if (paymentPending) {
+        return "Next expected step";
+    }
+
+    switch (screeningStatus) {
         case "new":
             return "What happens next";
         case "accepted":
@@ -69,8 +87,26 @@ function getScreeningNextStepTitle(status: string | null | undefined) {
     }
 }
 
-function getScreeningNextStepText(status: string | null | undefined) {
-    switch (status) {
+function getScreeningNextStepText({
+    screeningStatus,
+    paymentPending,
+    paymentPaid,
+    hasCase,
+}: {
+    screeningStatus: string | null | undefined;
+    paymentPending: boolean;
+    paymentPaid: boolean;
+    hasCase: boolean;
+}) {
+    if (paymentPaid && hasCase) {
+        return "Your payment has been confirmed and your case is already open. You can now follow the analysis through your case workspace.";
+    }
+
+    if (paymentPending) {
+        return "Your offer has been accepted and payment is awaiting confirmation. Once confirmed, your case will appear in the client portal.";
+    }
+
+    switch (screeningStatus) {
         case "new":
             return "We review your submitted details and decide whether to move this request into the commercial offer stage.";
         case "accepted":
@@ -204,6 +240,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
     const paymentPending = latestOrder?.payment_status === "pending";
     const paymentPaid = latestOrder?.payment_status === "paid";
+    const hasCase = !!latestCase;
 
     return (
         <section className="space-y-8">
@@ -355,18 +392,37 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
                                 <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
                                     <div className="text-xs uppercase tracking-[0.14em] text-white/45">
-                                        {getScreeningNextStepTitle(latestScreening.status)}
+                                        {getScreeningNextStepTitle({
+                                            screeningStatus: latestScreening.status,
+                                            paymentPending,
+                                            paymentPaid,
+                                            hasCase,
+                                        })}
                                     </div>
                                     <p className="mt-2 text-sm leading-6 text-white/75">
-                                        {getScreeningNextStepText(latestScreening.status)}
+                                        {getScreeningNextStepText({
+                                            screeningStatus: latestScreening.status,
+                                            paymentPending,
+                                            paymentPaid,
+                                            hasCase,
+                                        })}
                                     </p>
-                                    <div className="mt-3">
+                                    <div className="mt-3 flex flex-wrap gap-2">
                                         <Link
                                             href={`/dashboard/screening/${latestScreening.id}`}
                                             className="inline-flex rounded-xl border border-white/15 px-4 py-2 text-xs hover:bg-white/5 transition"
                                         >
                                             Open Screening
                                         </Link>
+
+                                        {paymentPaid && hasCase ? (
+                                            <Link
+                                                href="/dashboard/cases"
+                                                className="inline-flex rounded-xl border border-white/15 px-4 py-2 text-xs hover:bg-white/5 transition"
+                                            >
+                                                Open Cases
+                                            </Link>
+                                        ) : null}
                                     </div>
                                 </div>
 
