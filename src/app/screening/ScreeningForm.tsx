@@ -11,8 +11,7 @@ type Props = {
 };
 
 type Draft = {
-    name: string;
-    email: string;
+    case_label: string;
     budget_range: string;
     financing_type: string;
     goal: string;
@@ -24,8 +23,7 @@ type Draft = {
 };
 
 const emptyDraft: Draft = {
-    name: "",
-    email: "",
+    case_label: "",
     budget_range: "",
     financing_type: "",
     goal: "",
@@ -54,8 +52,7 @@ export default function ScreeningForm({ isLoggedIn, action }: Props) {
             }
 
             setDraft({
-                name: parsed.name ?? "",
-                email: parsed.email ?? "",
+                case_label: parsed.case_label ?? "",
                 budget_range: parsed.budget_range ?? "",
                 financing_type: parsed.financing_type ?? "",
                 goal: parsed.goal ?? "",
@@ -96,25 +93,16 @@ export default function ScreeningForm({ isLoggedIn, action }: Props) {
 
             <form action={action} className="mt-8 space-y-4">
                 <label className="block text-sm">
-                    Name
+                    Screening / case name
                     <input
-                        name="name"
+                        name="case_label"
                         required
-                        value={draft.name}
-                        onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
+                        value={draft.case_label}
+                        onChange={(e) =>
+                            setDraft((d) => ({ ...d, case_label: e.target.value }))
+                        }
                         className="mt-2 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 outline-none"
-                    />
-                </label>
-
-                <label className="block text-sm">
-                    Email
-                    <input
-                        name="email"
-                        type="email"
-                        required
-                        value={draft.email}
-                        onChange={(e) => setDraft((d) => ({ ...d, email: e.target.value }))}
-                        className="mt-2 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 outline-none"
+                        placeholder="e.g. Thessaloniki Income Project 1"
                     />
                 </label>
 
@@ -180,18 +168,20 @@ export default function ScreeningForm({ isLoggedIn, action }: Props) {
                     </select>
                 </label>
 
-                <label className="block text-sm">
-                    Listing URL (optional)
-                    <input
-                        name="listing_url"
-                        value={draft.listing_url}
-                        onChange={(e) =>
-                            setDraft((d) => ({ ...d, listing_url: e.target.value }))
-                        }
-                        className="mt-2 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 outline-none"
-                        placeholder="Paste a property link if you already have one"
-                    />
-                </label>
+                {draft.property_identified === "yes" ? (
+                    <label className="block text-sm">
+                        Listing URL (optional)
+                        <input
+                            name="listing_url"
+                            value={draft.listing_url}
+                            onChange={(e) =>
+                                setDraft((d) => ({ ...d, listing_url: e.target.value }))
+                            }
+                            className="mt-2 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 outline-none"
+                            placeholder="Paste a property link if you already have one"
+                        />
+                    </label>
+                ) : null}
 
                 <label className="block text-sm">
                     Plan interest
@@ -211,7 +201,7 @@ export default function ScreeningForm({ isLoggedIn, action }: Props) {
                 </label>
 
                 <label className="block text-sm">
-                    Short description
+                    Short description <span className="opacity-60">(optional)</span>
                     <textarea
                         name="notes"
                         rows={5}

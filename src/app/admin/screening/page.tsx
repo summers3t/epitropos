@@ -40,6 +40,26 @@ export default async function AdminScreeningPage() {
         )
         .order("created_at", { ascending: false });
 
+    const userIds = Array.from(
+        new Set((screeningRequests ?? []).map((request) => request.user_id).filter(Boolean))
+    );
+
+    const { data: userProfiles, error: userProfilesError } =
+        userIds.length > 0
+            ? await supabase
+                .from("profiles")
+                .select("id, full_name")
+                .in("id", userIds)
+            : { data: [], error: null as null | Error };
+
+    if (userProfilesError) {
+        throw new Error(userProfilesError.message);
+    }
+
+    const profileNameByUserId = new Map(
+        (userProfiles ?? []).map((profile) => [profile.id, profile.full_name])
+    );
+
     return (
         <section className="space-y-8">
             <header className="max-w-4xl space-y-3">
@@ -93,9 +113,15 @@ export default async function AdminScreeningPage() {
 
                                         <div>
                                             <p className="text-lg font-semibold text-white">
-                                                {request.name || "Unnamed applicant"}
+                                                {profileNameByUserId.get(request.user_id) || "Unnamed user"}
                                             </p>
                                             <p className="text-sm text-white/70">{request.email || "—"}</p>
+                                            <p className="mt-1 text-xs uppercase tracking-[0.14em] text-white/45">
+                                                Screening / case label
+                                            </p>
+                                            <p className="text-sm text-white/80">
+                                                {request.name || "—"}
+                                            </p>
                                         </div>
                                     </div>
 

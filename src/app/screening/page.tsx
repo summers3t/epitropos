@@ -12,8 +12,7 @@ async function submitScreening(formData: FormData) {
     redirect("/auth/login?redirect=/screening");
   }
 
-  const name = String(formData.get("name") ?? "").trim();
-  const email = String(formData.get("email") ?? "").trim();
+  const case_label = String(formData.get("case_label") ?? "").trim();
   const budget_range = String(formData.get("budget_range") ?? "").trim() || null;
   const financing_type = String(formData.get("financing_type") ?? "").trim() || null;
   const goal = String(formData.get("goal") ?? "").trim() || null;
@@ -24,14 +23,14 @@ async function submitScreening(formData: FormData) {
   const property_identified =
     String(formData.get("property_identified") ?? "").trim() === "yes";
 
-  if (!name || !email) {
-    throw new Error("Name and email are required.");
+  if (!case_label) {
+    throw new Error("Screening name is required.");
   }
 
   const { error } = await supabase.from("screening_requests").insert({
     user_id: auth.user.id,
-    name,
-    email,
+    name: case_label,
+    email: auth.user.email ?? null,
     budget_range,
     financing_type,
     goal,

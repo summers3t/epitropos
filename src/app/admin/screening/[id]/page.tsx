@@ -59,6 +59,16 @@ export default async function AdminScreeningDetailPage({ params }: PageProps) {
         notFound();
     }
 
+    const { data: requestUserProfile, error: requestUserProfileError } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .eq("id", request.user_id)
+        .maybeSingle();
+
+    if (requestUserProfileError) {
+        throw new Error(requestUserProfileError.message);
+    }
+
     const { data: offers, error: offersError } = await supabase
         .from("offers")
         .select("id, status")
@@ -130,9 +140,15 @@ export default async function AdminScreeningDetailPage({ params }: PageProps) {
                     <div className="space-y-2">
                         <div>
                             <p className="text-lg font-semibold text-white">
-                                {request.name || "Unnamed applicant"}
+                                {requestUserProfile?.full_name || "Unnamed user"}
                             </p>
                             <p className="text-sm text-white/70">{request.email || "—"}</p>
+                            <p className="mt-2 text-[10px] uppercase tracking-[0.14em] text-white/45">
+                                Screening / case label
+                            </p>
+                            <p className="text-sm text-white/80">
+                                {request.name || "—"}
+                            </p>
                         </div>
 
                         <div className="space-y-2">
