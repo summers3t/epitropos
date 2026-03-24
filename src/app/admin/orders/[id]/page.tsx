@@ -151,12 +151,16 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
 
                         <div>
                             <p className="text-xl font-semibold text-white">
-                                {screening?.name ||
-                                    clientProfile?.full_name ||
-                                    "Unnamed client"}
+                                {clientProfile?.full_name || "Unnamed user"}
                             </p>
                             <p className="text-sm text-white/70">
-                                {screening?.email || clientProfile?.email || "—"}
+                                {clientProfile?.email || screening?.email || "—"}
+                            </p>
+                            <p className="mt-2 text-[10px] uppercase tracking-[0.14em] text-white/45">
+                                Screening / case label
+                            </p>
+                            <p className="text-sm text-white/80">
+                                {screening?.name || "—"}
                             </p>
                         </div>
                     </div>

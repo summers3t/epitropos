@@ -68,12 +68,24 @@ export default async function AdminOfferDetailPage({ params }: PageProps) {
 
     const { data: screening, error: screeningError } = await supabase
         .from("screening_requests")
-        .select("id, name, email, status")
+        .select("id, user_id, name, email, status")
         .eq("id", offer.screening_request_id)
         .maybeSingle();
 
     if (screeningError) {
         throw new Error(screeningError.message);
+    }
+
+    const { data: clientProfile, error: clientProfileError } = screening?.user_id
+        ? await supabase
+            .from("profiles")
+            .select("id, email, full_name")
+            .eq("id", screening.user_id)
+            .maybeSingle()
+        : { data: null, error: null as null | Error };
+
+    if (clientProfileError) {
+        throw new Error(clientProfileError.message);
     }
 
     return (
@@ -107,9 +119,17 @@ export default async function AdminOfferDetailPage({ params }: PageProps) {
                     <div className="space-y-2">
                         <div>
                             <p className="text-lg font-semibold text-white">
-                                {screening?.name || "Unknown applicant"}
+                                {clientProfile?.full_name || "Unnamed user"}
                             </p>
-                            <p className="text-sm text-white/70">{screening?.email || "—"}</p>
+                            <p className="text-sm text-white/70">
+                                {clientProfile?.email || screening?.email || "—"}
+                            </p>
+                            <p className="mt-2 text-[10px] uppercase tracking-[0.14em] text-white/45">
+                                Screening / case label
+                            </p>
+                            <p className="text-sm text-white/80">
+                                {screening?.name || "—"}
+                            </p>
                         </div>
 
                         <div>

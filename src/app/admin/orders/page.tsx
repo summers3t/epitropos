@@ -169,12 +169,16 @@ export default async function AdminOrdersPage() {
 
                                             <div>
                                                 <p className="text-sm font-semibold text-white">
-                                                    {screening?.name ||
-                                                        profileRow?.full_name ||
-                                                        "Unnamed client"}
+                                                    {profileRow?.full_name || "Unnamed user"}
                                                 </p>
                                                 <p className="text-xs text-white/60">
-                                                    {screening?.email || profileRow?.email || "—"}
+                                                    {profileRow?.email || screening?.email || "—"}
+                                                </p>
+                                                <p className="mt-1 text-[10px] uppercase tracking-[0.14em] text-white/45">
+                                                    Screening / case label
+                                                </p>
+                                                <p className="text-xs text-white/80">
+                                                    {screening?.name || "—"}
                                                 </p>
                                             </div>
 

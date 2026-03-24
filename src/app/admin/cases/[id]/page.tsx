@@ -660,7 +660,7 @@ export default async function AdminCaseDetailPage({
                         <div className="mt-4 space-y-2 text-sm text-white/75">
                             <div>
                                 <span className="text-white/45">Name: </span>
-                                {clientProfile?.full_name || screening?.name || "—"}
+                                {clientProfile?.full_name || "—"}
                             </div>
 
                             <div>
@@ -677,6 +677,11 @@ export default async function AdminCaseDetailPage({
 
                         {screening ? (
                             <div className="mt-4 space-y-2 text-sm text-white/75">
+                                <div>
+                                    <span className="text-white/45">Screening / case label: </span>
+                                    {screening.name || "—"}
+                                </div>
+
                                 <div>
                                     <span className="text-white/45">Plan: </span>
                                     {screening.plan_interest || "—"}

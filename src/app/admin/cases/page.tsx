@@ -126,16 +126,14 @@ export default async function AdminCasesPage() {
                                             </span>
 
                                             <div>
-                                                <p className="text-sm font-semibold text-white">
+                                                <p className="text-base font-semibold text-white">
                                                     {item.title || "Untitled Case"}
                                                 </p>
-                                                <p className="text-xs text-white/60">
-                                                    {screening?.name ||
-                                                        profileRow?.full_name ||
-                                                        "Unnamed client"}
+                                                <p className="mt-1 text-xs text-white/60">
+                                                    {profileRow?.full_name || "Unnamed user"}
                                                 </p>
                                                 <p className="text-xs text-white/50">
-                                                    {screening?.email || profileRow?.email || "—"}
+                                                    {profileRow?.email || screening?.email || "—"}
                                                 </p>
                                             </div>
 
