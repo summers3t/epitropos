@@ -17,6 +17,12 @@ function formatCaseStatusLabel(status: string | null | undefined) {
     return labels[status] ?? status;
 }
 
+function formatCaseTitle(title: string | null | undefined) {
+    if (!title) return "Untitled Case";
+
+    return title.startsWith("Case for ") ? title.slice("Case for ".length) : title;
+}
+
 export default async function AdminCasesPage() {
     const supabase = await createClient();
 
@@ -127,7 +133,7 @@ export default async function AdminCasesPage() {
 
                                             <div>
                                                 <p className="text-base font-semibold text-white">
-                                                    {item.title || "Untitled Case"}
+                                                    {formatCaseTitle(item.title)}
                                                 </p>
                                                 <p className="mt-1 text-xs text-white/60">
                                                     {profileRow?.full_name || "Unnamed user"}

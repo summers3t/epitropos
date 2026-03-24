@@ -34,6 +34,12 @@ function formatCaseStatusLabel(status: string | null | undefined) {
     return labels[status] ?? status;
 }
 
+function formatCaseTitle(title: string | null | undefined) {
+    if (!title) return "Client Case";
+
+    return title.startsWith("Case for ") ? title.slice("Case for ".length) : title;
+}
+
 function formatDecisionStatusLabel(status: string | null | undefined) {
     if (!status) return "Pending";
 
@@ -540,7 +546,7 @@ export default async function AdminCaseDetailPage({
                     className="text-4xl font-black tracking-tight"
                     style={{ fontFamily: "var(--font-montserrat)" }}
                 >
-                    {caseItem.title || "Client Case"}
+                    {formatCaseTitle(caseItem.title)}
                 </h1>
 
                 <div className="flex flex-wrap items-center gap-3 text-sm text-white/70">
