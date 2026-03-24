@@ -32,6 +32,43 @@ function getStatusHelp(status: string | null | undefined) {
     }
 }
 
+function getScreeningProgressSteps(status: string | null | undefined) {
+    const base = [
+        { key: "submitted", label: "Submitted", state: "upcoming" as "done" | "current" | "upcoming" },
+        { key: "review", label: "Under review", state: "upcoming" as "done" | "current" | "upcoming" },
+        { key: "offer", label: "Offer stage", state: "upcoming" as "done" | "current" | "upcoming" },
+        { key: "outcome", label: "Outcome", state: "upcoming" as "done" | "current" | "upcoming" },
+    ];
+
+    switch (status) {
+        case "new":
+            base[0].state = "done";
+            base[1].state = "current";
+            break;
+        case "accepted":
+            base[0].state = "done";
+            base[1].state = "done";
+            base[2].state = "current";
+            break;
+        case "offer_sent":
+            base[0].state = "done";
+            base[1].state = "done";
+            base[2].state = "done";
+            base[3].state = "current";
+            break;
+        case "rejected":
+            base[0].state = "done";
+            base[1].state = "done";
+            base[3].state = "current";
+            break;
+        default:
+            base[0].state = "current";
+            break;
+    }
+
+    return base;
+}
+
 type PageProps = {
     params: Promise<{
         id: string;
@@ -112,6 +149,33 @@ export default async function DashboardScreeningDetailPage({
                     <div className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-[0.14em] text-white/70">
                         {formatStatusLabel(request.status)}
                     </div>
+                </div>
+
+                <div className="mt-6 grid gap-3 md:grid-cols-4">
+                    {getScreeningProgressSteps(request.status).map((step) => (
+                        <div
+                            key={step.key}
+                            className={[
+                                "rounded-2xl border p-4",
+                                step.state === "done"
+                                    ? "border-emerald-400/30 bg-emerald-500/10"
+                                    : step.state === "current"
+                                        ? "border-white/20 bg-white/10"
+                                        : "border-white/10 bg-black/10",
+                            ].join(" ")}
+                        >
+                            <div className="text-[10px] uppercase tracking-[0.14em] text-white/45">
+                                {step.state === "done"
+                                    ? "Completed"
+                                    : step.state === "current"
+                                        ? "Current"
+                                        : "Upcoming"}
+                            </div>
+                            <div className="mt-2 text-sm font-medium text-white">
+                                {step.label}
+                            </div>
+                        </div>
+                    ))}
                 </div>
 
                 <p className="mt-4 text-sm leading-6 text-white/72">

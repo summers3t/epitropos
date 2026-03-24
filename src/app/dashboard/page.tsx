@@ -42,15 +42,45 @@ function formatCaseStatusLabel(status: string | null | undefined) {
 function getScreeningStatusHelp(status: string | null | undefined) {
     switch (status) {
         case "new":
-            return "Your request has been received.";
+            return "Your request has been received and is waiting for review.";
         case "accepted":
-            return "You have been accepted for the next commercial step.";
+            return "Your screening has been accepted and the next step is preparation of your commercial offer.";
         case "offer_sent":
-            return "Your offer is ready for review.";
+            return "Your offer is ready for review in the client portal.";
         case "rejected":
-            return "This request was not accepted.";
+            return "This request was reviewed but was not accepted for further engagement.";
         default:
             return "Your screening status will appear here.";
+    }
+}
+
+function getScreeningNextStepTitle(status: string | null | undefined) {
+    switch (status) {
+        case "new":
+            return "What happens next";
+        case "accepted":
+            return "Next expected step";
+        case "offer_sent":
+            return "What you should do now";
+        case "rejected":
+            return "Current outcome";
+        default:
+            return "Next step";
+    }
+}
+
+function getScreeningNextStepText(status: string | null | undefined) {
+    switch (status) {
+        case "new":
+            return "We review your submitted details and decide whether to move this request into the commercial offer stage.";
+        case "accepted":
+            return "We prepare your commercial offer. Once it is issued, it will appear here and in your offers section.";
+        case "offer_sent":
+            return "Open the related offer, review the terms, and follow the payment step if you choose to proceed.";
+        case "rejected":
+            return "No further action is required from you for this screening request.";
+        default:
+            return "Open the screening record for more detail.";
     }
 }
 
@@ -322,6 +352,23 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                                 <p className="mt-4 text-sm leading-6 text-white/72">
                                     {getScreeningStatusHelp(latestScreening.status)}
                                 </p>
+
+                                <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+                                    <div className="text-xs uppercase tracking-[0.14em] text-white/45">
+                                        {getScreeningNextStepTitle(latestScreening.status)}
+                                    </div>
+                                    <p className="mt-2 text-sm leading-6 text-white/75">
+                                        {getScreeningNextStepText(latestScreening.status)}
+                                    </p>
+                                    <div className="mt-3">
+                                        <Link
+                                            href={`/dashboard/screening/${latestScreening.id}`}
+                                            className="inline-flex rounded-xl border border-white/15 px-4 py-2 text-xs hover:bg-white/5 transition"
+                                        >
+                                            Open Screening
+                                        </Link>
+                                    </div>
+                                </div>
 
                                 {latestOffer ? (
                                     <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
