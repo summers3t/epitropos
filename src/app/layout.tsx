@@ -30,21 +30,46 @@ export default async function RootLayout({
   const { data } = await supabase.auth.getUser();
 
   let isAdmin = false;
+  let displayName: string | null = null;
+  let avatarUrl: string | null = null;
 
   if (data.user) {
     const { data: profile } = await supabase
       .from("profiles")
-      .select("role")
+      .select("role, full_name")
       .eq("id", data.user.id)
       .maybeSingle();
 
     isAdmin = profile?.role === "admin";
+
+    displayName =
+      profile?.full_name ||
+      (typeof data.user.user_metadata?.full_name === "string"
+        ? data.user.user_metadata.full_name
+        : null) ||
+      (typeof data.user.user_metadata?.name === "string"
+        ? data.user.user_metadata.name
+        : null) ||
+      data.user.email ||
+      null;
+
+    avatarUrl =
+      typeof data.user.user_metadata?.avatar_url === "string"
+        ? data.user.user_metadata.avatar_url
+        : typeof data.user.user_metadata?.picture === "string"
+          ? data.user.user_metadata.picture
+          : null;
   }
 
   return (
     <html lang="en" className={`${inter.variable} ${montserrat.variable}`}>
       <body className="min-h-screen bg-navy text-stone">
-        <Header isLoggedIn={!!data.user} isAdmin={isAdmin} />
+        <Header
+          isLoggedIn={!!data.user}
+          isAdmin={isAdmin}
+          displayName={displayName}
+          avatarUrl={avatarUrl}
+        />
 
         <main className="mx-auto max-w-6xl px-6 py-12">
           {children}
