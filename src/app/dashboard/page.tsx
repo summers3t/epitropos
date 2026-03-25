@@ -190,7 +190,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
     const { data: cases, error: casesError } = await supabase
         .from("cases")
-        .select("id, title, status, created_at, order_id")
+        .select("id, title, status, created_at, order_id, screening_request_id")
         .eq("client_id", user.id)
         .order("created_at", { ascending: false });
 
@@ -228,6 +228,10 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     const latestScreening = screeningRequests?.[0] ?? null;
     const latestCase = cases?.[0] ?? null;
     const latestReport = reports?.[0] ?? null;
+
+    const latestCaseScreening = latestCase?.screening_request_id
+        ? screeningRequests?.find((request) => request.id === latestCase.screening_request_id) ?? null
+        : null;
 
     const latestOffer = latestScreening
         ? activeOfferByScreeningId.get(latestScreening.id)
@@ -525,9 +529,34 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                                     </div>
                                 </div>
 
-                                <p className="mt-4 text-sm leading-6 text-white/72">
-                                    This section shows only the client-facing stage of your engagement.
-                                </p>
+                                <dl className="mt-4 grid gap-3">
+                                    <div>
+                                        <dt className="text-xs uppercase tracking-[0.14em] text-white/45">
+                                            Budget
+                                        </dt>
+                                        <dd className="mt-1 text-sm text-white/80">
+                                            {latestCaseScreening?.budget_range || "—"}
+                                        </dd>
+                                    </div>
+
+                                    <div>
+                                        <dt className="text-xs uppercase tracking-[0.14em] text-white/45">
+                                            Goal
+                                        </dt>
+                                        <dd className="mt-1 text-sm text-white/80">
+                                            {latestCaseScreening?.goal || "—"}
+                                        </dd>
+                                    </div>
+
+                                    <div>
+                                        <dt className="text-xs uppercase tracking-[0.14em] text-white/45">
+                                            Selected service
+                                        </dt>
+                                        <dd className="mt-1 text-sm text-white/80">
+                                            {latestCaseScreening?.plan_interest || "—"}
+                                        </dd>
+                                    </div>
+                                </dl>
                             </article>
                         ) : (
                             <div className="rounded-2xl border border-white/10 bg-black/10 p-5">

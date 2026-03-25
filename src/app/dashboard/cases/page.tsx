@@ -77,13 +77,31 @@ export default async function DashboardCasesPage() {
 
     const { data: cases, error: casesError } = await supabase
         .from("cases")
-        .select("id, title, status, created_at, decision_status")
+        .select("id, title, status, created_at, decision_status, screening_request_id")
         .eq("client_id", user.id)
         .order("created_at", { ascending: false });
 
     if (casesError) {
         throw new Error(casesError.message);
     }
+
+    const screeningIds = (cases ?? [])
+        .map((item) => item.screening_request_id)
+        .filter(Boolean) as string[];
+
+    const { data: screenings, error: screeningsError } =
+        screeningIds.length > 0
+            ? await supabase
+                .from("screening_requests")
+                .select("id, name, budget_range, goal, plan_interest")
+                .in("id", screeningIds)
+            : { data: [], error: null as null | Error };
+
+    if (screeningsError) {
+        throw new Error(screeningsError.message);
+    }
+
+    const screeningsById = new Map((screenings ?? []).map((item) => [item.id, item]));
 
     return (
         <section className="space-y-8">
@@ -115,6 +133,10 @@ export default async function DashboardCasesPage() {
                 <div className="space-y-4">
                     {cases && cases.length > 0 ? (
                         cases.map((item) => {
+                            const screening = item.screening_request_id
+                                ? screeningsById.get(item.screening_request_id)
+                                : null;
+
                             return (
                                 <article
                                     key={item.id}
@@ -145,6 +167,35 @@ export default async function DashboardCasesPage() {
                                                     Created {formatClientDateTime(item.created_at)}
                                                 </p>
                                             </div>
+
+                                            <dl className="grid gap-2 text-sm text-white/75 md:grid-cols-3">
+                                                <div>
+                                                    <dt className="text-xs uppercase tracking-[0.14em] text-white/45">
+                                                        Budget
+                                                    </dt>
+                                                    <dd className="mt-1 text-sm text-white/80">
+                                                        {screening?.budget_range || "—"}
+                                                    </dd>
+                                                </div>
+
+                                                <div>
+                                                    <dt className="text-xs uppercase tracking-[0.14em] text-white/45">
+                                                        Goal
+                                                    </dt>
+                                                    <dd className="mt-1 text-sm text-white/80">
+                                                        {screening?.goal || "—"}
+                                                    </dd>
+                                                </div>
+
+                                                <div>
+                                                    <dt className="text-xs uppercase tracking-[0.14em] text-white/45">
+                                                        Selected service
+                                                    </dt>
+                                                    <dd className="mt-1 text-sm text-white/80">
+                                                        {screening?.plan_interest || "—"}
+                                                    </dd>
+                                                </div>
+                                            </dl>
                                         </div>
 
                                         <div className="flex flex-col gap-3 md:items-end">

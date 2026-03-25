@@ -83,12 +83,20 @@ function getDecisionSummaryFallback(status: string | null | undefined) {
     }
 }
 
+function getScreeningLabelTitle() {
+    return "Screening / case label";
+}
+
 function getReviewFocusLabel() {
     return "Client objective";
 }
 
 function getSelectedServiceLabel() {
     return "Selected service";
+}
+
+function getBudgetLabel() {
+    return "Budget";
 }
 
 function formatClientDateTime(value: string | null | undefined) {
@@ -152,7 +160,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
     const { data: screening, error: screeningError } = caseItem.screening_request_id
         ? await supabase
             .from("screening_requests")
-            .select("id, goal, plan_interest")
+            .select("id, name, goal, plan_interest, budget_range")
             .eq("id", caseItem.screening_request_id)
             .maybeSingle()
         : { data: null, error: null as null | Error };
@@ -288,7 +296,25 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                     </div>
                 </div>
 
-                <div className="mt-6 grid gap-4 md:grid-cols-3">
+                <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                        <dt className="text-xs uppercase tracking-[0.14em] text-white/50">
+                            {getScreeningLabelTitle()}
+                        </dt>
+                        <dd className="mt-1 text-sm leading-6 text-white/80">
+                            {screening?.name || "—"}
+                        </dd>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                        <dt className="text-xs uppercase tracking-[0.14em] text-white/50">
+                            {getBudgetLabel()}
+                        </dt>
+                        <dd className="mt-1 text-sm leading-6 text-white/80">
+                            {screening?.budget_range || "—"}
+                        </dd>
+                    </div>
+
                     <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
                         <dt className="text-xs uppercase tracking-[0.14em] text-white/50">
                             {getReviewFocusLabel()}
@@ -307,7 +333,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                         </dd>
                     </div>
 
-                    <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/5 p-4">
+                    <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/5 p-4 md:col-span-2 xl:col-span-4">
                         <dt className="text-xs uppercase tracking-[0.14em] text-emerald-100/80">
                             Next step
                         </dt>
