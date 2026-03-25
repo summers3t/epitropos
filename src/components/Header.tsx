@@ -2,13 +2,21 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type AdminCounts = {
   screening: number;
   orders: number;
   cases: number;
 };
+
+const EMPTY_ADMIN_COUNTS: AdminCounts = {
+  screening: 0,
+  orders: 0,
+  cases: 0,
+};
+
+const REFRESH_THROTTLE_MS = 1500;
 
 type HeaderProps = {
   isLoggedIn: boolean;
@@ -51,9 +59,12 @@ export default function Header({
 }: HeaderProps) {
   const [scrolled, setScrolled] = useState(false);
   const [adminCounts, setAdminCounts] = useState<AdminCounts>(
-    initialAdminCounts ?? { screening: 0, orders: 0, cases: 0 }
+    initialAdminCounts ?? EMPTY_ADMIN_COUNTS
   );
   const pathname = usePathname();
+  const hasMountedRef = useRef(false);
+  const isRefreshingRef = useRef(false);
+  const lastRefreshAtRef = useRef(0);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -64,12 +75,29 @@ export default function Header({
 
   useEffect(() => {
     if (!isLoggedIn || !isAdmin) {
+      setAdminCounts(EMPTY_ADMIN_COUNTS);
+      hasMountedRef.current = false;
+      isRefreshingRef.current = false;
+      lastRefreshAtRef.current = 0;
       return;
     }
 
     let isCancelled = false;
 
-    async function refreshAdminCounts() {
+    async function refreshAdminCounts(force = false) {
+      const now = Date.now();
+
+      if (!force && now - lastRefreshAtRef.current < REFRESH_THROTTLE_MS) {
+        return;
+      }
+
+      if (isRefreshingRef.current) {
+        return;
+      }
+
+      isRefreshingRef.current = true;
+      lastRefreshAtRef.current = now;
+
       try {
         const response = await fetch("/api/header-counts", {
           method: "GET",
@@ -81,24 +109,42 @@ export default function Header({
         }
 
         const result = (await response.json()) as {
-          screening: number;
-          orders: number;
-          cases: number;
+          screening?: number;
+          orders?: number;
+          cases?: number;
         };
 
         if (!isCancelled) {
-          setAdminCounts({
+          const nextCounts: AdminCounts = {
             screening: result.screening ?? 0,
             orders: result.orders ?? 0,
             cases: result.cases ?? 0,
+          };
+
+          setAdminCounts((currentCounts) => {
+            if (
+              currentCounts.screening === nextCounts.screening &&
+              currentCounts.orders === nextCounts.orders &&
+              currentCounts.cases === nextCounts.cases
+            ) {
+              return currentCounts;
+            }
+
+            return nextCounts;
           });
         }
       } catch {
         // ignore transient refresh failures
+      } finally {
+        isRefreshingRef.current = false;
       }
     }
 
-    refreshAdminCounts();
+    if (hasMountedRef.current) {
+      refreshAdminCounts(true);
+    } else {
+      hasMountedRef.current = true;
+    }
 
     const handleFocus = () => {
       refreshAdminCounts();
@@ -236,7 +282,7 @@ export default function Header({
               className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-3 py-1.5 text-xs hover:bg-white/5 transition"
             >
               <span>Orders</span>
-              <Badge count={adminCounts?.orders ?? 0} />
+              <Badge count={adminCounts.orders} />
             </Link>
 
             <Link

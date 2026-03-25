@@ -3,6 +3,7 @@ import "./globals.css";
 import { Inter, Montserrat } from "next/font/google";
 import { createClient } from "@/lib/supabase/server";
 import Header from "@/components/Header";
+import { getAdminHeaderCounts } from "@/lib/header/getAdminHeaderCounts";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -66,42 +67,7 @@ export default async function RootLayout({
           : null;
 
     if (isAdmin) {
-      const [
-        { count: screeningCount, error: screeningCountError },
-        { count: ordersCount, error: ordersCountError },
-        { count: casesCount, error: casesCountError },
-      ] = await Promise.all([
-        supabase
-          .from("screening_requests")
-          .select("*", { count: "exact", head: true })
-          .eq("status", "new"),
-        supabase
-          .from("orders")
-          .select("*", { count: "exact", head: true })
-          .eq("payment_status", "pending"),
-        supabase
-          .from("cases")
-          .select("*", { count: "exact", head: true })
-          .in("status", ["active", "analysis"]),
-      ]);
-
-      if (screeningCountError) {
-        throw new Error(screeningCountError.message);
-      }
-
-      if (ordersCountError) {
-        throw new Error(ordersCountError.message);
-      }
-
-      if (casesCountError) {
-        throw new Error(casesCountError.message);
-      }
-
-      adminCounts = {
-        screening: screeningCount ?? 0,
-        orders: ordersCount ?? 0,
-        cases: casesCount ?? 0,
-      };
+      adminCounts = await getAdminHeaderCounts(supabase);
     }
   }
 
