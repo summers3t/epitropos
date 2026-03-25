@@ -15,6 +15,12 @@ function formatCaseStatusLabel(status: string | null | undefined) {
     return labels[status] ?? status;
 }
 
+function formatClientCaseTitle(title: string | null | undefined) {
+    if (!title) return "Case";
+
+    return title.startsWith("Case for ") ? title.slice("Case for ".length) : title;
+}
+
 function formatDecisionStatusLabel(status: string | null | undefined) {
     if (!status || status === "pending") return null;
 
@@ -158,7 +164,7 @@ export default async function DashboardCasesPage() {
 
                                             <div className="space-y-1">
                                                 <p className="text-sm font-semibold text-white">
-                                                    {item.title || "Case"}
+                                                    {formatClientCaseTitle(item.title)}
                                                 </p>
                                                 <p className="text-xs text-white/60">
                                                     {getCaseListStatusText(item.status)}

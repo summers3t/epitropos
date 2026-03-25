@@ -39,6 +39,22 @@ function formatCaseStatusLabel(status: string | null | undefined) {
     return labels[status] ?? status;
 }
 
+function formatClientCaseTitle(title: string | null | undefined) {
+    if (!title) return "Case";
+
+    return title.startsWith("Case for ") ? title.slice("Case for ".length) : title;
+}
+
+function formatClientReportTitle(title: string | null | undefined) {
+    if (!title) return "Report";
+
+    if (title.startsWith("Case for ") && title.endsWith(" Report")) {
+        return `Report for ${title.slice("Case for ".length, -(" Report".length))}`;
+    }
+
+    return title;
+}
+
 function getScreeningStatusHelp(status: string | null | undefined) {
     switch (status) {
         case "new":
@@ -511,7 +527,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                                 <div className="flex items-start justify-between gap-4">
                                     <div className="space-y-1">
                                         <p className="text-sm font-semibold text-white">
-                                            {latestCase.title || "Case"}
+                                            {formatClientCaseTitle(latestCase.title)}
                                         </p>
 
                                         <p className="text-xs text-white/50">
@@ -591,7 +607,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                             <article className="rounded-2xl border border-white/10 bg-black/10 p-5">
                                 <div className="space-y-1">
                                     <p className="text-sm font-semibold text-white">
-                                        {latestReport.title}
+                                        {formatClientReportTitle(latestReport.title)}
                                     </p>
 
                                     <p className="text-xs text-white/50">

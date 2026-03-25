@@ -2,6 +2,22 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
+function formatClientCaseTitle(title: string | null | undefined) {
+    if (!title) return "Client Case";
+
+    return title.startsWith("Case for ") ? title.slice("Case for ".length) : title;
+}
+
+function formatClientReportTitle(title: string | null | undefined) {
+    if (!title) return "Report";
+
+    if (title.startsWith("Case for ") && title.endsWith(" Report")) {
+        return `Report for ${title.slice("Case for ".length, -(" Report".length))}`;
+    }
+
+    return title;
+}
+
 export default async function DashboardReportsPage() {
     const supabase = await createClient();
 
@@ -87,10 +103,10 @@ export default async function DashboardReportsPage() {
 
                                         <div>
                                             <p className="text-sm font-semibold text-white">
-                                                {report.title}
+                                                {formatClientReportTitle(report.title)}
                                             </p>
                                             <p className="text-xs text-white/55">
-                                                {caseTitle || "Client Case"}
+                                                {formatClientCaseTitle(caseTitle)}
                                             </p>
                                         </div>
 

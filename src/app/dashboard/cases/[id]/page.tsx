@@ -15,6 +15,12 @@ function formatCaseStatusLabel(status: string | null | undefined) {
     return labels[status] ?? status;
 }
 
+function formatClientCaseTitle(title: string | null | undefined) {
+    if (!title) return "Case Overview";
+
+    return title.startsWith("Case for ") ? title.slice("Case for ".length) : title;
+}
+
 function formatDecisionStatusLabel(status: string | null | undefined) {
     if (!status) return null;
 
@@ -211,7 +217,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                     className="text-4xl font-black tracking-tight"
                     style={{ fontFamily: "var(--font-montserrat)" }}
                 >
-                    {caseItem.title || "Case Overview"}
+                    {formatClientCaseTitle(caseItem.title)}
                 </h1>
 
                 <p className="max-w-3xl text-sm leading-6 text-white/72">
@@ -283,7 +289,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
 
                         <div>
                             <p className="text-lg font-semibold text-white">
-                                {caseItem.title || "Case"}
+                                {formatClientCaseTitle(caseItem.title)}
                             </p>
                             <p className="text-sm text-white/60">
                                 Created {formatClientDateTime(caseItem.created_at)}
