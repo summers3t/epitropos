@@ -49,113 +49,121 @@ export default function Header({
         scrolled ? "bg-navy/85 shadow-glass backdrop-blur" : "bg-navy/35 backdrop-blur",
       ].join(" ")}
     >
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-        <Link
-          href="/"
-          className="text-sm font-semibold tracking-[0.18em] uppercase"
-          style={{ fontFamily: "var(--font-montserrat)" }}
-        >
-          EPITROPOS
-        </Link>
-
-        <nav className="flex items-center gap-4 text-sm opacity-90">
-          <Link href="/methodology" className="hover:opacity-70">
-            Methodology
-          </Link>
-          <Link href="/services" className="hover:opacity-70">
-            Services
-          </Link>
-          <Link href="/cases" className="hover:opacity-70">
-            Cases
-          </Link>
-          <Link href="/process" className="hover:opacity-70">
-            Process
-          </Link>
-          <Link href="/pricing" className="hover:opacity-70">
-            Pricing
-          </Link>
-          <Link href="/faq" className="hover:opacity-70">
-            FAQ
-          </Link>
-          <Link href="/screening" className="hover:opacity-70">
-            Screening
+      <div className="mx-auto max-w-6xl px-6 py-4">
+        <div className="flex items-center justify-between gap-6">
+          <Link
+            href="/"
+            className="shrink-0 text-sm font-semibold tracking-[0.18em] uppercase"
+            style={{ fontFamily: "var(--font-montserrat)" }}
+          >
+            EPITROPOS
           </Link>
 
-          <div className="ml-4 flex items-center gap-3">
-            {isLoggedIn ? (
-              <>
-                <Link
-                  href="/dashboard"
-                  className="rounded-xl border border-white/15 px-3 py-1.5 text-xs hover:bg-white/5 transition"
-                >
-                  Dashboard
-                </Link>
+          <div className="flex min-w-0 items-center gap-4">
+            <nav className="flex items-center gap-4 text-sm opacity-90">
+              <Link href="/methodology" className="hover:opacity-70">
+                Methodology
+              </Link>
+              <Link href="/services" className="hover:opacity-70">
+                Services
+              </Link>
+              <Link href="/cases" className="hover:opacity-70">
+                Cases
+              </Link>
+              <Link href="/process" className="hover:opacity-70">
+                Process
+              </Link>
+              <Link href="/pricing" className="hover:opacity-70">
+                Pricing
+              </Link>
+              <Link href="/faq" className="hover:opacity-70">
+                FAQ
+              </Link>
+              <Link href="/screening" className="hover:opacity-70">
+                Screening
+              </Link>
+            </nav>
 
-                {isAdmin ? (
-                  <>
-                    <Link
-                      href="/admin/screening"
-                      className="rounded-xl border border-white/15 px-3 py-1.5 text-xs hover:bg-white/5 transition"
-                    >
-                      Screening
-                    </Link>
+            <div className="ml-4 flex shrink-0 items-center gap-3">
+              {isLoggedIn ? (
+                <>
+                  <Link
+                    href="/dashboard"
+                    className="rounded-xl border border-white/15 px-3 py-1.5 text-xs hover:bg-white/5 transition"
+                  >
+                    Dashboard
+                  </Link>
 
-                    <Link
-                      href="/admin/orders"
-                      className="rounded-xl border border-white/15 px-3 py-1.5 text-xs hover:bg-white/5 transition"
-                    >
-                      Orders
-                    </Link>
+                  <div className="flex max-w-fit items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-2 py-1.5">
+                    {avatarUrl ? (
+                      <img
+                        src={avatarUrl}
+                        alt={displayName || "User avatar"}
+                        className="h-8 w-8 rounded-full border border-white/10 object-cover"
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-black/20 text-[11px] font-semibold text-white/85">
+                        {initials}
+                      </div>
+                    )}
 
-                    <Link
-                      href="/admin/cases"
-                      className="rounded-xl border border-white/15 px-3 py-1.5 text-xs hover:bg-white/5 transition"
-                    >
-                      Cases
-                    </Link>
-                  </>
-                ) : null}
-
-                <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-2 py-1.5">
-                  {avatarUrl ? (
-                    <img
-                      src={avatarUrl}
-                      alt={displayName || "User avatar"}
-                      className="h-8 w-8 rounded-full border border-white/10 object-cover"
-                      referrerPolicy="no-referrer"
-                    />
-                  ) : (
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-black/20 text-[11px] font-semibold text-white/85">
-                      {initials}
-                    </div>
-                  )}
-
-                  <div className="max-w-[140px]">
-                    <div className="truncate text-xs font-medium text-white/90">
-                      {displayName || "Signed in"}
-                    </div>
-                    <div className="text-[10px] uppercase tracking-[0.14em] text-white/45">
-                      {isAdmin ? "Admin" : "Client"}
+                    <div className="min-w-0">
+                      <div className="text-xs font-medium text-white/90 whitespace-nowrap">
+                        {displayName || "Signed in"}
+                      </div>
+                      <div className="text-[10px] uppercase tracking-[0.14em] text-white/45">
+                        {isAdmin ? "Admin" : "Client"}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <form action="/auth/logout" method="post">
-                  <button className="rounded-xl border border-white/15 px-3 py-1.5 text-xs hover:bg-white/5 transition">
-                    Logout
-                  </button>
-                </form>
-              </>
-            ) : (
-              <Link
-                href="/auth/login"
-                className="rounded-xl border border-white/15 px-3 py-1.5 text-xs hover:bg-white/5 transition"
-              >
-                Sign in
-              </Link>
-            )}
+                  <form action="/auth/logout" method="post">
+                    <button className="rounded-xl border border-white/15 px-3 py-1.5 text-xs hover:bg-white/5 transition">
+                      Logout
+                    </button>
+                  </form>
+                </>
+              ) : (
+                <Link
+                  href="/auth/login"
+                  className="rounded-xl border border-white/15 px-3 py-1.5 text-xs hover:bg-white/5 transition"
+                >
+                  Sign in
+                </Link>
+              )}
+            </div>
           </div>
-        </nav>
+        </div>
+
+        {isLoggedIn && isAdmin ? (
+          <div className="mt-3 flex items-center gap-3 border-t border-white/10 pt-3">
+            <span className="text-[10px] uppercase tracking-[0.16em] text-white/40">
+              Admin workspace
+            </span>
+
+            <Link
+              href="/admin/screening"
+              className="rounded-xl border border-white/15 px-3 py-1.5 text-xs hover:bg-white/5 transition"
+            >
+              Screening
+            </Link>
+
+            <Link
+              href="/admin/orders"
+              className="rounded-xl border border-white/15 px-3 py-1.5 text-xs hover:bg-white/5 transition"
+            >
+              Orders
+            </Link>
+
+            <Link
+              href="/admin/cases"
+              className="rounded-xl border border-white/15 px-3 py-1.5 text-xs hover:bg-white/5 transition"
+            >
+              Cases
+            </Link>
+          </div>
+        ) : null}
       </div>
     </header>
   );
