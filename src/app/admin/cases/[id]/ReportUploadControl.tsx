@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 type ReportUploadControlProps = {
     caseId: string;
@@ -10,6 +10,15 @@ type ReportUploadControlProps = {
     inputClass: string;
 };
 
+function getFileNameFromStoragePath(storagePath: string) {
+    if (!storagePath) return null;
+
+    const parts = storagePath.split("/");
+    const lastPart = parts[parts.length - 1]?.trim();
+
+    return lastPart || null;
+}
+
 export default function ReportUploadControl({
     caseId,
     reportId,
@@ -18,9 +27,17 @@ export default function ReportUploadControl({
     inputClass,
 }: ReportUploadControlProps) {
     const [storagePath, setStoragePath] = useState(initialStoragePath);
+    const [uploadedFileName, setUploadedFileName] = useState<string | null>(
+        getFileNameFromStoragePath(initialStoragePath)
+    );
     const [uploading, setUploading] = useState(false);
     const [notice, setNotice] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+
+    const currentFileName = useMemo(
+        () => uploadedFileName || getFileNameFromStoragePath(storagePath),
+        [uploadedFileName, storagePath]
+    );
 
     async function handleUploadSelection(
         event: React.ChangeEvent<HTMLInputElement>
@@ -35,6 +52,7 @@ export default function ReportUploadControl({
         setUploading(true);
         setNotice(null);
         setError(null);
+        setUploadedFileName(selectedFile.name);
 
         try {
             const uploadData = new FormData();
@@ -103,8 +121,30 @@ export default function ReportUploadControl({
                     ) : null}
 
                     {storagePath ? (
-                        <div className="text-xs text-white/60">
-                            Current file is attached to this draft.
+                        <div className="rounded-xl border border-white/10 bg-black/10 p-3 space-y-3">
+                            <div className="text-xs text-emerald-100/90">
+                                A report file is currently attached to this draft.
+                            </div>
+
+                            <div className="space-y-1">
+                                <div className="text-[10px] uppercase tracking-[0.14em] text-white/45">
+                                    Current file
+                                </div>
+                                <div className="text-sm text-white/80 break-all">
+                                    {currentFileName || "Attached PDF"}
+                                </div>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2">
+                                <a
+                                    href={`/api/reports/${reportId}/download`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex rounded-xl border border-white/15 px-4 py-2 text-xs hover:bg-white/5 transition"
+                                >
+                                    Open Attached File
+                                </a>
+                            </div>
                         </div>
                     ) : (
                         <div className="text-xs text-white/45">
@@ -113,8 +153,34 @@ export default function ReportUploadControl({
                     )}
                 </div>
             ) : (
-                <div className="text-xs text-white/55">
-                    Published report file is locked until unpublish.
+                <div className="space-y-3">
+                    <div className="text-xs text-white/55">
+                        Published report file is locked until unpublish.
+                    </div>
+
+                    {storagePath ? (
+                        <div className="rounded-xl border border-white/10 bg-black/10 p-3 space-y-3">
+                            <div className="space-y-1">
+                                <div className="text-[10px] uppercase tracking-[0.14em] text-white/45">
+                                    Published file
+                                </div>
+                                <div className="text-sm text-white/80 break-all">
+                                    {currentFileName || "Attached PDF"}
+                                </div>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2">
+                                <a
+                                    href={`/api/reports/${reportId}/download`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex rounded-xl border border-white/15 px-4 py-2 text-xs hover:bg-white/5 transition"
+                                >
+                                    Open Published File
+                                </a>
+                            </div>
+                        </div>
+                    ) : null}
                 </div>
             )}
         </div>
