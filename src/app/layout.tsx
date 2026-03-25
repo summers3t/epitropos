@@ -32,6 +32,11 @@ export default async function RootLayout({
   let isAdmin = false;
   let displayName: string | null = null;
   let avatarUrl: string | null = null;
+  let adminCounts = {
+    screening: 0,
+    orders: 0,
+    cases: 0,
+  };
 
   if (data.user) {
     const { data: profile } = await supabase
@@ -59,6 +64,45 @@ export default async function RootLayout({
         : typeof data.user.user_metadata?.picture === "string"
           ? data.user.user_metadata.picture
           : null;
+
+    if (isAdmin) {
+      const [
+        { count: screeningCount, error: screeningCountError },
+        { count: ordersCount, error: ordersCountError },
+        { count: casesCount, error: casesCountError },
+      ] = await Promise.all([
+        supabase
+          .from("screening_requests")
+          .select("*", { count: "exact", head: true })
+          .eq("status", "new"),
+        supabase
+          .from("orders")
+          .select("*", { count: "exact", head: true })
+          .eq("payment_status", "pending"),
+        supabase
+          .from("cases")
+          .select("*", { count: "exact", head: true })
+          .in("status", ["active", "analysis"]),
+      ]);
+
+      if (screeningCountError) {
+        throw new Error(screeningCountError.message);
+      }
+
+      if (ordersCountError) {
+        throw new Error(ordersCountError.message);
+      }
+
+      if (casesCountError) {
+        throw new Error(casesCountError.message);
+      }
+
+      adminCounts = {
+        screening: screeningCount ?? 0,
+        orders: ordersCount ?? 0,
+        cases: casesCount ?? 0,
+      };
+    }
   }
 
   return (
@@ -69,6 +113,7 @@ export default async function RootLayout({
           isAdmin={isAdmin}
           displayName={displayName}
           avatarUrl={avatarUrl}
+          initialAdminCounts={adminCounts}
         />
 
         <main className="mx-auto max-w-6xl px-6 py-12">

@@ -1,13 +1,21 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+
+type AdminCounts = {
+  screening: number;
+  orders: number;
+  cases: number;
+};
 
 type HeaderProps = {
   isLoggedIn: boolean;
   isAdmin: boolean;
   displayName?: string | null;
   avatarUrl?: string | null;
+  initialAdminCounts?: AdminCounts;
 };
 
 function getInitials(displayName: string | null | undefined) {
@@ -24,13 +32,28 @@ function getInitials(displayName: string | null | undefined) {
   return parts.map((part) => part.charAt(0).toUpperCase()).join("");
 }
 
+function Badge({ count }: { count: number }) {
+  if (count <= 0) return null;
+
+  return (
+    <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
+      {count > 99 ? "99+" : count}
+    </span>
+  );
+}
+
 export default function Header({
   isLoggedIn,
   isAdmin,
   displayName,
   avatarUrl,
+  initialAdminCounts,
 }: HeaderProps) {
   const [scrolled, setScrolled] = useState(false);
+  const [adminCounts, setAdminCounts] = useState<AdminCounts>(
+    initialAdminCounts ?? { screening: 0, orders: 0, cases: 0 }
+  );
+  const pathname = usePathname();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -38,6 +61,64 @@ export default function Header({
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  useEffect(() => {
+    if (!isLoggedIn || !isAdmin) {
+      return;
+    }
+
+    let isCancelled = false;
+
+    async function refreshAdminCounts() {
+      try {
+        const response = await fetch("/api/header-counts", {
+          method: "GET",
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          return;
+        }
+
+        const result = (await response.json()) as {
+          screening: number;
+          orders: number;
+          cases: number;
+        };
+
+        if (!isCancelled) {
+          setAdminCounts({
+            screening: result.screening ?? 0,
+            orders: result.orders ?? 0,
+            cases: result.cases ?? 0,
+          });
+        }
+      } catch {
+        // ignore transient refresh failures
+      }
+    }
+
+    refreshAdminCounts();
+
+    const handleFocus = () => {
+      refreshAdminCounts();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        refreshAdminCounts();
+      }
+    };
+
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      isCancelled = true;
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [isLoggedIn, isAdmin, pathname]);
 
   const initials = useMemo(() => getInitials(displayName), [displayName]);
 
@@ -144,23 +225,26 @@ export default function Header({
 
             <Link
               href="/admin/screening"
-              className="rounded-xl border border-white/15 px-3 py-1.5 text-xs hover:bg-white/5 transition"
+              className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-3 py-1.5 text-xs hover:bg-white/5 transition"
             >
-              Screening
+              <span>Screening</span>
+              <Badge count={adminCounts.screening} />
             </Link>
 
             <Link
               href="/admin/orders"
-              className="rounded-xl border border-white/15 px-3 py-1.5 text-xs hover:bg-white/5 transition"
+              className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-3 py-1.5 text-xs hover:bg-white/5 transition"
             >
-              Orders
+              <span>Orders</span>
+              <Badge count={adminCounts?.orders ?? 0} />
             </Link>
 
             <Link
               href="/admin/cases"
-              className="rounded-xl border border-white/15 px-3 py-1.5 text-xs hover:bg-white/5 transition"
+              className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-3 py-1.5 text-xs hover:bg-white/5 transition"
             >
-              Cases
+              <span>Cases</span>
+              <Badge count={adminCounts.cases} />
             </Link>
           </div>
         ) : null}

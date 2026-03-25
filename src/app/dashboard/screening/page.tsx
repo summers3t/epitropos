@@ -63,12 +63,20 @@ export default async function DashboardScreeningPage() {
                     Client Portal
                 </p>
 
-                <h1
-                    className="text-4xl font-black tracking-tight"
-                    style={{ fontFamily: "var(--font-montserrat)" }}
-                >
-                    Screening
-                </h1>
+                <div className="flex items-center gap-3">
+                    <h1
+                        className="text-4xl font-black tracking-tight"
+                        style={{ fontFamily: "var(--font-montserrat)" }}
+                    >
+                        Screening
+                    </h1>
+
+                    {screeningRequests && screeningRequests.length > 0 ? (
+                        <span className="inline-flex min-w-[22px] items-center justify-center rounded-full bg-white/10 px-2 py-1 text-xs font-semibold leading-none text-white/85">
+                            {screeningRequests.length}
+                        </span>
+                    ) : null}
+                </div>
 
                 <p className="max-w-2xl text-sm leading-6 text-white/72">
                     Check the status of your screening requests and the next available step.

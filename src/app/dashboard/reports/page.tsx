@@ -70,12 +70,20 @@ export default async function DashboardReportsPage() {
                     Client Portal
                 </p>
 
-                <h1
-                    className="text-4xl font-black tracking-tight"
-                    style={{ fontFamily: "var(--font-montserrat)" }}
-                >
-                    Reports
-                </h1>
+                <div className="flex items-center gap-3">
+                    <h1
+                        className="text-4xl font-black tracking-tight"
+                        style={{ fontFamily: "var(--font-montserrat)" }}
+                    >
+                        Reports
+                    </h1>
+
+                    {reports && reports.length > 0 ? (
+                        <span className="inline-flex min-w-[22px] items-center justify-center rounded-full bg-white/10 px-2 py-1 text-xs font-semibold leading-none text-white/85">
+                            {reports.length}
+                        </span>
+                    ) : null}
+                </div>
 
                 <p className="max-w-3xl text-sm leading-6 text-white/72">
                     Open the published reports available for your cases.

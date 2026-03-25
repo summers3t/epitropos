@@ -245,6 +245,10 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     const latestCase = cases?.[0] ?? null;
     const latestReport = reports?.[0] ?? null;
 
+    const screeningCount = screeningRequests?.length ?? 0;
+    const caseCount = cases?.length ?? 0;
+    const reportCount = reports?.length ?? 0;
+
     const latestCaseScreening = latestCase?.screening_request_id
         ? screeningRequests?.find((request) => request.id === latestCase.screening_request_id) ?? null
         : null;
@@ -291,9 +295,17 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                 <section className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur">
                     <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                         <div className="space-y-2">
-                            <p className="text-xs uppercase tracking-[0.16em] text-white/50">
-                                Next Action
-                            </p>
+                            <div className="flex items-center gap-2">
+                                <p className="text-xs uppercase tracking-[0.16em] text-white/50">
+                                    Next Action
+                                </p>
+
+                                {!paymentPaid ? (
+                                    <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
+                                        1
+                                    </span>
+                                ) : null}
+                            </div>
 
                             <h2 className="text-xl font-semibold text-white">
                                 {paymentPaid
@@ -336,9 +348,16 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                 <section className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur">
                     <div className="flex items-start justify-between gap-4">
                         <div className="space-y-2">
-                            <p className="text-xs uppercase tracking-[0.16em] text-white/50">
-                                My Screenings
-                            </p>
+                            <div className="flex items-center gap-2">
+                                <p className="text-xs uppercase tracking-[0.16em] text-white/50">
+                                    My Screenings
+                                </p>
+                                {screeningCount > 0 ? (
+                                    <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white/85">
+                                        {screeningCount}
+                                    </span>
+                                ) : null}
+                            </div>
                             <h2 className="text-xl font-semibold">Current screening status</h2>
                         </div>
 
@@ -505,9 +524,16 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                 <section className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur">
                     <div className="flex items-start justify-between gap-4">
                         <div className="space-y-2">
-                            <p className="text-xs uppercase tracking-[0.16em] text-white/50">
-                                My Cases
-                            </p>
+                            <div className="flex items-center gap-2">
+                                <p className="text-xs uppercase tracking-[0.16em] text-white/50">
+                                    My Cases
+                                </p>
+                                {caseCount > 0 ? (
+                                    <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white/85">
+                                        {caseCount}
+                                    </span>
+                                ) : null}
+                            </div>
                             <h2 className="text-xl font-semibold">Engagement status</h2>
                         </div>
 
@@ -586,9 +612,16 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                 <section className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur">
                     <div className="flex items-start justify-between gap-4">
                         <div className="space-y-2">
-                            <p className="text-xs uppercase tracking-[0.16em] text-white/50">
-                                My Reports
-                            </p>
+                            <div className="flex items-center gap-2">
+                                <p className="text-xs uppercase tracking-[0.16em] text-white/50">
+                                    My Reports
+                                </p>
+                                {reportCount > 0 ? (
+                                    <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white/85">
+                                        {reportCount}
+                                    </span>
+                                ) : null}
+                            </div>
                             <h2 className="text-xl font-semibold">Published deliverables</h2>
                         </div>
 
