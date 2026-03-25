@@ -317,16 +317,14 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                                 href={
                                     paymentPaid
                                         ? "/dashboard/cases"
-                                        : paymentPending
-                                            ? `/dashboard/payment/${latestOffer?.id}`
-                                            : `/dashboard/offers/${latestOffer?.id}`
+                                        : `/dashboard/offers/${latestOffer?.id}`
                                 }
                                 className="rounded-xl border border-white/15 px-4 py-2 text-xs hover:bg-white/5 transition"
                             >
                                 {paymentPaid
                                     ? "Open Cases"
                                     : paymentPending
-                                        ? "Open Payment Status"
+                                        ? "Open Offer Status"
                                         : "Review Offer"}
                             </Link>
                         </div>

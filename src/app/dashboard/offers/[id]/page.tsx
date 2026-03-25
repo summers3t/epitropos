@@ -24,6 +24,58 @@ function formatStatusLabel(status: string | null | undefined) {
     return labels[status] ?? status;
 }
 
+function getOfferStageTitle({
+    isSent,
+    isAccepted,
+    paymentPending,
+    paymentPaid,
+}: {
+    isSent: boolean;
+    isAccepted: boolean;
+    paymentPending: boolean;
+    paymentPaid: boolean;
+}) {
+    if (isAccepted && paymentPaid) {
+        return "Current stage";
+    }
+
+    if (isAccepted && paymentPending) {
+        return "Next expected step";
+    }
+
+    if (isSent) {
+        return "What you should do now";
+    }
+
+    return "Offer status";
+}
+
+function getOfferStageText({
+    isSent,
+    isAccepted,
+    paymentPending,
+    paymentPaid,
+}: {
+    isSent: boolean;
+    isAccepted: boolean;
+    paymentPending: boolean;
+    paymentPaid: boolean;
+}) {
+    if (isAccepted && paymentPaid) {
+        return "Your payment has been confirmed and your case is now open in the client portal.";
+    }
+
+    if (isAccepted && paymentPending) {
+        return "Your offer has already been accepted. Payment is currently awaiting confirmation from the admin side.";
+    }
+
+    if (isSent) {
+        return "Review the offer and accept it when you are ready to proceed.";
+    }
+
+    return "This offer is not currently actionable from the client area.";
+}
+
 type PageProps = {
     params: Promise<{
         id: string;
@@ -177,19 +229,23 @@ export default async function OfferPage({ params }: PageProps) {
                         </dd>
                     </div>
 
-                    <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
-                        <dt className="text-xs uppercase tracking-[0.14em] text-white/45">
-                            Next Step
+                    <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/5 p-4">
+                        <dt className="text-xs uppercase tracking-[0.14em] text-emerald-100/80">
+                            {getOfferStageTitle({
+                                isSent,
+                                isAccepted,
+                                paymentPending,
+                                paymentPaid,
+                            })}
                         </dt>
 
-                        <dd className="mt-1 text-sm text-white/80">
-                            {isSent
-                                ? "Accept the offer"
-                                : isAccepted && paymentPending
-                                    ? "Continue to payment"
-                                    : isAccepted && paymentPaid
-                                        ? "Open your case"
-                                        : "No action available"}
+                        <dd className="mt-1 text-sm leading-6 text-white/80">
+                            {getOfferStageText({
+                                isSent,
+                                isAccepted,
+                                paymentPending,
+                                paymentPaid,
+                            })}
                         </dd>
                     </div>
                 </div>
@@ -197,8 +253,7 @@ export default async function OfferPage({ params }: PageProps) {
                 <div className="mt-10 rounded-2xl border border-white/10 bg-black/10 p-6">
                     {isSent ? (
                         <p className="text-sm text-white/75 leading-6">
-                            Accept this offer to continue. Payment is the next step. Your
-                            case will appear in the client portal after payment is confirmed.
+                            Accept this offer to proceed. After acceptance, payment confirmation is handled and your case will appear automatically once opened.
                         </p>
                     ) : isAccepted ? (
                         <div className="space-y-3">
@@ -208,14 +263,11 @@ export default async function OfferPage({ params }: PageProps) {
 
                             {paymentPaid ? (
                                 <p className="text-sm text-white/75 leading-6">
-                                    Your payment has been confirmed. Your case is now
-                                    available in the client portal.
+                                    Your payment has been confirmed. Your case is now available in the client portal and you can continue from the cases section.
                                 </p>
                             ) : (
                                 <p className="text-sm text-white/75 leading-6">
-                                    Your offer has been accepted. The next step is payment.
-                                    Your case will appear automatically after payment
-                                    confirmation.
+                                    Your offer has already been accepted. Payment is currently awaiting confirmation. No additional action is required from you on this page right now.
                                 </p>
                             )}
                         </div>
@@ -238,12 +290,9 @@ export default async function OfferPage({ params }: PageProps) {
                         ) : null}
 
                         {isAccepted && paymentPending ? (
-                            <Link
-                                href={`/dashboard/payment/${offer.id}`}
-                                className="rounded-xl bg-blue-900 px-6 py-3 text-sm font-semibold text-white shadow-glass hover:bg-blue-600 transition"
-                            >
-                                Continue to Payment
-                            </Link>
+                            <div className="rounded-xl border border-amber-400/30 bg-amber-500/10 px-6 py-3 text-sm text-amber-100">
+                                Payment confirmation pending
+                            </div>
                         ) : null}
 
                         {isAccepted && paymentPaid ? (
