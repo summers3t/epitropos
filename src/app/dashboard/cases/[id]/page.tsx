@@ -230,9 +230,19 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
             </div>
 
             {caseItem.decision_status && caseItem.decision_status !== "pending" ? (
-                <section className="space-y-4 rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur">
-                    <div className="text-xs uppercase tracking-[0.18em] text-white/40">
-                        Final Decision
+                <section className="space-y-4 rounded-3xl border border-white/10 bg-gradient-to-b from-white/10 to-white/0 p-6">
+                    <div className="flex items-center gap-3">
+                        <div
+                            className={`h-6 w-[3px] rounded ${caseItem.decision_status === "recommended"
+                                ? "bg-green-400"
+                                : caseItem.decision_status === "rejected_all"
+                                    ? "bg-red-400"
+                                    : "bg-amber-400"
+                                }`}
+                        />
+                        <div className="text-xs uppercase tracking-[0.18em] text-white/40">
+                            Final Decision
+                        </div>
                     </div>
 
                     <div
@@ -275,7 +285,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                 </section>
             ) : null}
 
-            <article className="pt-6 border-t border-white/5">
+            <article className="mt-6 space-y-6">
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div className="space-y-2">
                         <div className="flex flex-wrap items-center gap-2">
@@ -302,8 +312,8 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                     </div>
                 </div>
 
-                <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                    <div className="p-2">
+                <div className="mt-6 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+                    <div className="p-3 bg-white/[0.02] rounded-xl">
                         <dt className="text-xs uppercase tracking-[0.18em] text-white/40">
                             {getScopeLabel()}
                         </dt>
@@ -314,7 +324,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                         </dd>
                     </div>
 
-                    <div className="p-2">
+                    <div className="p-3 bg-white/[0.02] rounded-xl">
                         <dt className="text-xs uppercase tracking-[0.18em] text-white/40">
                             {getSelectedServiceLabel()}
                         </dt>
@@ -323,7 +333,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                         </dd>
                     </div>
 
-                    <div className="p-2">
+                    <div className="p-3 bg-white/[0.02] rounded-xl">
                         <dt className="text-xs uppercase tracking-[0.18em] text-white/40">
                             {getBudgetLabel()}
                         </dt>
@@ -350,7 +360,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                         </dd>
                     </div>
 
-                    <div className="p-2 md:col-span-2 xl:col-span-4">
+                    <div className="p-4 bg-white/[0.03] rounded-xl md:col-span-2 xl:col-span-4">
                         <dt className="text-xs uppercase tracking-[0.18em] text-white/40">
                             Next step
                         </dt>
@@ -384,7 +394,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                         reports.map((report) => (
                             <article
                                 key={report.id}
-                                className="p-2"
+                                className="p-4 rounded-xl bg-white/[0.02]"
                             >
                                 <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                                     <div className="space-y-1">
