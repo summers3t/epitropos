@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 type AdminCounts = {
@@ -62,6 +62,8 @@ export default function Header({
     initialAdminCounts ?? EMPTY_ADMIN_COUNTS
   );
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const routeRefreshKey = `${pathname}?${searchParams.toString()}`;
   const hasMountedRef = useRef(false);
   const isRefreshingRef = useRef(false);
   const lastRefreshAtRef = useRef(0);
@@ -164,7 +166,7 @@ export default function Header({
       window.removeEventListener("focus", handleFocus);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [isLoggedIn, isAdmin, pathname]);
+  }, [isLoggedIn, isAdmin, routeRefreshKey]);
 
   const initials = useMemo(() => getInitials(displayName), [displayName]);
 
