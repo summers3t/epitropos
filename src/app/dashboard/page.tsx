@@ -337,7 +337,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                                     ? "Open Cases"
                                     : paymentPending
                                         ? "Open Offer Status"
-                                        : "Review Offer"}
+                                        : "View Offer"}
                             </Link>
                         </div>
                     </div>

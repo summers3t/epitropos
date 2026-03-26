@@ -70,10 +70,50 @@ function getOfferStageText({
     }
 
     if (isSent) {
-        return "Review the offer and accept it when you are ready to proceed.";
+        return "Review the offer, confirm that you want to proceed, and then move into the payment confirmation stage.";
     }
 
     return "This offer is not currently actionable from the client area.";
+}
+
+function getOfferActionChecklist({
+    isSent,
+    isAccepted,
+    paymentPending,
+    paymentPaid,
+}: {
+    isSent: boolean;
+    isAccepted: boolean;
+    paymentPending: boolean;
+    paymentPaid: boolean;
+}) {
+    if (isAccepted && paymentPaid) {
+        return [
+            "Your offer is already accepted.",
+            "Your payment is already confirmed.",
+            "Your case is now available in the client portal.",
+        ];
+    }
+
+    if (isAccepted && paymentPending) {
+        return [
+            "Your offer is already accepted.",
+            "Payment is awaiting confirmation.",
+            "Your case will appear automatically after payment is confirmed.",
+        ];
+    }
+
+    if (isSent) {
+        return [
+            "Review the selected plan and total price.",
+            "Accept the offer only if you want to proceed.",
+            "After acceptance, payment confirmation is handled before the case is opened.",
+        ];
+    }
+
+    return [
+        "This offer is not currently actionable from the client area.",
+    ];
 }
 
 type PageProps = {
@@ -182,7 +222,7 @@ export default async function OfferPage({ params }: PageProps) {
                             </p>
 
                             <p className="text-sm text-white/70">
-                                Review the offer details below
+                                Review the offer terms, understand the current step, and confirm whether you want to proceed with this engagement.
                             </p>
                         </div>
                     </div>
@@ -251,17 +291,25 @@ export default async function OfferPage({ params }: PageProps) {
                 </div>
 
                 <div className="mt-10 rounded-2xl border border-white/10 bg-black/10 p-6">
-                    {isSent ? (
-                        <p className="text-sm text-white/75 leading-6">
-                            Accept this offer to proceed. After acceptance, payment confirmation is handled and your case will appear automatically once opened.
-                        </p>
-                    ) : isAccepted ? (
-                        <div className="space-y-3">
+                    <div className="space-y-4">
+                        <div>
                             <p className="text-sm font-semibold uppercase tracking-[0.14em] text-white/55">
-                                {paymentPaid ? "Payment confirmed" : "Offer accepted"}
+                                {isAccepted
+                                    ? paymentPaid
+                                        ? "Payment confirmed"
+                                        : "Offer accepted"
+                                    : isSent
+                                        ? "What acceptance means"
+                                        : "Offer status"}
                             </p>
+                        </div>
 
-                            {paymentPaid ? (
+                        {isSent ? (
+                            <p className="text-sm text-white/75 leading-6">
+                                Accepting this offer confirms that you want to proceed with this advisory engagement under the selected plan and price. It does not mean your case is already open yet. The case becomes available in the portal only after payment is confirmed.
+                            </p>
+                        ) : isAccepted ? (
+                            paymentPaid ? (
                                 <p className="text-sm text-white/75 leading-6">
                                     Your payment has been confirmed. Your case is now available in the client portal and you can continue from the cases section.
                                 </p>
@@ -269,13 +317,35 @@ export default async function OfferPage({ params }: PageProps) {
                                 <p className="text-sm text-white/75 leading-6">
                                     Your offer has already been accepted. Payment is currently awaiting confirmation. No additional action is required from you on this page right now.
                                 </p>
-                            )}
+                            )
+                        ) : (
+                            <p className="text-sm text-white/75 leading-6">
+                                This offer is not currently actionable from the client area.
+                            </p>
+                        )}
+
+                        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                            <div className="text-xs uppercase tracking-[0.14em] text-white/45">
+                                Step summary
+                            </div>
+
+                            <div className="mt-3 space-y-2">
+                                {getOfferActionChecklist({
+                                    isSent,
+                                    isAccepted,
+                                    paymentPending,
+                                    paymentPaid,
+                                }).map((item) => (
+                                    <div
+                                        key={item}
+                                        className="text-sm leading-6 text-white/80"
+                                    >
+                                        • {item}
+                                    </div>
+                                ))}
+                            </div>
                         </div>
-                    ) : (
-                        <p className="text-sm text-white/75 leading-6">
-                            This offer is not currently actionable from the client area.
-                        </p>
-                    )}
+                    </div>
 
                     <div className="mt-6 flex flex-wrap gap-3">
                         {isSent ? (
