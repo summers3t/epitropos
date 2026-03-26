@@ -105,6 +105,14 @@ function getBudgetLabel() {
     return "Budget";
 }
 
+function getScopeLabel() {
+    return "Properties in scope";
+}
+
+function getEngagementLabel() {
+    return "Engagement";
+}
+
 function formatClientDateTime(value: string | null | undefined) {
     if (!value) return "—";
 
@@ -221,7 +229,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                 </h1>
 
                 <p className="max-w-3xl text-sm leading-6 text-white/72">
-                    Review your case status, final conclusion, published reports, and next step.
+                    Review the current status of this advisory engagement, the final case conclusion, the published report, and the next step expected from this case.
                 </p>
             </div>
 
@@ -297,36 +305,32 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                         </div>
                     </div>
 
-                    <div className="max-w-sm text-sm leading-6 text-white/70 md:text-right">
+                    <div className="max-w-sm space-y-2 text-sm leading-6 text-white/70 md:text-right">
                         <div>{getCaseStageSummary(caseItem.status)}</div>
+                        <div className="text-xs text-white/45">
+                            This page reflects the formal progress of your case and will be updated as the engagement moves forward.
+                        </div>
                     </div>
                 </div>
 
                 <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                     <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
                         <dt className="text-xs uppercase tracking-[0.14em] text-white/50">
-                            {getScreeningLabelTitle()}
+                            {getEngagementLabel()}
                         </dt>
                         <dd className="mt-1 text-sm leading-6 text-white/80">
-                            {screening?.name || "—"}
+                            {formatClientCaseTitle(caseItem.title)}
                         </dd>
                     </div>
 
                     <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
                         <dt className="text-xs uppercase tracking-[0.14em] text-white/50">
-                            {getBudgetLabel()}
+                            {getScopeLabel()}
                         </dt>
                         <dd className="mt-1 text-sm leading-6 text-white/80">
-                            {screening?.budget_range || "—"}
-                        </dd>
-                    </div>
-
-                    <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
-                        <dt className="text-xs uppercase tracking-[0.14em] text-white/50">
-                            {getReviewFocusLabel()}
-                        </dt>
-                        <dd className="mt-1 text-sm leading-6 text-white/80">
-                            {screening?.goal || "—"}
+                            {properties && properties.length > 0
+                                ? `${properties.length} ${properties.length === 1 ? "property" : "properties"}`
+                                : "No properties added yet"}
                         </dd>
                     </div>
 
@@ -339,6 +343,33 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                         </dd>
                     </div>
 
+                    <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                        <dt className="text-xs uppercase tracking-[0.14em] text-white/50">
+                            {getBudgetLabel()}
+                        </dt>
+                        <dd className="mt-1 text-sm leading-6 text-white/80">
+                            {screening?.budget_range || "—"}
+                        </dd>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-black/10 p-4 md:col-span-2">
+                        <dt className="text-xs uppercase tracking-[0.14em] text-white/50">
+                            {getScreeningLabelTitle()}
+                        </dt>
+                        <dd className="mt-1 text-sm leading-6 text-white/80">
+                            {screening?.name || "—"}
+                        </dd>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-black/10 p-4 md:col-span-2">
+                        <dt className="text-xs uppercase tracking-[0.14em] text-white/50">
+                            {getReviewFocusLabel()}
+                        </dt>
+                        <dd className="mt-1 text-sm leading-6 text-white/80">
+                            {screening?.goal || "—"}
+                        </dd>
+                    </div>
+
                     <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/5 p-4 md:col-span-2 xl:col-span-4">
                         <dt className="text-xs uppercase tracking-[0.14em] text-emerald-100/80">
                             Next step
@@ -346,6 +377,9 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                         <dd className="mt-1 text-sm leading-6 text-white/80">
                             {getCaseNextStep(caseItem.status)}
                         </dd>
+                        <div className="mt-2 text-xs leading-5 text-white/50">
+                            This guidance reflects the current stage of the case and will change only when the case itself moves forward.
+                        </div>
                     </div>
                 </div>
             </article>
@@ -361,7 +395,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                     </p>
                 ) : (
                     <p className="mt-2 text-sm text-white/65">
-                        The written report will appear here once the analysis is complete.
+                        The written report will appear here once the analysis is completed and the report is formally published to your portal.
                     </p>
                 )}
 
@@ -400,8 +434,8 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                             </article>
                         ))
                     ) : (
-                        <div className="rounded-2xl border border-white/10 bg-black/10 p-4 text-sm text-white/65">
-                            No published report is available yet.
+                        <div className="rounded-2xl border border-white/10 bg-black/10 p-4 text-sm leading-6 text-white/65">
+                            No published report is available yet. This usually means the analysis is still in progress or the final report has not been delivered to the client portal yet.
                         </div>
                     )}
                 </div>
