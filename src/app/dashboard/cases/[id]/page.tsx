@@ -237,10 +237,10 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
 
                     <div
                         className={`text-2xl font-semibold ${caseItem.decision_status === "recommended"
-                                ? "text-green-400"
-                                : caseItem.decision_status === "rejected_all"
-                                    ? "text-red-400"
-                                    : "text-amber-400"
+                            ? "text-green-400"
+                            : caseItem.decision_status === "rejected_all"
+                                ? "text-red-400"
+                                : "text-amber-400"
                             }`}
                     >
                         {formatDecisionStatusLabel(caseItem.decision_status)}
@@ -304,7 +304,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
 
                 <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                     <div className="p-2">
-                        <dt className="text-xs uppercase tracking-[0.14em] text-white/50">
+                        <dt className="text-xs uppercase tracking-[0.18em] text-white/40">
                             {getScopeLabel()}
                         </dt>
                         <dd className="mt-1 text-sm leading-6 text-white/80">
@@ -315,7 +315,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                     </div>
 
                     <div className="p-2">
-                        <dt className="text-xs uppercase tracking-[0.14em] text-white/50">
+                        <dt className="text-xs uppercase tracking-[0.18em] text-white/40">
                             {getSelectedServiceLabel()}
                         </dt>
                         <dd className="mt-1 text-sm leading-6 text-white/80">
@@ -324,7 +324,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                     </div>
 
                     <div className="p-2">
-                        <dt className="text-xs uppercase tracking-[0.14em] text-white/50">
+                        <dt className="text-xs uppercase tracking-[0.18em] text-white/40">
                             {getBudgetLabel()}
                         </dt>
                         <dd className="mt-1 text-sm leading-6 text-white/80">
@@ -332,8 +332,8 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                         </dd>
                     </div>
 
-                    <div className="rounded-2xl border border-white/10 bg-black/10 p-4 md:col-span-2">
-                        <dt className="text-xs uppercase tracking-[0.14em] text-white/50">
+                    <div className="p-2 md:col-span-2">
+                        <dt className="text-xs uppercase tracking-[0.18em] text-white/40">
                             {getScreeningLabelTitle()}
                         </dt>
                         <dd className="mt-1 text-sm leading-6 text-white/80">
@@ -341,8 +341,8 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                         </dd>
                     </div>
 
-                    <div className="rounded-2xl border border-white/10 bg-black/10 p-4 md:col-span-2">
-                        <dt className="text-xs uppercase tracking-[0.14em] text-white/50">
+                    <div className="p-2 md:col-span-2">
+                        <dt className="text-xs uppercase tracking-[0.18em] text-white/40">
                             {getReviewFocusLabel()}
                         </dt>
                         <dd className="mt-1 text-sm leading-6 text-white/80">
@@ -350,8 +350,8 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                         </dd>
                     </div>
 
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 md:col-span-2 xl:col-span-4">
-                        <dt className="text-xs uppercase tracking-[0.14em] text-emerald-100/80">
+                    <div className="p-2 md:col-span-2 xl:col-span-4">
+                        <dt className="text-xs uppercase tracking-[0.18em] text-white/40">
                             Next step
                         </dt>
                         <dd className="mt-1 text-sm leading-6 text-white/80">
@@ -414,7 +414,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                             </article>
                         ))
                     ) : (
-                        <div className="rounded-2xl border border-white/10 bg-black/10 p-4 text-sm leading-6 text-white/65">
+                        <div className="p-2 text-sm leading-6 text-white/65">
                             No published report is available yet. This usually means the analysis is still in progress or the final report has not been delivered to the client portal yet.
                         </div>
                     )}
