@@ -45,7 +45,7 @@ export default async function DashboardScreeningPage() {
 
     const { data: screeningRequests, error } = await supabase
         .from("screening_requests")
-        .select("id, status, created_at, budget_range, financing_type, goal, plan_interest")
+        .select("id, name, status, created_at, budget_range, financing_type, goal, plan_interest")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
@@ -100,13 +100,24 @@ export default async function DashboardScreeningPage() {
                                 className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur"
                             >
                                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                                    <div>
-                                        <p className="text-xs uppercase tracking-[0.14em] text-white/45">
-                                            Submitted
-                                        </p>
-                                        <p className="mt-1 text-sm text-white/80">
-                                            {new Date(request.created_at).toLocaleString()}
-                                        </p>
+                                    <div className="space-y-2">
+                                        <div>
+                                            <p className="text-xs uppercase tracking-[0.14em] text-white/45">
+                                                Screening / case label
+                                            </p>
+                                            <p className="mt-1 text-sm font-semibold text-white">
+                                                {request.name || "—"}
+                                            </p>
+                                        </div>
+
+                                        <div>
+                                            <p className="text-xs uppercase tracking-[0.14em] text-white/45">
+                                                Submitted
+                                            </p>
+                                            <p className="mt-1 text-sm text-white/80">
+                                                {new Date(request.created_at).toLocaleString()}
+                                            </p>
+                                        </div>
                                     </div>
 
                                     <div className="flex items-center gap-2">

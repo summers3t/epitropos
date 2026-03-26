@@ -155,7 +155,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     const { data: screeningRequests, error: screeningError } = await supabase
         .from("screening_requests")
         .select(
-            "id, status, created_at, plan_interest, budget_range, goal"
+            "id, name, status, created_at, plan_interest, budget_range, goal"
         )
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
@@ -375,7 +375,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                                 <div className="flex items-start justify-between gap-4">
                                     <div className="space-y-1">
                                         <p className="text-sm font-semibold text-white">
-                                            Latest screening request
+                                            {latestScreening.name || "Latest screening request"}
                                         </p>
 
                                         <p className="text-xs text-white/50">
@@ -395,6 +395,15 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                                 </div>
 
                                 <dl className="mt-4 grid gap-3">
+                                    <div>
+                                        <dt className="text-xs uppercase tracking-[0.14em] text-white/45">
+                                            Screening / case label
+                                        </dt>
+                                        <dd className="mt-1 text-sm text-white/80">
+                                            {latestScreening.name || "—"}
+                                        </dd>
+                                    </div>
+
                                     <div>
                                         <dt className="text-xs uppercase tracking-[0.14em] text-white/45">
                                             Plan

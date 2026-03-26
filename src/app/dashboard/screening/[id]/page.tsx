@@ -130,7 +130,7 @@ export default async function DashboardScreeningDetailPage({
     const { data: request, error } = await supabase
         .from("screening_requests")
         .select(
-            "id, user_id, status, created_at, budget_range, financing_type, goal, property_identified, listing_url, plan_interest, notes"
+            "id, user_id, name, status, created_at, budget_range, financing_type, goal, property_identified, listing_url, plan_interest, notes"
         )
         .eq("id", id)
         .eq("user_id", user.id)
@@ -205,7 +205,7 @@ export default async function DashboardScreeningDetailPage({
                     className="text-4xl font-black tracking-tight"
                     style={{ fontFamily: "var(--font-montserrat)" }}
                 >
-                    Screening Request
+                    {request.name || "Screening Request"}
                 </h1>
 
                 <p className="max-w-2xl text-sm leading-6 text-white/72">
@@ -282,6 +282,15 @@ export default async function DashboardScreeningDetailPage({
                 </p>
 
                 <dl className="mt-6 grid gap-4 md:grid-cols-2">
+                    <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                        <dt className="text-xs uppercase tracking-[0.14em] text-white/45">
+                            Screening / case label
+                        </dt>
+                        <dd className="mt-1 text-sm text-white/80">
+                            {request.name || "—"}
+                        </dd>
+                    </div>
+
                     <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
                         <dt className="text-xs uppercase tracking-[0.14em] text-white/45">
                             Status
