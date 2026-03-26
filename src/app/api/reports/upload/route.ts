@@ -176,6 +176,21 @@ export async function POST(request: NextRequest) {
         }
     }
 
+    const { error: updateError } = await supabase
+        .from("reports")
+        .update({
+            storage_path: storagePath,
+            file_url: null,
+        })
+        .eq("id", report.id);
+
+    if (updateError) {
+        return NextResponse.json(
+            { error: updateError.message },
+            { status: 400 }
+        );
+    }
+
     return NextResponse.json({
         ok: true,
         storage_path: storagePath,

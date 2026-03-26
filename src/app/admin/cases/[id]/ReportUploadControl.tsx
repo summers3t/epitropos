@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 type ReportUploadControlProps = {
@@ -26,6 +27,7 @@ export default function ReportUploadControl({
     published,
     inputClass,
 }: ReportUploadControlProps) {
+    const router = useRouter();
     const [storagePath, setStoragePath] = useState(initialStoragePath);
     const [uploadedFileName, setUploadedFileName] = useState<string | null>(
         getFileNameFromStoragePath(initialStoragePath)
@@ -72,7 +74,8 @@ export default function ReportUploadControl({
             }
 
             setStoragePath(result.storage_path);
-            setNotice("Report uploaded. Save Draft or Publish to persist it.");
+            setNotice("Report uploaded and attached to this draft.");
+            router.refresh();
         } catch (uploadError) {
             setError(
                 uploadError instanceof Error
