@@ -230,59 +230,52 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
             </div>
 
             {caseItem.decision_status && caseItem.decision_status !== "pending" ? (
-                <section className="space-y-5 rounded-3xl border border-emerald-400/20 bg-white/5 p-6 backdrop-blur">
-                    <div className="space-y-3">
-                        <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2 py-1 text-[10px] uppercase tracking-[0.14em] text-emerald-100">
-                                Final conclusion
-                            </span>
-
-                            {formatDecisionStatusLabel(caseItem.decision_status) ? (
-                                <span className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-100">
-                                    {formatDecisionStatusLabel(caseItem.decision_status)}
-                                </span>
-                            ) : null}
-                        </div>
-
-                        <div className="space-y-2">
-                            <h2 className="text-xl font-semibold text-white">
-                                Case Conclusion
-                            </h2>
-
-                            {getDecisionOutcomeText(caseItem.decision_status) ? (
-                                <p className="text-sm font-medium leading-6 text-white/88">
-                                    {getDecisionOutcomeText(caseItem.decision_status)}
-                                </p>
-                            ) : null}
-                        </div>
+                <section className="space-y-4 rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur">
+                    <div className="text-xs uppercase tracking-[0.18em] text-white/40">
+                        Final Decision
                     </div>
 
-                    {caseItem.decision_status === "recommended" && recommendedProperty ? (
-                        <div className="rounded-2xl border border-white/10 bg-black/10 p-4 text-sm text-white/80">
-                            <div className="mb-1 text-xs text-white/50">
-                                Selected property
-                            </div>
-                            <div className="font-medium">
-                                {recommendedProperty.title ||
-                                    recommendedProperty.address ||
-                                    recommendedProperty.id}
-                            </div>
-                        </div>
+                    <div
+                        className={`text-2xl font-semibold ${caseItem.decision_status === "recommended"
+                                ? "text-green-400"
+                                : caseItem.decision_status === "rejected_all"
+                                    ? "text-red-400"
+                                    : "text-amber-400"
+                            }`}
+                    >
+                        {formatDecisionStatusLabel(caseItem.decision_status)}
+                    </div>
+
+                    {getDecisionOutcomeText(caseItem.decision_status) ? (
+                        <p className="text-sm text-white/80 leading-6 max-w-2xl">
+                            {getDecisionOutcomeText(caseItem.decision_status)}
+                        </p>
                     ) : null}
 
                     {caseItem.decision_summary ? (
-                        <div className="whitespace-pre-line rounded-2xl border border-white/10 bg-black/10 p-4 text-sm leading-6 text-white/80">
+                        <p className="text-sm text-white/70 leading-6 max-w-2xl whitespace-pre-line">
                             {caseItem.decision_summary}
-                        </div>
+                        </p>
                     ) : getDecisionSummaryFallback(caseItem.decision_status) ? (
-                        <div className="rounded-2xl border border-white/10 bg-black/10 p-4 text-sm leading-6 text-white/70">
+                        <p className="text-sm text-white/70 leading-6 max-w-2xl">
                             {getDecisionSummaryFallback(caseItem.decision_status)}
+                        </p>
+                    ) : null}
+
+                    {caseItem.decision_status === "recommended" && recommendedProperty ? (
+                        <div className="mt-3 text-sm text-white/75">
+                            <span className="text-white/50">Selected property:</span>{" "}
+                            <span className="font-medium">
+                                {recommendedProperty.title ||
+                                    recommendedProperty.address ||
+                                    recommendedProperty.id}
+                            </span>
                         </div>
                     ) : null}
                 </section>
             ) : null}
 
-            <article className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur">
+            <article className="pt-6 border-t border-white/5">
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div className="space-y-2">
                         <div className="flex flex-wrap items-center gap-2">
@@ -310,7 +303,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                 </div>
 
                 <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                    <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                    <div className="p-2">
                         <dt className="text-xs uppercase tracking-[0.14em] text-white/50">
                             {getScopeLabel()}
                         </dt>
@@ -321,7 +314,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                         </dd>
                     </div>
 
-                    <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                    <div className="p-2">
                         <dt className="text-xs uppercase tracking-[0.14em] text-white/50">
                             {getSelectedServiceLabel()}
                         </dt>
@@ -330,7 +323,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                         </dd>
                     </div>
 
-                    <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                    <div className="p-2">
                         <dt className="text-xs uppercase tracking-[0.14em] text-white/50">
                             {getBudgetLabel()}
                         </dt>
@@ -357,7 +350,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                         </dd>
                     </div>
 
-                    <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/5 p-4 md:col-span-2 xl:col-span-4">
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 md:col-span-2 xl:col-span-4">
                         <dt className="text-xs uppercase tracking-[0.14em] text-emerald-100/80">
                             Next step
                         </dt>
@@ -371,7 +364,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                 </div>
             </article>
 
-            <section className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur">
+            <section className="pt-6 border-t border-white/5">
                 <h2 className="text-lg font-semibold text-white">
                     Case Reports
                 </h2>
@@ -391,7 +384,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                         reports.map((report) => (
                             <article
                                 key={report.id}
-                                className="rounded-2xl border border-white/10 bg-black/10 p-4"
+                                className="p-2"
                             >
                                 <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                                     <div className="space-y-1">
