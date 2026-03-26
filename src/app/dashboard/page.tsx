@@ -397,15 +397,6 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                                 <dl className="mt-4 grid gap-3">
                                     <div>
                                         <dt className="text-xs uppercase tracking-[0.14em] text-white/45">
-                                            Screening / case label
-                                        </dt>
-                                        <dd className="mt-1 text-sm text-white/80">
-                                            {latestScreening.name || "—"}
-                                        </dd>
-                                    </div>
-
-                                    <div>
-                                        <dt className="text-xs uppercase tracking-[0.14em] text-white/45">
                                             Plan
                                         </dt>
                                         <dd className="mt-1 text-sm text-white/80">

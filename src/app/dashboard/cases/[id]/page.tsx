@@ -109,10 +109,6 @@ function getScopeLabel() {
     return "Properties in scope";
 }
 
-function getEngagementLabel() {
-    return "Engagement";
-}
-
 function formatClientDateTime(value: string | null | undefined) {
     if (!value) return "—";
 
@@ -314,15 +310,6 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                 </div>
 
                 <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                    <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
-                        <dt className="text-xs uppercase tracking-[0.14em] text-white/50">
-                            {getEngagementLabel()}
-                        </dt>
-                        <dd className="mt-1 text-sm leading-6 text-white/80">
-                            {formatClientCaseTitle(caseItem.title)}
-                        </dd>
-                    </div>
-
                     <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
                         <dt className="text-xs uppercase tracking-[0.14em] text-white/50">
                             {getScopeLabel()}
