@@ -230,62 +230,59 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
             </div>
 
             {caseItem.decision_status && caseItem.decision_status !== "pending" ? (
-                <section className="space-y-4 rounded-3xl border border-white/10 bg-gradient-to-b from-white/10 to-white/0 p-6">
-                    <div className="flex items-center gap-3">
-                        <div
-                            className={`h-6 w-[3px] rounded ${caseItem.decision_status === "recommended"
-                                ? "bg-green-400"
-                                : caseItem.decision_status === "rejected_all"
-                                    ? "bg-red-400"
-                                    : "bg-amber-400"
-                                }`}
-                        />
-                        <div className="text-xs uppercase tracking-[0.18em] text-white/40">
-                            Final Decision
+                <section className="space-y-5 rounded-3xl border border-emerald-400/20 bg-white/5 p-6 backdrop-blur">
+                    <div className="space-y-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2 py-1 text-[10px] uppercase tracking-[0.14em] text-emerald-100">
+                                Final conclusion
+                            </span>
+
+                            {formatDecisionStatusLabel(caseItem.decision_status) ? (
+                                <span className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-100">
+                                    {formatDecisionStatusLabel(caseItem.decision_status)}
+                                </span>
+                            ) : null}
+                        </div>
+
+                        <div className="space-y-2">
+                            <h2 className="text-xl font-semibold text-white">
+                                Case Conclusion
+                            </h2>
+
+                            {getDecisionOutcomeText(caseItem.decision_status) ? (
+                                <p className="text-sm font-medium leading-6 text-white/88">
+                                    {getDecisionOutcomeText(caseItem.decision_status)}
+                                </p>
+                            ) : null}
                         </div>
                     </div>
 
-                    <div
-                        className={`text-2xl font-semibold ${caseItem.decision_status === "recommended"
-                            ? "text-green-400"
-                            : caseItem.decision_status === "rejected_all"
-                                ? "text-red-400"
-                                : "text-amber-400"
-                            }`}
-                    >
-                        {formatDecisionStatusLabel(caseItem.decision_status)}
-                    </div>
-
-                    {getDecisionOutcomeText(caseItem.decision_status) ? (
-                        <p className="text-sm text-white/80 leading-6 max-w-2xl">
-                            {getDecisionOutcomeText(caseItem.decision_status)}
-                        </p>
-                    ) : null}
-
-                    {caseItem.decision_summary ? (
-                        <p className="text-sm text-white/70 leading-6 max-w-2xl whitespace-pre-line">
-                            {caseItem.decision_summary}
-                        </p>
-                    ) : getDecisionSummaryFallback(caseItem.decision_status) ? (
-                        <p className="text-sm text-white/70 leading-6 max-w-2xl">
-                            {getDecisionSummaryFallback(caseItem.decision_status)}
-                        </p>
-                    ) : null}
-
                     {caseItem.decision_status === "recommended" && recommendedProperty ? (
-                        <div className="mt-3 text-sm text-white/75">
-                            <span className="text-white/50">Selected property:</span>{" "}
-                            <span className="font-medium">
+                        <div className="rounded-2xl border border-white/10 bg-black/10 p-4 text-sm text-white/80">
+                            <div className="mb-1 text-xs text-white/50">
+                                Selected property
+                            </div>
+                            <div className="font-medium">
                                 {recommendedProperty.title ||
                                     recommendedProperty.address ||
                                     recommendedProperty.id}
-                            </span>
+                            </div>
+                        </div>
+                    ) : null}
+
+                    {caseItem.decision_summary ? (
+                        <div className="whitespace-pre-line rounded-2xl border border-white/10 bg-black/10 p-4 text-sm leading-6 text-white/80">
+                            {caseItem.decision_summary}
+                        </div>
+                    ) : getDecisionSummaryFallback(caseItem.decision_status) ? (
+                        <div className="rounded-2xl border border-white/10 bg-black/10 p-4 text-sm leading-6 text-white/70">
+                            {getDecisionSummaryFallback(caseItem.decision_status)}
                         </div>
                     ) : null}
                 </section>
             ) : null}
 
-            <article className="mt-6 space-y-6">
+            <article className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur">
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div className="space-y-2">
                         <div className="flex flex-wrap items-center gap-2">
@@ -312,9 +309,11 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                     </div>
                 </div>
 
-                <div className="mt-6 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-                    <div className="p-3 bg-white/[0.02] rounded-xl">
-                        <dt className="text-xs uppercase tracking-[0.18em] text-white/40">
+                <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+
+
+                    <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                        <dt className="text-xs uppercase tracking-[0.14em] text-white/50">
                             {getScopeLabel()}
                         </dt>
                         <dd className="mt-1 text-sm leading-6 text-white/80">
@@ -324,8 +323,8 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                         </dd>
                     </div>
 
-                    <div className="p-3 bg-white/[0.02] rounded-xl">
-                        <dt className="text-xs uppercase tracking-[0.18em] text-white/40">
+                    <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                        <dt className="text-xs uppercase tracking-[0.14em] text-white/50">
                             {getSelectedServiceLabel()}
                         </dt>
                         <dd className="mt-1 text-sm leading-6 text-white/80">
@@ -333,8 +332,8 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                         </dd>
                     </div>
 
-                    <div className="p-3 bg-white/[0.02] rounded-xl">
-                        <dt className="text-xs uppercase tracking-[0.18em] text-white/40">
+                    <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                        <dt className="text-xs uppercase tracking-[0.14em] text-white/50">
                             {getBudgetLabel()}
                         </dt>
                         <dd className="mt-1 text-sm leading-6 text-white/80">
@@ -342,8 +341,8 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                         </dd>
                     </div>
 
-                    <div className="p-2 md:col-span-2">
-                        <dt className="text-xs uppercase tracking-[0.18em] text-white/40">
+                    <div className="rounded-2xl border border-white/10 bg-black/10 p-4 md:col-span-2">
+                        <dt className="text-xs uppercase tracking-[0.14em] text-white/50">
                             {getScreeningLabelTitle()}
                         </dt>
                         <dd className="mt-1 text-sm leading-6 text-white/80">
@@ -351,8 +350,8 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                         </dd>
                     </div>
 
-                    <div className="p-2 md:col-span-2">
-                        <dt className="text-xs uppercase tracking-[0.18em] text-white/40">
+                    <div className="rounded-2xl border border-white/10 bg-black/10 p-4 md:col-span-2">
+                        <dt className="text-xs uppercase tracking-[0.14em] text-white/50">
                             {getReviewFocusLabel()}
                         </dt>
                         <dd className="mt-1 text-sm leading-6 text-white/80">
@@ -360,8 +359,8 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                         </dd>
                     </div>
 
-                    <div className="p-4 bg-white/[0.03] rounded-xl md:col-span-2 xl:col-span-4">
-                        <dt className="text-xs uppercase tracking-[0.18em] text-white/40">
+                    <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/5 p-4 md:col-span-2 xl:col-span-4">
+                        <dt className="text-xs uppercase tracking-[0.14em] text-emerald-100/80">
                             Next step
                         </dt>
                         <dd className="mt-1 text-sm leading-6 text-white/80">
@@ -374,7 +373,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                 </div>
             </article>
 
-            <section className="pt-6 border-t border-white/5">
+            <section className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur">
                 <h2 className="text-lg font-semibold text-white">
                     Case Reports
                 </h2>
@@ -394,7 +393,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                         reports.map((report) => (
                             <article
                                 key={report.id}
-                                className="p-4 rounded-xl bg-white/[0.02]"
+                                className="rounded-2xl border border-white/10 bg-black/10 p-4"
                             >
                                 <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                                     <div className="space-y-1">
@@ -424,7 +423,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                             </article>
                         ))
                     ) : (
-                        <div className="p-2 text-sm leading-6 text-white/65">
+                        <div className="rounded-2xl border border-white/10 bg-black/10 p-4 text-sm leading-6 text-white/65">
                             No published report is available yet. This usually means the analysis is still in progress or the final report has not been delivered to the client portal yet.
                         </div>
                     )}
