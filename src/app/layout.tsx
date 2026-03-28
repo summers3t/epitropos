@@ -82,7 +82,7 @@ export default async function RootLayout({
           initialAdminCounts={adminCounts}
         />
 
-        <main className="mx-auto w-full max-w-[1440px] flex-1 px-6 py-12">
+        <main className="mx-auto w-full max-w-[1440px] flex-1 px-6 pb-12 pt-32">
           {children}
         </main>
 

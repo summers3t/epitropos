@@ -170,7 +170,7 @@ export default function Header({
   return (
     <header
       className={[
-        "sticky top-0 z-50 border-b border-white/10 transition-all duration-300",
+        "fixed inset-x-0 top-0 z-50 border-b border-white/10 transition-all duration-300",
         scrolled
           ? "bg-[#070b12]/72 shadow-[0_10px_40px_rgba(0,0,0,0.20)] backdrop-blur-md"
           : "bg-[#070b12]/42 backdrop-blur-md",
@@ -180,10 +180,17 @@ export default function Header({
         <div className="flex min-h-[72px] items-center justify-between gap-6">
           <Link
             href="/"
-            className="shrink-0 text-[15px] font-semibold uppercase tracking-[0.12em] text-white"
-            style={{ fontFamily: "var(--font-montserrat)" }}
+            className="flex shrink-0 items-center"
+            aria-label="Epitropos home"
           >
-            EPITROPOS
+            <Image
+              src="/logo.png"
+              alt="Epitropos"
+              width={140}
+              height={42}
+              priority
+              className="h-auto w-[118px] object-contain md:w-[140px]"
+            />
           </Link>
 
           <div className="flex min-w-0 items-center gap-6">
