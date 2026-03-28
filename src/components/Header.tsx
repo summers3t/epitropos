@@ -177,20 +177,31 @@ export default function Header({
       ].join(" ")}
     >
       <div className="mx-auto max-w-[1440px] px-6">
-        <div className="flex min-h-[72px] items-center justify-between gap-6">
+        <div className="flex min-h-[60px] items-center justify-between gap-6">
           <Link
             href="/"
             className="flex shrink-0 items-center"
             aria-label="Epitropos home"
           >
-            <Image
-              src="/logo.png"
-              alt="Epitropos"
-              width={140}
-              height={42}
-              priority
-              className="h-auto w-[118px] object-contain md:w-[140px]"
-            />
+            <div className="flex items-center gap-3">
+              <div className="relative overflow-hidden rounded-md">
+                <Image
+                  src="/logo.png"
+                  alt="Epitropos"
+                  width={120}
+                  height={40}
+                  priority
+                  className="h-[54px] w-auto object-contain opacity-95 [mask-image:linear-gradient(to_right,transparent,black_8%,black_92%,transparent)]"
+                />
+              </div>
+
+              <span
+                className="text-[13px] font-semibold uppercase tracking-[0.16em] text-white/70"
+                style={{ fontFamily: "var(--font-montserrat)" }}
+              >
+                EPITROPOS
+              </span>
+            </div>
           </Link>
 
           <div className="flex min-w-0 items-center gap-6">
