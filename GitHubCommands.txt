@@ -4,6 +4,7 @@ git add .
 git commit -m "Initial Push 57"
 git push
 
+git push -u origin gemini
 
 At start of each chat:
 -------------------------------------------
@@ -27,10 +28,31 @@ git push
 
 (That push triggers Vercel deploy.)
 
+-------------------------------------------
+GEMINI
+# Update local info from GitHub
+git fetch origin
 
-Never:
-git commit directly on main
+# 1. Sync main with dev
+git checkout main
+git reset --hard origin/dev
+git push origin main --force
 
-Always:
-work in dev
-merge into main
+git checkout -b gemini
+git push -u origin gemini
+
+3. Summary of your "Comparison" Workflow
+While on gemini (Working):
+
+npm run dev (See the Gemini version at localhost:3000)
+git add .
+git commit -m "Refining the Verdict UI"
+git push
+
+Switching to see GPT's dev branch:
+git checkout dev
+npm run dev (Refresh localhost:3000 to see the GPT version)
+
+Coming back to me:
+git checkout gemini
+npm run dev (Back to our progress)
