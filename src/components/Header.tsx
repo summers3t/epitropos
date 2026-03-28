@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -29,11 +30,7 @@ type HeaderProps = {
 function getInitials(displayName: string | null | undefined) {
   if (!displayName) return "?";
 
-  const parts = displayName
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2);
+  const parts = displayName.trim().split(/\s+/).filter(Boolean).slice(0, 2);
 
   if (parts.length === 0) return "?";
 
@@ -59,7 +56,7 @@ export default function Header({
 }: HeaderProps) {
   const [scrolled, setScrolled] = useState(false);
   const [adminCounts, setAdminCounts] = useState<AdminCounts>(
-    initialAdminCounts ?? EMPTY_ADMIN_COUNTS
+    initialAdminCounts ?? EMPTY_ADMIN_COUNTS,
   );
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -173,61 +170,62 @@ export default function Header({
   return (
     <header
       className={[
-        "sticky top-0 z-50 transition-all duration-300",
-        "border-b border-white/10",
-        scrolled ? "bg-navy/85 shadow-glass backdrop-blur" : "bg-navy/35 backdrop-blur",
+        "sticky top-0 z-50 border-b border-white/10 transition-all duration-300",
+        scrolled
+          ? "bg-[#070b12]/72 shadow-[0_10px_40px_rgba(0,0,0,0.20)] backdrop-blur-md"
+          : "bg-[#070b12]/42 backdrop-blur-md",
       ].join(" ")}
     >
-      <div className="mx-auto max-w-6xl px-6 py-4">
-        <div className="flex items-center justify-between gap-6">
+      <div className="mx-auto max-w-[1440px] px-6">
+        <div className="flex min-h-[72px] items-center justify-between gap-6">
           <Link
             href="/"
-            className="shrink-0 text-sm font-semibold tracking-[0.18em] uppercase"
+            className="shrink-0 text-[15px] font-semibold uppercase tracking-[0.12em] text-white"
             style={{ fontFamily: "var(--font-montserrat)" }}
           >
             EPITROPOS
           </Link>
 
-          <div className="flex min-w-0 items-center gap-4">
-            <nav className="flex items-center gap-4 text-sm opacity-90">
-              <Link href="/methodology" className="hover:opacity-70">
+          <div className="flex min-w-0 items-center gap-6">
+            <nav className="hidden items-center gap-8 text-[12px] uppercase tracking-[0.18em] text-white/62 md:flex">
+              <Link href="/methodology" className="transition hover:text-white">
                 Methodology
               </Link>
-              <Link href="/services" className="hover:opacity-70">
+              <Link href="/services" className="transition hover:text-white">
                 Services
               </Link>
-              <Link href="/cases" className="hover:opacity-70">
-                Cases
-              </Link>
-              <Link href="/process" className="hover:opacity-70">
+              <Link href="/process" className="transition hover:text-white">
                 Process
               </Link>
-              <Link href="/pricing" className="hover:opacity-70">
+              <Link href="/cases" className="transition hover:text-white">
+                Cases
+              </Link>
+              <Link href="/pricing" className="transition hover:text-white">
                 Pricing
               </Link>
-              <Link href="/faq" className="hover:opacity-70">
+              <Link href="/faq" className="transition hover:text-white">
                 FAQ
-              </Link>
-              <Link href="/screening" className="hover:opacity-70">
-                Screening
               </Link>
             </nav>
 
-            <div className="ml-4 flex shrink-0 items-center gap-3">
+            <div className="ml-2 flex shrink-0 items-center gap-3">
               {isLoggedIn ? (
                 <>
                   <Link
                     href="/dashboard"
-                    className="rounded-xl border border-white/15 px-3 py-1.5 text-xs hover:bg-white/5 transition"
+                    className="hidden text-[12px] uppercase tracking-[0.18em] text-white/62 transition hover:text-white md:inline-flex"
                   >
                     Dashboard
                   </Link>
 
-                  <div className="flex max-w-fit items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-2 py-1.5">
+                  <div className="flex max-w-fit items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-2.5 py-1.5">
                     {avatarUrl ? (
-                      <img
+                      <Image
                         src={avatarUrl}
                         alt={displayName || "User avatar"}
+                        width={32}
+                        height={32}
+                        unoptimized
                         className="h-8 w-8 rounded-full border border-white/10 object-cover"
                         referrerPolicy="no-referrer"
                       />
@@ -248,18 +246,27 @@ export default function Header({
                   </div>
 
                   <form action="/auth/logout" method="post">
-                    <button className="rounded-xl border border-white/15 px-3 py-1.5 text-xs hover:bg-white/5 transition">
+                    <button className="rounded-md border border-white/15 px-3 py-1.5 text-[11px] uppercase tracking-[0.14em] text-white/70 transition hover:bg-white/5 hover:text-white">
                       Logout
                     </button>
                   </form>
                 </>
               ) : (
-                <Link
-                  href="/auth/login"
-                  className="rounded-xl border border-white/15 px-3 py-1.5 text-xs hover:bg-white/5 transition"
-                >
-                  Sign in
-                </Link>
+                <>
+                  <Link
+                    href="/screening"
+                    className="inline-flex items-center rounded-md bg-stone px-5 py-3 text-[12px] font-medium uppercase tracking-[0.14em] text-navy transition hover:opacity-95"
+                  >
+                    Begin Screening
+                  </Link>
+
+                  <Link
+                    href="/auth/login"
+                    className="hidden text-[12px] uppercase tracking-[0.18em] text-white/62 transition hover:text-white md:inline-flex"
+                  >
+                    Sign in
+                  </Link>
+                </>
               )}
             </div>
           </div>

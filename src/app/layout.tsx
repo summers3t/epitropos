@@ -73,7 +73,7 @@ export default async function RootLayout({
 
   return (
     <html lang="en" className={`${inter.variable} ${montserrat.variable}`}>
-      <body className="min-h-screen bg-navy text-stone">
+      <body className="flex min-h-screen flex-col bg-navy text-stone">
         <Header
           isLoggedIn={!!data.user}
           isAdmin={isAdmin}
@@ -82,13 +82,14 @@ export default async function RootLayout({
           initialAdminCounts={adminCounts}
         />
 
-        <main className="mx-auto max-w-6xl px-6 py-12">
+        <main className="mx-auto w-full max-w-[1440px] flex-1 px-6 py-12">
           {children}
         </main>
 
         <footer className="border-t border-white/10 py-10">
-          <div className="mx-auto max-w-6xl px-6 text-xs opacity-60">
-            © {new Date().getFullYear()} Epitropos. Independent advisory — no brokerage, no commissions.
+          <div className="mx-auto w-full max-w-[1440px] px-6 text-xs opacity-60">
+            © {new Date().getFullYear()} Epitropos. Independent advisory — no
+            brokerage, no commissions.
           </div>
         </footer>
       </body>
