@@ -7,10 +7,20 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        navy: "#0F1C2E",
-        charcoal: "#2B2F33",
-        stone: "#D6CFC4",
-        gold: "#A68B4A",
+        // Boutique Advisory Palette
+        boutique: {
+          navy: "#0F172A", // Deep Authority (Primary)
+          sand: "#FDFCFB", // Background/Paper
+          gold: "#B45309", // Strategic Accent
+          emerald: "#064E3B", // "BUY" (Stronger than standard emerald)
+          rose: "#881337", // "DO NOT BUY" (Professional, not alarming)
+          slate: "#334155", // Analytical Neutral
+        },
+      },
+      fontFamily: {
+        // We will keep Montserrat for headers but add a Serif option for 'Legal' feel
+        serif: ["var(--font-playfair)", "serif"],
+        sans: ["var(--font-montserrat)", "sans-serif"],
       },
       boxShadow: {
         glass: "0 12px 30px rgba(0,0,0,0.18)",
