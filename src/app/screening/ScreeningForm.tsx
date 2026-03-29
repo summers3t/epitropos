@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import type { ScreeningSubmitState } from "./page";
 
 const DRAFT_KEY = "epitropos:screeningDraft:v2";
 
@@ -9,7 +10,10 @@ type Props = {
   isLoggedIn: boolean;
   fullName: string;
   email: string;
-  action: (formData: FormData) => void | Promise<void>;
+  action: (
+    prevState: ScreeningSubmitState,
+    formData: FormData,
+  ) => Promise<ScreeningSubmitState>;
 };
 
 type Draft = {
@@ -108,7 +112,7 @@ function isUrlValid(value: string) {
 }
 
 function parsePositiveNumber(value: string) {
-  const normalized = value.replace(/,/g, "").trim();
+  const normalized = value.replace(/[^\d]/g, "").trim();
   const number = Number(normalized);
 
   if (!Number.isFinite(number) || number <= 0) {
@@ -131,6 +135,10 @@ function formatBudgetSummary(currency: string, min: string, max: string) {
   return `${currency} ${formatter.format(minValue)} - ${formatter.format(maxValue)}`;
 }
 
+const initialSubmitState: ScreeningSubmitState = {
+  error: null,
+};
+
 export default function ScreeningForm({
   isLoggedIn,
   fullName,
@@ -141,6 +149,10 @@ export default function ScreeningForm({
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [stepIndex, setStepIndex] = useState(0);
   const [hasHydratedDraft, setHasHydratedDraft] = useState(false);
+  const [submitState, formAction, isPending] = useActionState(
+    action,
+    initialSubmitState,
+  );
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -364,7 +376,26 @@ export default function ScreeningForm({
         </div>
       ) : null}
 
-      <form action={action} className="space-y-8">
+      {submitState.error ? (
+        <div className="mb-8 border border-red-400/25 bg-red-500/8 px-5 py-4 text-sm text-red-100/90">
+          {submitState.error}
+        </div>
+      ) : null}
+
+      <form
+        action={formAction}
+        className="space-y-8"
+        onKeyDown={(event) => {
+          if (
+            event.key === "Enter" &&
+            event.target instanceof HTMLElement &&
+            event.target.tagName !== "TEXTAREA" &&
+            stepIndex < steps.length - 1
+          ) {
+            event.preventDefault();
+          }
+        }}
+      >
         {stepIndex === 0 ? (
           <section className="space-y-8">
             <div>
@@ -795,10 +826,10 @@ export default function ScreeningForm({
             ) : isLoggedIn ? (
               <button
                 type="submit"
-                disabled={!canSubmit}
+                disabled={!canSubmit || isPending}
                 className="inline-flex items-center rounded-md border border-gold bg-stone px-7 py-4 text-[12px] font-medium uppercase tracking-[0.16em] text-navy transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                Submit Screening →
+                {isPending ? "Submitting..." : "Submit Screening →"}
               </button>
             ) : (
               <button

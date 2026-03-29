@@ -26,6 +26,10 @@ const FINANCING_VALUES = ["cash", "financing", "mixed"] as const;
 const PROPERTY_IDENTIFIED_VALUES = ["yes", "no"] as const;
 const MAX_BUDGET_VALUE = 10000000;
 
+export type ScreeningSubmitState = {
+  error: string | null;
+};
+
 function isOneOf<T extends readonly string[]>(
   value: string,
   allowed: T,
@@ -34,7 +38,7 @@ function isOneOf<T extends readonly string[]>(
 }
 
 function parsePositiveNumber(raw: string) {
-  const normalized = raw.replace(/[\s,]+/g, "").trim();
+  const normalized = raw.replace(/[^\d]/g, "").trim();
   const value = Number(normalized);
 
   if (!Number.isFinite(value) || value <= 0 || value > MAX_BUDGET_VALUE) {
@@ -58,7 +62,10 @@ function formatBudgetRange(
   return `${currency} ${formatter.format(min)} - ${formatter.format(max)}`;
 }
 
-async function submitScreening(formData: FormData) {
+async function submitScreening(
+  _prevState: ScreeningSubmitState,
+  formData: FormData,
+): Promise<ScreeningSubmitState> {
   "use server";
 
   const supabase = await createClient();
@@ -69,7 +76,7 @@ async function submitScreening(formData: FormData) {
   }
 
   if (!auth.user.email) {
-    throw new Error("Authenticated email is required.");
+    return { error: "Authenticated email is required." };
   }
 
   const case_label = String(formData.get("case_label") ?? "").trim();
@@ -94,65 +101,65 @@ async function submitScreening(formData: FormData) {
   const listing_url = String(formData.get("listing_url") ?? "").trim() || null;
 
   if (case_label.length < 3) {
-    throw new Error("Screening / case name is required.");
+    return { error: "Screening / case name is required." };
   }
 
   if (!isOneOf(plan_interest, PLAN_INTEREST_VALUES)) {
-    throw new Error("Plan interest is invalid.");
+    return { error: "Plan interest is invalid." };
   }
 
   if (!isOneOf(goal, GOAL_VALUES)) {
-    throw new Error("Investment objective is invalid.");
+    return { error: "Investment objective is invalid." };
   }
 
   if (!isOneOf(risk_tolerance, RISK_TOLERANCE_VALUES)) {
-    throw new Error("Risk tolerance is invalid.");
+    return { error: "Risk tolerance is invalid." };
   }
 
   if (preferred_markets.length < 2) {
-    throw new Error("Preferred markets are required.");
+    return { error: "Preferred markets are required." };
   }
 
   if (!isOneOf(currency, CURRENCY_VALUES)) {
-    throw new Error("Currency is invalid.");
+    return { error: "Currency is invalid." };
   }
 
   const budget_min = parsePositiveNumber(budget_min_raw);
   const budget_max = parsePositiveNumber(budget_max_raw);
 
   if (budget_min === null || budget_max === null || budget_max < budget_min) {
-    throw new Error("Budget range is invalid or outside the supported range.");
+    return { error: "Budget range is invalid or outside the supported range." };
   }
 
   if (!isOneOf(decision_timeline, TIMELINE_VALUES)) {
-    throw new Error("Decision timeline is invalid.");
+    return { error: "Decision timeline is invalid." };
   }
 
   if (!isOneOf(financing_type, FINANCING_VALUES)) {
-    throw new Error("Financing type is invalid.");
+    return { error: "Financing type is invalid." };
   }
 
   if (!isOneOf(property_identified, PROPERTY_IDENTIFIED_VALUES)) {
-    throw new Error("Property identified value is invalid.");
+    return { error: "Property identified value is invalid." };
   }
 
   const hasPropertyIdentified = property_identified === "yes";
 
   if (hasPropertyIdentified) {
     if (!listing_url) {
-      throw new Error(
-        "Listing URL is required when a property is already identified.",
-      );
+      return {
+        error: "Listing URL is required when a property is already identified.",
+      };
     }
 
     try {
       const parsed = new URL(listing_url);
 
       if (!["http:", "https:"].includes(parsed.protocol)) {
-        throw new Error("Invalid URL protocol.");
+        return { error: "Listing URL is invalid." };
       }
     } catch {
-      throw new Error("Listing URL is invalid.");
+      return { error: "Listing URL is invalid." };
     }
   }
 
@@ -166,11 +173,11 @@ async function submitScreening(formData: FormData) {
     .maybeSingle();
 
   if (existingRequestError) {
-    throw new Error(existingRequestError.message);
+    return { error: existingRequestError.message };
   }
 
   if (existingRequest) {
-    throw new Error("You already have a screening with this name.");
+    return { error: "You already have a screening with this name." };
   }
 
   const { error } = await supabase.from("screening_requests").insert({
@@ -195,7 +202,7 @@ async function submitScreening(formData: FormData) {
   });
 
   if (error) {
-    throw new Error(error.message);
+    return { error: error.message };
   }
 
   redirect("/dashboard/screening?screening_created=1");
