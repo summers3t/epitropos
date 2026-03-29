@@ -138,10 +138,22 @@ export default function ScreeningForm({
   action,
 }: Props) {
   const router = useRouter();
-  const [draft, setDraft] = useState<Draft>(loadInitialDraft);
+  const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [stepIndex, setStepIndex] = useState(0);
+  const [hasHydratedDraft, setHasHydratedDraft] = useState(false);
 
   useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDraft(loadInitialDraft());
+      setHasHydratedDraft(true);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!hasHydratedDraft) return;
+
     try {
       localStorage.setItem(
         DRAFT_KEY,
@@ -150,7 +162,7 @@ export default function ScreeningForm({
     } catch {
       // ignore storage failures
     }
-  }, [draft]);
+  }, [draft, hasHydratedDraft]);
 
   const loginUrl = useMemo(() => "/auth/login?redirect=/screening", []);
 

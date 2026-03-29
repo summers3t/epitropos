@@ -24,6 +24,7 @@ const TIMELINE_VALUES = [
 ] as const;
 const FINANCING_VALUES = ["cash", "financing", "mixed"] as const;
 const PROPERTY_IDENTIFIED_VALUES = ["yes", "no"] as const;
+const MAX_BUDGET_VALUE = 10000000;
 
 function isOneOf<T extends readonly string[]>(
   value: string,
@@ -33,10 +34,10 @@ function isOneOf<T extends readonly string[]>(
 }
 
 function parsePositiveNumber(raw: string) {
-  const normalized = raw.replace(/,/g, "").trim();
+  const normalized = raw.replace(/[\s,]+/g, "").trim();
   const value = Number(normalized);
 
-  if (!Number.isFinite(value) || value <= 0) {
+  if (!Number.isFinite(value) || value <= 0 || value > MAX_BUDGET_VALUE) {
     return null;
   }
 
@@ -120,7 +121,7 @@ async function submitScreening(formData: FormData) {
   const budget_max = parsePositiveNumber(budget_max_raw);
 
   if (budget_min === null || budget_max === null || budget_max < budget_min) {
-    throw new Error("Budget range is invalid.");
+    throw new Error("Budget range is invalid or outside the supported range.");
   }
 
   if (!isOneOf(decision_timeline, TIMELINE_VALUES)) {
@@ -157,6 +158,21 @@ async function submitScreening(formData: FormData) {
 
   const budget_range = formatBudgetRange(currency, budget_min, budget_max);
 
+  const { data: existingRequest, error: existingRequestError } = await supabase
+    .from("screening_requests")
+    .select("id")
+    .eq("user_id", auth.user.id)
+    .eq("name", case_label)
+    .maybeSingle();
+
+  if (existingRequestError) {
+    throw new Error(existingRequestError.message);
+  }
+
+  if (existingRequest) {
+    throw new Error("You already have a screening with this name.");
+  }
+
   const { error } = await supabase.from("screening_requests").insert({
     user_id: auth.user.id,
     name: case_label,
@@ -182,7 +198,7 @@ async function submitScreening(formData: FormData) {
     throw new Error(error.message);
   }
 
-  redirect("/dashboard?screening_created=1");
+  redirect("/dashboard/screening?screening_created=1");
 }
 
 export default async function ScreeningPage() {
