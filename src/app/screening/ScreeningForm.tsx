@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 const DRAFT_KEY = "epitropos:screeningDraft:v2";
@@ -47,6 +47,45 @@ const emptyDraft: Draft = {
   listing_url: "",
   savedAt: Date.now(),
 };
+
+function loadInitialDraft(): Draft {
+  if (typeof window === "undefined") {
+    return emptyDraft;
+  }
+
+  try {
+    const raw = window.localStorage.getItem(DRAFT_KEY);
+    if (!raw) return emptyDraft;
+
+    const parsed = JSON.parse(raw) as Partial<Draft>;
+    const ageMs = Date.now() - Number(parsed.savedAt ?? 0);
+
+    if (ageMs > 24 * 60 * 60 * 1000) {
+      window.localStorage.removeItem(DRAFT_KEY);
+      return emptyDraft;
+    }
+
+    return {
+      case_label: parsed.case_label ?? "",
+      phone: parsed.phone ?? "",
+      plan_interest: parsed.plan_interest ?? "",
+      goal: parsed.goal ?? "",
+      risk_tolerance: parsed.risk_tolerance ?? "",
+      preferred_markets: parsed.preferred_markets ?? "",
+      notes: parsed.notes ?? "",
+      currency: parsed.currency ?? "EUR",
+      budget_min: parsed.budget_min ?? "",
+      budget_max: parsed.budget_max ?? "",
+      decision_timeline: parsed.decision_timeline ?? "",
+      financing_type: parsed.financing_type ?? "",
+      property_identified: parsed.property_identified ?? "",
+      listing_url: parsed.listing_url ?? "",
+      savedAt: Number(parsed.savedAt ?? Date.now()),
+    };
+  } catch {
+    return emptyDraft;
+  }
+}
 
 const steps = ["Contact", "Objective", "Budget & Timeline", "Submit"] as const;
 
@@ -99,43 +138,8 @@ export default function ScreeningForm({
   action,
 }: Props) {
   const router = useRouter();
-  const [draft, setDraft] = useState<Draft>(emptyDraft);
+  const [draft, setDraft] = useState<Draft>(loadInitialDraft);
   const [stepIndex, setStepIndex] = useState(0);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(DRAFT_KEY);
-      if (!raw) return;
-
-      const parsed = JSON.parse(raw) as Partial<Draft>;
-      const ageMs = Date.now() - Number(parsed.savedAt ?? 0);
-
-      if (ageMs > 24 * 60 * 60 * 1000) {
-        localStorage.removeItem(DRAFT_KEY);
-        return;
-      }
-
-      setDraft({
-        case_label: parsed.case_label ?? "",
-        phone: parsed.phone ?? "",
-        plan_interest: parsed.plan_interest ?? "",
-        goal: parsed.goal ?? "",
-        risk_tolerance: parsed.risk_tolerance ?? "",
-        preferred_markets: parsed.preferred_markets ?? "",
-        notes: parsed.notes ?? "",
-        currency: parsed.currency ?? "EUR",
-        budget_min: parsed.budget_min ?? "",
-        budget_max: parsed.budget_max ?? "",
-        decision_timeline: parsed.decision_timeline ?? "",
-        financing_type: parsed.financing_type ?? "",
-        property_identified: parsed.property_identified ?? "",
-        listing_url: parsed.listing_url ?? "",
-        savedAt: Number(parsed.savedAt ?? Date.now()),
-      });
-    } catch {
-      // ignore invalid local draft
-    }
-  }, []);
 
   useEffect(() => {
     try {
@@ -158,21 +162,17 @@ export default function ScreeningForm({
   const unlockPlanInterest = hasValidCaseLabel && hasValidPhone;
 
   const contactStepValid =
-    hasValidCaseLabel &&
-    hasValidPhone &&
-    hasPlanInterest;
+    hasValidCaseLabel && hasValidPhone && hasPlanInterest;
 
   const hasGoal = draft.goal.trim().length > 0;
   const unlockRiskTolerance = hasGoal;
   const hasRiskTolerance = draft.risk_tolerance.trim().length > 0;
   const unlockPreferredMarkets = hasGoal && hasRiskTolerance;
   const hasPreferredMarkets = draft.preferred_markets.trim().length >= 2;
-  const unlockAdditionalContext = hasGoal && hasRiskTolerance && hasPreferredMarkets;
+  const unlockAdditionalContext =
+    hasGoal && hasRiskTolerance && hasPreferredMarkets;
 
-  const objectiveStepValid =
-    hasGoal &&
-    hasRiskTolerance &&
-    hasPreferredMarkets;
+  const objectiveStepValid = hasGoal && hasRiskTolerance && hasPreferredMarkets;
 
   const hasCurrency = draft.currency.trim().length > 0;
   const unlockBudgetMin = hasCurrency;
@@ -180,7 +180,10 @@ export default function ScreeningForm({
   const hasBudgetMin = budgetMinValue !== null;
   const unlockBudgetMax = hasCurrency && hasBudgetMin;
   const budgetMaxValue = parsePositiveNumber(draft.budget_max);
-  const hasBudgetMax = budgetMaxValue !== null && budgetMinValue !== null && budgetMaxValue >= budgetMinValue;
+  const hasBudgetMax =
+    budgetMaxValue !== null &&
+    budgetMinValue !== null &&
+    budgetMaxValue >= budgetMinValue;
   const unlockTimeline = hasCurrency && hasBudgetMin && hasBudgetMax;
   const hasTimeline = draft.decision_timeline.trim().length > 0;
   const unlockFinancingType = hasTimeline;
@@ -205,10 +208,7 @@ export default function ScreeningForm({
     (stepIndex === 1 && objectiveStepValid) ||
     (stepIndex === 2 && budgetStepValid);
 
-  const canSubmit =
-    contactStepValid &&
-    objectiveStepValid &&
-    budgetStepValid;
+  const canSubmit = contactStepValid && objectiveStepValid && budgetStepValid;
 
   const goNext = () => {
     if (!canAdvance) return;
@@ -221,8 +221,14 @@ export default function ScreeningForm({
 
   const summaryRows = [
     { label: "Screening / case name", value: draft.case_label || "—" },
-    { label: "Full name", value: isLoggedIn ? fullName || "—" : "Will populate after sign-in" },
-    { label: "Email", value: isLoggedIn ? email || "—" : "Will populate after sign-in" },
+    {
+      label: "Full name",
+      value: isLoggedIn ? fullName || "—" : "Will populate after sign-in",
+    },
+    {
+      label: "Email",
+      value: isLoggedIn ? email || "—" : "Will populate after sign-in",
+    },
     { label: "Phone", value: draft.phone || "—" },
     {
       label: "Plan interest",
@@ -260,7 +266,14 @@ export default function ScreeningForm({
               : "—",
     },
     { label: "Preferred markets", value: draft.preferred_markets || "—" },
-    { label: "Budget", value: formatBudgetSummary(draft.currency, draft.budget_min, draft.budget_max) },
+    {
+      label: "Budget",
+      value: formatBudgetSummary(
+        draft.currency,
+        draft.budget_min,
+        draft.budget_max,
+      ),
+    },
     {
       label: "Decision timeline",
       value:
@@ -296,7 +309,11 @@ export default function ScreeningForm({
             ? "No"
             : "—",
     },
-    { label: "Listing URL", value: draft.property_identified === "yes" ? draft.listing_url || "—" : "—" },
+    {
+      label: "Listing URL",
+      value:
+        draft.property_identified === "yes" ? draft.listing_url || "—" : "—",
+    },
     { label: "Additional context", value: draft.notes || "—" },
   ];
 
@@ -330,7 +347,8 @@ export default function ScreeningForm({
 
       {!isLoggedIn ? (
         <div className="mb-8 border border-white/10 bg-white/[0.03] px-5 py-4 text-sm text-white/68">
-          Sign in is required to submit, but your draft is preserved locally and restored after authentication.
+          Sign in is required to submit, but your draft is preserved locally and
+          restored after authentication.
         </div>
       ) : null}
 
@@ -343,7 +361,12 @@ export default function ScreeningForm({
               </label>
               <input
                 value={draft.case_label}
-                onChange={(e) => setDraft((current) => ({ ...current, case_label: e.target.value }))}
+                onChange={(e) =>
+                  setDraft((current) => ({
+                    ...current,
+                    case_label: e.target.value,
+                  }))
+                }
                 className="mt-3 w-full border border-white/10 bg-transparent px-4 py-3 text-base text-white outline-none transition focus:border-gold/60"
                 placeholder="e.g. Thessaloniki Income Project"
               />
@@ -386,7 +409,9 @@ export default function ScreeningForm({
               </label>
               <input
                 value={draft.phone}
-                onChange={(e) => setDraft((current) => ({ ...current, phone: e.target.value }))}
+                onChange={(e) =>
+                  setDraft((current) => ({ ...current, phone: e.target.value }))
+                }
                 disabled={!unlockPhone}
                 className="mt-3 w-full border border-white/10 bg-transparent px-4 py-3 text-base text-white outline-none transition focus:border-gold/60 disabled:cursor-not-allowed"
                 placeholder="+359..."
@@ -404,7 +429,12 @@ export default function ScreeningForm({
               </label>
               <select
                 value={draft.plan_interest}
-                onChange={(e) => setDraft((current) => ({ ...current, plan_interest: e.target.value }))}
+                onChange={(e) =>
+                  setDraft((current) => ({
+                    ...current,
+                    plan_interest: e.target.value,
+                  }))
+                }
                 disabled={!unlockPlanInterest}
                 className="mt-3 w-full border border-gold/40 bg-transparent px-4 py-3 text-base text-white outline-none transition focus:border-gold disabled:cursor-not-allowed"
               >
@@ -426,7 +456,9 @@ export default function ScreeningForm({
               </label>
               <select
                 value={draft.goal}
-                onChange={(e) => setDraft((current) => ({ ...current, goal: e.target.value }))}
+                onChange={(e) =>
+                  setDraft((current) => ({ ...current, goal: e.target.value }))
+                }
                 className="mt-3 w-full border border-white/10 bg-transparent px-4 py-3 text-base text-white outline-none transition focus:border-gold/60"
               >
                 <option value="">Select</option>
@@ -443,14 +475,19 @@ export default function ScreeningForm({
               <select
                 value={draft.risk_tolerance}
                 onChange={(e) =>
-                  setDraft((current) => ({ ...current, risk_tolerance: e.target.value }))
+                  setDraft((current) => ({
+                    ...current,
+                    risk_tolerance: e.target.value,
+                  }))
                 }
                 disabled={!unlockRiskTolerance}
                 className="mt-3 w-full border border-white/10 bg-transparent px-4 py-3 text-base text-white outline-none transition focus:border-gold/60 disabled:cursor-not-allowed"
               >
                 <option value="">Select</option>
                 <option value="conservative">Conservative</option>
-                <option value="moderate">Moderate — balanced return and risk</option>
+                <option value="moderate">
+                  Moderate — balanced return and risk
+                </option>
                 <option value="aggressive">Aggressive</option>
               </select>
             </div>
@@ -462,7 +499,10 @@ export default function ScreeningForm({
               <input
                 value={draft.preferred_markets}
                 onChange={(e) =>
-                  setDraft((current) => ({ ...current, preferred_markets: e.target.value }))
+                  setDraft((current) => ({
+                    ...current,
+                    preferred_markets: e.target.value,
+                  }))
                 }
                 disabled={!unlockPreferredMarkets}
                 className="mt-3 w-full border border-white/10 bg-transparent px-4 py-3 text-base text-white outline-none transition focus:border-gold/60 disabled:cursor-not-allowed"
@@ -477,7 +517,9 @@ export default function ScreeningForm({
               <textarea
                 rows={4}
                 value={draft.notes}
-                onChange={(e) => setDraft((current) => ({ ...current, notes: e.target.value }))}
+                onChange={(e) =>
+                  setDraft((current) => ({ ...current, notes: e.target.value }))
+                }
                 disabled={!unlockAdditionalContext}
                 className="mt-3 w-full border border-gold/40 bg-transparent px-4 py-3 text-base text-white outline-none transition focus:border-gold disabled:cursor-not-allowed"
                 placeholder="Any specific circumstances, constraints, or objectives we should be aware of..."
@@ -494,7 +536,12 @@ export default function ScreeningForm({
               </label>
               <select
                 value={draft.currency}
-                onChange={(e) => setDraft((current) => ({ ...current, currency: e.target.value }))}
+                onChange={(e) =>
+                  setDraft((current) => ({
+                    ...current,
+                    currency: e.target.value,
+                  }))
+                }
                 className="mt-3 w-full border border-white/10 bg-transparent px-4 py-3 text-base text-white outline-none transition focus:border-gold/60"
               >
                 <option value="EUR">EUR — Euro</option>
@@ -510,7 +557,12 @@ export default function ScreeningForm({
                 </label>
                 <input
                   value={draft.budget_min}
-                  onChange={(e) => setDraft((current) => ({ ...current, budget_min: e.target.value }))}
+                  onChange={(e) =>
+                    setDraft((current) => ({
+                      ...current,
+                      budget_min: e.target.value,
+                    }))
+                  }
                   disabled={!unlockBudgetMin}
                   inputMode="decimal"
                   className="mt-3 w-full border border-white/10 bg-transparent px-4 py-3 text-base text-white outline-none transition focus:border-gold/60 disabled:cursor-not-allowed"
@@ -524,7 +576,12 @@ export default function ScreeningForm({
                 </label>
                 <input
                   value={draft.budget_max}
-                  onChange={(e) => setDraft((current) => ({ ...current, budget_max: e.target.value }))}
+                  onChange={(e) =>
+                    setDraft((current) => ({
+                      ...current,
+                      budget_max: e.target.value,
+                    }))
+                  }
                   disabled={!unlockBudgetMax}
                   inputMode="decimal"
                   className="mt-3 w-full border border-white/10 bg-transparent px-4 py-3 text-base text-white outline-none transition focus:border-gold/60 disabled:cursor-not-allowed"
@@ -532,7 +589,8 @@ export default function ScreeningForm({
                 />
                 {draft.budget_max.length > 0 && !hasBudgetMax ? (
                   <p className="mt-2 text-xs text-red-200/80">
-                    Maximum budget must be greater than or equal to minimum budget.
+                    Maximum budget must be greater than or equal to minimum
+                    budget.
                   </p>
                 ) : null}
               </div>
@@ -545,7 +603,10 @@ export default function ScreeningForm({
               <select
                 value={draft.decision_timeline}
                 onChange={(e) =>
-                  setDraft((current) => ({ ...current, decision_timeline: e.target.value }))
+                  setDraft((current) => ({
+                    ...current,
+                    decision_timeline: e.target.value,
+                  }))
                 }
                 disabled={!unlockTimeline}
                 className="mt-3 w-full border border-white/10 bg-transparent px-4 py-3 text-base text-white outline-none transition focus:border-gold/60 disabled:cursor-not-allowed"
@@ -566,7 +627,10 @@ export default function ScreeningForm({
               <select
                 value={draft.financing_type}
                 onChange={(e) =>
-                  setDraft((current) => ({ ...current, financing_type: e.target.value }))
+                  setDraft((current) => ({
+                    ...current,
+                    financing_type: e.target.value,
+                  }))
                 }
                 disabled={!unlockFinancingType}
                 className="mt-3 w-full border border-white/10 bg-transparent px-4 py-3 text-base text-white outline-none transition focus:border-gold/60 disabled:cursor-not-allowed"
@@ -588,7 +652,8 @@ export default function ScreeningForm({
                   setDraft((current) => ({
                     ...current,
                     property_identified: e.target.value,
-                    listing_url: e.target.value === "yes" ? current.listing_url : "",
+                    listing_url:
+                      e.target.value === "yes" ? current.listing_url : "",
                   }))
                 }
                 disabled={!unlockPropertyIdentified}
@@ -608,7 +673,10 @@ export default function ScreeningForm({
                 <input
                   value={draft.listing_url}
                   onChange={(e) =>
-                    setDraft((current) => ({ ...current, listing_url: e.target.value }))
+                    setDraft((current) => ({
+                      ...current,
+                      listing_url: e.target.value,
+                    }))
                   }
                   disabled={!unlockListingUrl}
                   className="mt-3 w-full border border-gold/40 bg-transparent px-4 py-3 text-base text-white outline-none transition focus:border-gold disabled:cursor-not-allowed"
@@ -631,22 +699,23 @@ export default function ScreeningForm({
                 <div
                   key={row.label}
                   className={`grid gap-4 px-4 py-4 md:grid-cols-[180px_1fr] md:px-5 ${
-                    index < summaryRows.length - 1 ? "border-b border-white/10" : ""
+                    index < summaryRows.length - 1
+                      ? "border-b border-white/10"
+                      : ""
                   }`}
                 >
                   <div className="text-[11px] uppercase tracking-[0.20em] text-white/50">
                     {row.label}
                   </div>
-                  <div className="text-base text-white/88">
-                    {row.value}
-                  </div>
+                  <div className="text-base text-white/88">{row.value}</div>
                 </div>
               ))}
             </div>
 
             <p className="max-w-[760px] text-sm leading-7 text-white/62">
-              By submitting, you authorize Epitropos to review your intake and respond within one business day.
-              There is no obligation to proceed.
+              By submitting, you authorize Epitropos to review your intake and
+              respond within one business day. There is no obligation to
+              proceed.
             </p>
           </section>
         ) : null}
@@ -655,15 +724,35 @@ export default function ScreeningForm({
         <input type="hidden" name="phone" value={draft.phone} />
         <input type="hidden" name="plan_interest" value={draft.plan_interest} />
         <input type="hidden" name="goal" value={draft.goal} />
-        <input type="hidden" name="risk_tolerance" value={draft.risk_tolerance} />
-        <input type="hidden" name="preferred_markets" value={draft.preferred_markets} />
+        <input
+          type="hidden"
+          name="risk_tolerance"
+          value={draft.risk_tolerance}
+        />
+        <input
+          type="hidden"
+          name="preferred_markets"
+          value={draft.preferred_markets}
+        />
         <input type="hidden" name="notes" value={draft.notes} />
         <input type="hidden" name="currency" value={draft.currency} />
         <input type="hidden" name="budget_min" value={draft.budget_min} />
         <input type="hidden" name="budget_max" value={draft.budget_max} />
-        <input type="hidden" name="decision_timeline" value={draft.decision_timeline} />
-        <input type="hidden" name="financing_type" value={draft.financing_type} />
-        <input type="hidden" name="property_identified" value={draft.property_identified} />
+        <input
+          type="hidden"
+          name="decision_timeline"
+          value={draft.decision_timeline}
+        />
+        <input
+          type="hidden"
+          name="financing_type"
+          value={draft.financing_type}
+        />
+        <input
+          type="hidden"
+          name="property_identified"
+          value={draft.property_identified}
+        />
         <input type="hidden" name="listing_url" value={draft.listing_url} />
 
         <div className="flex items-center justify-between gap-4 pt-2">

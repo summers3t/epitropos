@@ -192,7 +192,7 @@ export default async function ScreeningPage() {
   const isLoggedIn = !!auth.user;
 
   let fullName = "";
-  let email = auth.user?.email ?? "";
+  const email = auth.user?.email ?? "";
 
   if (auth.user) {
     const { data: profile } = await supabase
