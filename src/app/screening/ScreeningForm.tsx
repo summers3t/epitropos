@@ -219,6 +219,10 @@ export default function ScreeningForm({
   const [stepIndex, setStepIndex] = useState(0);
   const [hasHydratedDraft, setHasHydratedDraft] = useState(false);
   const [hasEditedSinceSubmit, setHasEditedSinceSubmit] = useState(false);
+  const [duplicateCaseLabelError, setDuplicateCaseLabelError] = useState<
+    string | null
+  >(null);
+  const [isCheckingCaseLabel, setIsCheckingCaseLabel] = useState(false);
   const [submitState, formAction, isPending] = useActionState(
     action,
     initialSubmitState,
@@ -260,10 +264,49 @@ export default function ScreeningForm({
     router.replace("/dashboard/screening?screening_created=1");
   }, [router, submitState.success]);
 
+  async function handleCaseLabelBlur() {
+    const trimmedValue = draft.case_label.trim();
+
+    if (!isLoggedIn || !trimmedValue || getCaseLabelError(trimmedValue)) {
+      setDuplicateCaseLabelError(null);
+      return;
+    }
+
+    setIsCheckingCaseLabel(true);
+
+    try {
+      const response = await fetch(
+        `/api/screening/check-name?name=${encodeURIComponent(trimmedValue)}`,
+        {
+          method: "GET",
+          cache: "no-store",
+        },
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setDuplicateCaseLabelError(null);
+        return;
+      }
+
+      setDuplicateCaseLabelError(
+        result.isDuplicate
+          ? "You already have a screening with this name."
+          : null,
+      );
+    } catch {
+      setDuplicateCaseLabelError(null);
+    } finally {
+      setIsCheckingCaseLabel(false);
+    }
+  }
+
   const loginUrl = useMemo(() => "/auth/login?redirect=/screening", []);
 
   const caseLabelError =
     getCaseLabelError(draft.case_label) ||
+    duplicateCaseLabelError ||
     (!hasEditedSinceSubmit
       ? (submitState.fieldErrors.case_label ?? null)
       : null);
@@ -333,11 +376,15 @@ export default function ScreeningForm({
     hasListingUrl;
 
   const canAdvance =
-    (stepIndex === 0 && contactStepValid) ||
+    (stepIndex === 0 && contactStepValid && !isCheckingCaseLabel) ||
     (stepIndex === 1 && objectiveStepValid) ||
     (stepIndex === 2 && budgetStepValid);
 
-  const canSubmit = contactStepValid && objectiveStepValid && budgetStepValid;
+  const canSubmit =
+    contactStepValid &&
+    objectiveStepValid &&
+    budgetStepValid &&
+    !isCheckingCaseLabel;
 
   const goNext = () => {
     if (!canAdvance) return;
@@ -519,16 +566,20 @@ export default function ScreeningForm({
                 value={draft.case_label}
                 onChange={(e) => {
                   setHasEditedSinceSubmit(true);
+                  setDuplicateCaseLabelError(null);
                   setDraft((current) => ({
                     ...current,
                     case_label: e.target.value,
                   }));
                 }}
+                onBlur={handleCaseLabelBlur}
                 className="mt-3 w-full border border-white/10 bg-transparent px-4 py-3 text-base text-white outline-none transition focus:border-gold/60"
                 placeholder="e.g. Thessaloniki Income Project"
               />
               {caseLabelError ? (
                 <p className="mt-2 text-xs text-red-200/80">{caseLabelError}</p>
+              ) : isCheckingCaseLabel ? (
+                <p className="mt-2 text-xs text-white/55">Checking name...</p>
               ) : null}
             </div>
 
@@ -912,7 +963,10 @@ export default function ScreeningForm({
         />
         <input type="hidden" name="listing_url" value={draft.listing_url} />
 
-        <div className="flex items-center justify-between gap-4 pt-2">
+        <div
+          key={`screening-actions-step-${stepIndex}`}
+          className="flex items-center justify-between gap-4 pt-2"
+        >
           <div>
             {stepIndex > 0 ? (
               <button

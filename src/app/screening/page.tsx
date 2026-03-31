@@ -25,7 +25,7 @@ const TIMELINE_VALUES = [
 const FINANCING_VALUES = ["cash", "financing", "mixed"] as const;
 const PROPERTY_IDENTIFIED_VALUES = ["yes", "no"] as const;
 const MIN_BUDGET_VALUE = 10000;
-const MAX_BUDGET_VALUE = 100000000;
+const MAX_BUDGET_VALUE = 10000000;
 
 export type ScreeningFieldName =
   | "case_label"
@@ -82,6 +82,10 @@ function formatBudgetRange(
   });
 
   return `${currency} ${formatter.format(min)} - ${formatter.format(max)}`;
+}
+
+function normalizeCaseLabel(value: string) {
+  return value.trim().replace(/\s+/g, " ").toLocaleLowerCase();
 }
 
 async function submitScreening(
@@ -295,13 +299,12 @@ async function submitScreening(
   }
 
   const budget_range = formatBudgetRange(currency, budget_min, budget_max);
+  const normalizedCaseLabel = normalizeCaseLabel(case_label);
 
-  const { data: existingRequest, error: existingRequestError } = await supabase
+  const { data: existingRequests, error: existingRequestError } = await supabase
     .from("screening_requests")
-    .select("id")
-    .eq("user_id", auth.user.id)
-    .eq("name", case_label)
-    .maybeSingle();
+    .select("id, name")
+    .eq("user_id", auth.user.id);
 
   if (existingRequestError) {
     return {
@@ -311,7 +314,11 @@ async function submitScreening(
     };
   }
 
-  if (existingRequest) {
+  const hasDuplicateCaseLabel = (existingRequests ?? []).some((request) => {
+    return normalizeCaseLabel(request.name ?? "") === normalizedCaseLabel;
+  });
+
+  if (hasDuplicateCaseLabel) {
     return {
       success: false,
       error: null,
