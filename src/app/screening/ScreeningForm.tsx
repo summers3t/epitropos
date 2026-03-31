@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import type { ScreeningSubmitState } from "./page";
 
 const DRAFT_KEY = "epitropos:screeningDraft:v2";
+const MIN_BUDGET_VALUE = 10000;
+const MAX_BUDGET_VALUE = 10000000;
 
 type Props = {
   isLoggedIn: boolean;
@@ -93,8 +95,27 @@ function loadInitialDraft(): Draft {
 
 const steps = ["Contact", "Objective", "Budget & Timeline", "Submit"] as const;
 
+function getCaseLabelError(value: string) {
+  if (!value.trim()) {
+    return "Screening / case name is required.";
+  }
+
+  if (value.trim().length < 3) {
+    return "Screening / case name must be at least 3 characters.";
+  }
+
+  return null;
+}
+
 function isCaseLabelValid(value: string) {
-  return value.trim().length >= 3;
+  return getCaseLabelError(value) === null;
+}
+
+function getPhoneError(value: string) {
+  if (!value.trim()) return null;
+  if (/^\+?[1-9]\d{7,14}$/.test(value.trim())) return null;
+
+  return "Phone must be in international format, for example +359888123456.";
 }
 
 function isPhoneValid(value: string) {
@@ -111,22 +132,77 @@ function isUrlValid(value: string) {
   }
 }
 
-function parsePositiveNumber(value: string) {
+function parseBudgetNumber(value: string) {
   const normalized = value.replace(/[^\d]/g, "").trim();
   const number = Number(normalized);
 
-  if (!Number.isFinite(number) || number <= 0) {
+  if (!Number.isFinite(number)) {
     return null;
   }
 
   return number;
 }
 
-function formatBudgetSummary(currency: string, min: string, max: string) {
-  const minValue = parsePositiveNumber(min);
-  const maxValue = parsePositiveNumber(max);
+function getBudgetMinError(value: string) {
+  if (!value.trim()) {
+    return "Minimum budget is required.";
+  }
 
-  if (minValue === null || maxValue === null) return "—";
+  const parsed = parseBudgetNumber(value);
+
+  if (
+    parsed === null ||
+    parsed < MIN_BUDGET_VALUE ||
+    parsed > MAX_BUDGET_VALUE
+  ) {
+    return "Minimum budget must be between 10,000 and 10,000,000.";
+  }
+
+  return null;
+}
+
+function getBudgetMaxError(min: string, max: string) {
+  if (!max.trim()) {
+    return "Maximum budget is required.";
+  }
+
+  const minValue = parseBudgetNumber(min);
+  const maxValue = parseBudgetNumber(max);
+
+  if (
+    maxValue === null ||
+    maxValue < MIN_BUDGET_VALUE ||
+    maxValue > MAX_BUDGET_VALUE
+  ) {
+    return "Maximum budget must be between 10,000 and 10,000,000.";
+  }
+
+  if (
+    minValue !== null &&
+    minValue >= MIN_BUDGET_VALUE &&
+    minValue <= MAX_BUDGET_VALUE &&
+    maxValue < minValue
+  ) {
+    return "Maximum budget must be greater than or equal to minimum budget.";
+  }
+
+  return null;
+}
+
+function formatBudgetSummary(currency: string, min: string, max: string) {
+  const minValue = parseBudgetNumber(min);
+  const maxValue = parseBudgetNumber(max);
+
+  if (
+    minValue === null ||
+    maxValue === null ||
+    minValue < MIN_BUDGET_VALUE ||
+    minValue > MAX_BUDGET_VALUE ||
+    maxValue < MIN_BUDGET_VALUE ||
+    maxValue > MAX_BUDGET_VALUE
+  ) {
+    return "—";
+  }
 
   const formatter = new Intl.NumberFormat("en-US", {
     maximumFractionDigits: 0,
@@ -136,7 +212,9 @@ function formatBudgetSummary(currency: string, min: string, max: string) {
 }
 
 const initialSubmitState: ScreeningSubmitState = {
+  success: false,
   error: null,
+  fieldErrors: {},
 };
 
 export default function ScreeningForm({
@@ -149,6 +227,7 @@ export default function ScreeningForm({
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [stepIndex, setStepIndex] = useState(0);
   const [hasHydratedDraft, setHasHydratedDraft] = useState(false);
+  const [hasEditedSinceSubmit, setHasEditedSinceSubmit] = useState(false);
   const [submitState, formAction, isPending] = useActionState(
     action,
     initialSubmitState,
@@ -176,10 +255,50 @@ export default function ScreeningForm({
     }
   }, [draft, hasHydratedDraft]);
 
+  useEffect(() => {
+    if (!submitState.success) {
+      return;
+    }
+
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+    } catch {
+      // ignore storage failures
+    }
+
+    router.replace("/dashboard/screening?screening_created=1");
+  }, [router, submitState.success]);
+
   const loginUrl = useMemo(() => "/auth/login?redirect=/screening", []);
 
-  const hasValidCaseLabel = isCaseLabelValid(draft.case_label);
-  const hasValidPhone = isPhoneValid(draft.phone);
+  const caseLabelError =
+    getCaseLabelError(draft.case_label) ||
+    (!hasEditedSinceSubmit
+      ? (submitState.fieldErrors.case_label ?? null)
+      : null);
+  const phoneError =
+    getPhoneError(draft.phone) ||
+    (!hasEditedSinceSubmit ? (submitState.fieldErrors.phone ?? null) : null);
+  const budgetMinError =
+    getBudgetMinError(draft.budget_min) ||
+    (!hasEditedSinceSubmit
+      ? (submitState.fieldErrors.budget_min ?? null)
+      : null);
+  const budgetMaxError =
+    getBudgetMaxError(draft.budget_min, draft.budget_max) ||
+    (!hasEditedSinceSubmit
+      ? (submitState.fieldErrors.budget_max ?? null)
+      : null);
+  const listingUrlError =
+    (draft.property_identified === "yes" && !hasListingUrl
+      ? "Enter a valid http or https URL."
+      : null) ||
+    (!hasEditedSinceSubmit
+      ? (submitState.fieldErrors.listing_url ?? null)
+      : null);
+
+  const hasValidCaseLabel = !caseLabelError;
+  const hasValidPhone = !phoneError;
   const hasPlanInterest = draft.plan_interest.trim().length > 0;
 
   const unlockPhone = hasValidCaseLabel;
@@ -200,14 +319,11 @@ export default function ScreeningForm({
 
   const hasCurrency = draft.currency.trim().length > 0;
   const unlockBudgetMin = hasCurrency;
-  const budgetMinValue = parsePositiveNumber(draft.budget_min);
-  const hasBudgetMin = budgetMinValue !== null;
+  const budgetMinValue = parseBudgetNumber(draft.budget_min);
+  const hasBudgetMin = !budgetMinError;
   const unlockBudgetMax = hasCurrency && hasBudgetMin;
-  const budgetMaxValue = parsePositiveNumber(draft.budget_max);
-  const hasBudgetMax =
-    budgetMaxValue !== null &&
-    budgetMinValue !== null &&
-    budgetMaxValue >= budgetMinValue;
+  const budgetMaxValue = parseBudgetNumber(draft.budget_max);
+  const hasBudgetMax = !budgetMaxError;
   const unlockTimeline = hasCurrency && hasBudgetMin && hasBudgetMax;
   const hasTimeline = draft.decision_timeline.trim().length > 0;
   const unlockFinancingType = hasTimeline;
@@ -385,6 +501,14 @@ export default function ScreeningForm({
       <form
         action={formAction}
         className="space-y-8"
+        onSubmit={(event) => {
+          if (stepIndex < steps.length - 1 || !canSubmit) {
+            event.preventDefault();
+            return;
+          }
+
+          setHasEditedSinceSubmit(false);
+        }}
         onKeyDown={(event) => {
           if (
             event.key === "Enter" &&
@@ -404,19 +528,18 @@ export default function ScreeningForm({
               </label>
               <input
                 value={draft.case_label}
-                onChange={(e) =>
+                onChange={(e) => {
+                  setHasEditedSinceSubmit(true);
                   setDraft((current) => ({
                     ...current,
                     case_label: e.target.value,
-                  }))
-                }
+                  }));
+                }}
                 className="mt-3 w-full border border-white/10 bg-transparent px-4 py-3 text-base text-white outline-none transition focus:border-gold/60"
                 placeholder="e.g. Thessaloniki Income Project"
               />
-              {!hasValidCaseLabel && draft.case_label.length > 0 ? (
-                <p className="mt-2 text-xs text-red-200/80">
-                  Use at least 3 characters.
-                </p>
+              {caseLabelError ? (
+                <p className="mt-2 text-xs text-red-200/80">{caseLabelError}</p>
               ) : null}
             </div>
 
@@ -459,10 +582,8 @@ export default function ScreeningForm({
                 className="mt-3 w-full border border-white/10 bg-transparent px-4 py-3 text-base text-white outline-none transition focus:border-gold/60 disabled:cursor-not-allowed"
                 placeholder="+359..."
               />
-              {!hasValidPhone && draft.phone.length > 0 ? (
-                <p className="mt-2 text-xs text-red-200/80">
-                  Use international format, for example +359...
-                </p>
+              {phoneError ? (
+                <p className="mt-2 text-xs text-red-200/80">{phoneError}</p>
               ) : null}
             </div>
 
@@ -611,6 +732,11 @@ export default function ScreeningForm({
                   className="mt-3 w-full border border-white/10 bg-transparent px-4 py-3 text-base text-white outline-none transition focus:border-gold/60 disabled:cursor-not-allowed"
                   placeholder="80000"
                 />
+                {budgetMinError ? (
+                  <p className="mt-2 text-xs text-red-200/80">
+                    {budgetMinError}
+                  </p>
+                ) : null}
               </div>
 
               <div className={unlockBudgetMax ? "" : "opacity-45"}>
@@ -630,10 +756,9 @@ export default function ScreeningForm({
                   className="mt-3 w-full border border-white/10 bg-transparent px-4 py-3 text-base text-white outline-none transition focus:border-gold/60 disabled:cursor-not-allowed"
                   placeholder="120000"
                 />
-                {draft.budget_max.length > 0 && !hasBudgetMax ? (
+                {budgetMaxError ? (
                   <p className="mt-2 text-xs text-red-200/80">
-                    Maximum budget must be greater than or equal to minimum
-                    budget.
+                    {budgetMaxError}
                   </p>
                 ) : null}
               </div>
@@ -725,9 +850,9 @@ export default function ScreeningForm({
                   className="mt-3 w-full border border-gold/40 bg-transparent px-4 py-3 text-base text-white outline-none transition focus:border-gold disabled:cursor-not-allowed"
                   placeholder="Paste a property link"
                 />
-                {draft.listing_url.length > 0 && !hasListingUrl ? (
+                {listingUrlError ? (
                   <p className="mt-2 text-xs text-red-200/80">
-                    Enter a valid http or https URL.
+                    {listingUrlError}
                   </p>
                 ) : null}
               </div>
@@ -826,6 +951,8 @@ export default function ScreeningForm({
             ) : isLoggedIn ? (
               <button
                 type="submit"
+                name="submit_intent"
+                value="submit_screening"
                 disabled={!canSubmit || isPending}
                 className="inline-flex items-center rounded-md border border-gold bg-stone px-7 py-4 text-[12px] font-medium uppercase tracking-[0.16em] text-navy transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-40"
               >

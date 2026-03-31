@@ -24,10 +24,28 @@ const TIMELINE_VALUES = [
 ] as const;
 const FINANCING_VALUES = ["cash", "financing", "mixed"] as const;
 const PROPERTY_IDENTIFIED_VALUES = ["yes", "no"] as const;
-const MAX_BUDGET_VALUE = 10000000;
+const MIN_BUDGET_VALUE = 10000;
+const MAX_BUDGET_VALUE = 100000000;
+
+export type ScreeningFieldName =
+  | "case_label"
+  | "phone"
+  | "plan_interest"
+  | "goal"
+  | "risk_tolerance"
+  | "preferred_markets"
+  | "currency"
+  | "budget_min"
+  | "budget_max"
+  | "decision_timeline"
+  | "financing_type"
+  | "property_identified"
+  | "listing_url";
 
 export type ScreeningSubmitState = {
+  success: boolean;
   error: string | null;
+  fieldErrors: Partial<Record<ScreeningFieldName, string>>;
 };
 
 function isOneOf<T extends readonly string[]>(
@@ -37,11 +55,15 @@ function isOneOf<T extends readonly string[]>(
   return allowed.includes(value as T[number]);
 }
 
-function parsePositiveNumber(raw: string) {
+function parseBudgetNumber(raw: string) {
   const normalized = raw.replace(/[^\d]/g, "").trim();
   const value = Number(normalized);
 
-  if (!Number.isFinite(value) || value <= 0 || value > MAX_BUDGET_VALUE) {
+  if (!Number.isFinite(value)) {
+    return null;
+  }
+
+  if (value < MIN_BUDGET_VALUE || value > MAX_BUDGET_VALUE) {
     return null;
   }
 
@@ -68,6 +90,16 @@ async function submitScreening(
 ): Promise<ScreeningSubmitState> {
   "use server";
 
+  const submitIntent = String(formData.get("submit_intent") ?? "").trim();
+
+  if (submitIntent !== "submit_screening") {
+    return {
+      success: false,
+      error: null,
+      fieldErrors: {},
+    };
+  }
+
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getUser();
 
@@ -76,7 +108,11 @@ async function submitScreening(
   }
 
   if (!auth.user.email) {
-    return { error: "Authenticated email is required." };
+    return {
+      success: false,
+      error: "Authenticated email is required.",
+      fieldErrors: {},
+    };
   }
 
   const case_label = String(formData.get("case_label") ?? "").trim();
@@ -101,46 +137,124 @@ async function submitScreening(
   const listing_url = String(formData.get("listing_url") ?? "").trim() || null;
 
   if (case_label.length < 3) {
-    return { error: "Screening / case name is required." };
+    return {
+      success: false,
+      error: null,
+      fieldErrors: {
+        case_label: "Screening / case name must be at least 3 characters.",
+      },
+    };
+  }
+
+  if (phone && !/^\+?[1-9]\d{7,14}$/.test(phone)) {
+    return {
+      success: false,
+      error: null,
+      fieldErrors: {
+        phone:
+          "Phone must be in international format, for example +359888123456.",
+      },
+    };
   }
 
   if (!isOneOf(plan_interest, PLAN_INTEREST_VALUES)) {
-    return { error: "Plan interest is invalid." };
+    return {
+      success: false,
+      error: null,
+      fieldErrors: { plan_interest: "Plan interest is invalid." },
+    };
   }
 
   if (!isOneOf(goal, GOAL_VALUES)) {
-    return { error: "Investment objective is invalid." };
+    return {
+      success: false,
+      error: null,
+      fieldErrors: { goal: "Investment objective is invalid." },
+    };
   }
 
   if (!isOneOf(risk_tolerance, RISK_TOLERANCE_VALUES)) {
-    return { error: "Risk tolerance is invalid." };
+    return {
+      success: false,
+      error: null,
+      fieldErrors: { risk_tolerance: "Risk tolerance is invalid." },
+    };
   }
 
   if (preferred_markets.length < 2) {
-    return { error: "Preferred markets are required." };
+    return {
+      success: false,
+      error: null,
+      fieldErrors: { preferred_markets: "Preferred markets are required." },
+    };
   }
 
   if (!isOneOf(currency, CURRENCY_VALUES)) {
-    return { error: "Currency is invalid." };
+    return {
+      success: false,
+      error: null,
+      fieldErrors: { currency: "Currency is invalid." },
+    };
   }
 
-  const budget_min = parsePositiveNumber(budget_min_raw);
-  const budget_max = parsePositiveNumber(budget_max_raw);
+  const budget_min = parseBudgetNumber(budget_min_raw);
+  const budget_max = parseBudgetNumber(budget_max_raw);
 
-  if (budget_min === null || budget_max === null || budget_max < budget_min) {
-    return { error: "Budget range is invalid or outside the supported range." };
+  if (budget_min === null) {
+    return {
+      success: false,
+      error: null,
+      fieldErrors: {
+        budget_min: "Minimum budget must be between 10,000 and 10,000,000.",
+      },
+    };
+  }
+
+  if (budget_max === null) {
+    return {
+      success: false,
+      error: null,
+      fieldErrors: {
+        budget_max: "Maximum budget must be between 10,000 and 10,000,000.",
+      },
+    };
+  }
+
+  if (budget_max < budget_min) {
+    return {
+      success: false,
+      error: null,
+      fieldErrors: {
+        budget_max:
+          "Maximum budget must be greater than or equal to minimum budget.",
+      },
+    };
   }
 
   if (!isOneOf(decision_timeline, TIMELINE_VALUES)) {
-    return { error: "Decision timeline is invalid." };
+    return {
+      success: false,
+      error: null,
+      fieldErrors: { decision_timeline: "Decision timeline is invalid." },
+    };
   }
 
   if (!isOneOf(financing_type, FINANCING_VALUES)) {
-    return { error: "Financing type is invalid." };
+    return {
+      success: false,
+      error: null,
+      fieldErrors: { financing_type: "Financing type is invalid." },
+    };
   }
 
   if (!isOneOf(property_identified, PROPERTY_IDENTIFIED_VALUES)) {
-    return { error: "Property identified value is invalid." };
+    return {
+      success: false,
+      error: null,
+      fieldErrors: {
+        property_identified: "Property identified value is invalid.",
+      },
+    };
   }
 
   const hasPropertyIdentified = property_identified === "yes";
@@ -148,7 +262,12 @@ async function submitScreening(
   if (hasPropertyIdentified) {
     if (!listing_url) {
       return {
-        error: "Listing URL is required when a property is already identified.",
+        success: false,
+        error: null,
+        fieldErrors: {
+          listing_url:
+            "Listing URL is required when a property is already identified.",
+        },
       };
     }
 
@@ -156,10 +275,22 @@ async function submitScreening(
       const parsed = new URL(listing_url);
 
       if (!["http:", "https:"].includes(parsed.protocol)) {
-        return { error: "Listing URL is invalid." };
+        return {
+          success: false,
+          error: null,
+          fieldErrors: {
+            listing_url: "Listing URL must start with http or https.",
+          },
+        };
       }
     } catch {
-      return { error: "Listing URL is invalid." };
+      return {
+        success: false,
+        error: null,
+        fieldErrors: {
+          listing_url: "Listing URL is invalid.",
+        },
+      };
     }
   }
 
@@ -173,11 +304,21 @@ async function submitScreening(
     .maybeSingle();
 
   if (existingRequestError) {
-    return { error: existingRequestError.message };
+    return {
+      success: false,
+      error: existingRequestError.message,
+      fieldErrors: {},
+    };
   }
 
   if (existingRequest) {
-    return { error: "You already have a screening with this name." };
+    return {
+      success: false,
+      error: null,
+      fieldErrors: {
+        case_label: "You already have a screening with this name.",
+      },
+    };
   }
 
   const { error } = await supabase.from("screening_requests").insert({
@@ -202,10 +343,18 @@ async function submitScreening(
   });
 
   if (error) {
-    return { error: error.message };
+    return {
+      success: false,
+      error: error.message,
+      fieldErrors: {},
+    };
   }
 
-  redirect("/dashboard/screening?screening_created=1");
+  return {
+    success: true,
+    error: null,
+    fieldErrors: {},
+  };
 }
 
 export default async function ScreeningPage() {
