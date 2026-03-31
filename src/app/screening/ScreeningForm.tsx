@@ -107,20 +107,11 @@ function getCaseLabelError(value: string) {
   return null;
 }
 
-function isCaseLabelValid(value: string) {
-  return getCaseLabelError(value) === null;
-}
-
 function getPhoneError(value: string) {
   if (!value.trim()) return null;
   if (/^\+?[1-9]\d{7,14}$/.test(value.trim())) return null;
 
   return "Phone must be in international format, for example +359888123456.";
-}
-
-function isPhoneValid(value: string) {
-  if (!value.trim()) return true;
-  return /^\+?[1-9]\d{7,14}$/.test(value.trim());
 }
 
 function isUrlValid(value: string) {
@@ -289,6 +280,8 @@ export default function ScreeningForm({
     (!hasEditedSinceSubmit
       ? (submitState.fieldErrors.budget_max ?? null)
       : null);
+  const needsListingUrl = draft.property_identified === "yes";
+  const hasListingUrl = !needsListingUrl || isUrlValid(draft.listing_url);
   const listingUrlError =
     (draft.property_identified === "yes" && !hasListingUrl
       ? "Enter a valid http or https URL."
@@ -319,10 +312,8 @@ export default function ScreeningForm({
 
   const hasCurrency = draft.currency.trim().length > 0;
   const unlockBudgetMin = hasCurrency;
-  const budgetMinValue = parseBudgetNumber(draft.budget_min);
   const hasBudgetMin = !budgetMinError;
   const unlockBudgetMax = hasCurrency && hasBudgetMin;
-  const budgetMaxValue = parseBudgetNumber(draft.budget_max);
   const hasBudgetMax = !budgetMaxError;
   const unlockTimeline = hasCurrency && hasBudgetMin && hasBudgetMax;
   const hasTimeline = draft.decision_timeline.trim().length > 0;
@@ -330,9 +321,7 @@ export default function ScreeningForm({
   const hasFinancingType = draft.financing_type.trim().length > 0;
   const unlockPropertyIdentified = hasTimeline && hasFinancingType;
   const hasPropertyIdentified = draft.property_identified.trim().length > 0;
-  const needsListingUrl = draft.property_identified === "yes";
   const unlockListingUrl = hasPropertyIdentified && needsListingUrl;
-  const hasListingUrl = !needsListingUrl || isUrlValid(draft.listing_url);
 
   const budgetStepValid =
     hasCurrency &&
