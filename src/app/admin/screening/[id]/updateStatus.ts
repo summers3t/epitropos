@@ -3,80 +3,114 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
-export async function updateScreeningStatus(
-    requestId: string,
-    formData: FormData
+function buildAdminScreeningRedirect(
+  requestId: string,
+  params?: Record<string, string>,
 ) {
-    const status = String(formData.get("status") ?? "").trim();
+  const search = new URLSearchParams(params);
+  const query = search.toString();
 
-    if (!status) {
-        redirect(`/admin/screening/${requestId}`);
-    }
+  return query
+    ? `/admin/screening/${requestId}?${query}`
+    : `/admin/screening/${requestId}`;
+}
 
-    const allowedStatuses = ["new", "accepted", "rejected", "offer_sent"];
+export async function updateScreeningStatus(
+  requestId: string,
+  formData: FormData,
+) {
+  const status = String(formData.get("status") ?? "").trim();
 
-    if (!allowedStatuses.includes(status)) {
-        throw new Error("Invalid screening status.");
-    }
+  if (!status) {
+    redirect(
+      buildAdminScreeningRedirect(requestId, {
+        status_error: "Select a valid next status.",
+      }),
+    );
+  }
 
-    const supabase = await createClient();
+  const allowedStatuses = ["new", "accepted", "rejected", "offer_sent"];
 
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
+  if (!allowedStatuses.includes(status)) {
+    redirect(
+      buildAdminScreeningRedirect(requestId, {
+        status_error: "Invalid screening status.",
+      }),
+    );
+  }
 
-    if (!user) {
-        redirect("/auth/login");
-    }
+  const supabase = await createClient();
 
-    const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .maybeSingle();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-    if (!profile || profile.role !== "admin") {
-        redirect("/dashboard");
-    }
+  if (!user) {
+    redirect("/auth/login");
+  }
 
-    const { data: request, error: requestError } = await supabase
-        .from("screening_requests")
-        .select("id, status")
-        .eq("id", requestId)
-        .maybeSingle();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
 
-    if (requestError) {
-        throw new Error(requestError.message);
-    }
+  if (!profile || profile.role !== "admin") {
+    redirect("/dashboard");
+  }
 
-    if (!request) {
-        redirect("/admin/screening");
-    }
+  const { data: request, error: requestError } = await supabase
+    .from("screening_requests")
+    .select("id, status")
+    .eq("id", requestId)
+    .maybeSingle();
 
-    const allowedTransitions: Record<string, string[]> = {
-        new: ["accepted", "rejected"],
-        accepted: [],
-        rejected: ["new"],
-        offer_sent: [],
-    };
+  if (requestError) {
+    redirect(
+      buildAdminScreeningRedirect(requestId, {
+        status_error: requestError.message,
+      }),
+    );
+  }
 
-    if (!allowedTransitions[request.status]?.includes(status)) {
-        throw new Error(
-            `Invalid screening transition: ${request.status} → ${status}`
-        );
-    }
+  if (!request) {
+    redirect("/admin/screening");
+  }
 
-    const { error } = await supabase
-        .from("screening_requests")
-        .update({
-            status,
-            updated_at: new Date().toISOString(),
-        })
-        .eq("id", requestId);
+  const allowedTransitions: Record<string, string[]> = {
+    new: ["accepted", "rejected"],
+    accepted: [],
+    rejected: ["new"],
+    offer_sent: [],
+  };
 
-    if (error) {
-        throw new Error(error.message);
-    }
+  if (!allowedTransitions[request.status]?.includes(status)) {
+    redirect(
+      buildAdminScreeningRedirect(requestId, {
+        status_error: `Invalid screening transition: ${request.status} → ${status}`,
+      }),
+    );
+  }
 
-    redirect(`/admin/screening/${requestId}`);
+  const { error } = await supabase
+    .from("screening_requests")
+    .update({
+      status,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", requestId);
+
+  if (error) {
+    redirect(
+      buildAdminScreeningRedirect(requestId, {
+        status_error: error.message,
+      }),
+    );
+  }
+
+  redirect(
+    buildAdminScreeningRedirect(requestId, {
+      status_success: `Screening status updated to ${status}.`,
+    }),
+  );
 }

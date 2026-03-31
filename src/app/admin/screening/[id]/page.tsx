@@ -18,10 +18,18 @@ type PageProps = {
   params: Promise<{
     id: string;
   }>;
+  searchParams: Promise<{
+    status_error?: string;
+    status_success?: string;
+  }>;
 };
 
-export default async function AdminScreeningDetailPage({ params }: PageProps) {
+export default async function AdminScreeningDetailPage({
+  params,
+  searchParams,
+}: PageProps) {
   const { id } = await params;
+  const resolvedSearchParams = await searchParams;
 
   const supabase = await createClient();
 
@@ -110,6 +118,16 @@ export default async function AdminScreeningDetailPage({ params }: PageProps) {
     throw new Error(linkedCaseError.message);
   }
 
+  const statusError =
+    typeof resolvedSearchParams.status_error === "string"
+      ? resolvedSearchParams.status_error
+      : null;
+
+  const statusSuccess =
+    typeof resolvedSearchParams.status_success === "string"
+      ? resolvedSearchParams.status_success
+      : null;
+
   return (
     <section className="space-y-8">
       <div className="space-y-3">
@@ -135,6 +153,18 @@ export default async function AdminScreeningDetailPage({ params }: PageProps) {
           Internal request detail view. This page is for admin review only.
         </p>
       </div>
+
+      {statusSuccess ? (
+        <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-4 text-sm text-emerald-100/90">
+          {statusSuccess}
+        </div>
+      ) : null}
+
+      {statusError ? (
+        <div className="rounded-2xl border border-red-400/30 bg-red-500/10 p-4 text-sm text-red-100/90">
+          {statusError}
+        </div>
+      ) : null}
 
       <article className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
