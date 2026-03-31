@@ -1,6 +1,12 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useState } from "react";
+import {
+  useActionState,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
 import type { ScreeningSubmitState } from "./page";
 
@@ -264,43 +270,72 @@ export default function ScreeningForm({
     router.replace("/dashboard/screening?screening_created=1");
   }, [router, submitState.success]);
 
-  async function handleCaseLabelBlur() {
-    const trimmedValue = draft.case_label.trim();
+  const validateCaseLabelDuplicate = useCallback(
+    async (rawValue: string) => {
+      const trimmedValue = rawValue.trim();
 
-    if (!isLoggedIn || !trimmedValue || getCaseLabelError(trimmedValue)) {
-      setDuplicateCaseLabelError(null);
-      return;
-    }
-
-    setIsCheckingCaseLabel(true);
-
-    try {
-      const response = await fetch(
-        `/api/screening/check-name?name=${encodeURIComponent(trimmedValue)}`,
-        {
-          method: "GET",
-          cache: "no-store",
-        },
-      );
-
-      const result = await response.json();
-
-      if (!response.ok) {
+      if (!isLoggedIn || !trimmedValue || getCaseLabelError(trimmedValue)) {
         setDuplicateCaseLabelError(null);
+        setIsCheckingCaseLabel(false);
         return;
       }
 
-      setDuplicateCaseLabelError(
-        result.isDuplicate
-          ? "You already have a screening with this name."
-          : null,
-      );
-    } catch {
-      setDuplicateCaseLabelError(null);
-    } finally {
-      setIsCheckingCaseLabel(false);
-    }
+      setIsCheckingCaseLabel(true);
+
+      try {
+        const response = await fetch(
+          `/api/screening/check-name?name=${encodeURIComponent(trimmedValue)}`,
+          {
+            method: "GET",
+            cache: "no-store",
+          },
+        );
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          setDuplicateCaseLabelError(null);
+          return;
+        }
+
+        setDuplicateCaseLabelError(
+          result.isDuplicate
+            ? "You already have a screening with this name."
+            : null,
+        );
+      } catch {
+        setDuplicateCaseLabelError(null);
+      } finally {
+        setIsCheckingCaseLabel(false);
+      }
+    },
+    [isLoggedIn],
+  );
+
+  async function handleCaseLabelBlur() {
+    await validateCaseLabelDuplicate(draft.case_label);
   }
+
+  useEffect(() => {
+    if (!hasHydratedDraft || !isLoggedIn) {
+      return;
+    }
+
+    const trimmedValue = draft.case_label.trim();
+
+    if (!trimmedValue || getCaseLabelError(trimmedValue)) {
+      setDuplicateCaseLabelError(null);
+      setIsCheckingCaseLabel(false);
+      return;
+    }
+
+    void validateCaseLabelDuplicate(trimmedValue);
+  }, [
+    draft.case_label,
+    hasHydratedDraft,
+    isLoggedIn,
+    validateCaseLabelDuplicate,
+  ]);
 
   const loginUrl = useMemo(() => "/auth/login?redirect=/screening", []);
 
