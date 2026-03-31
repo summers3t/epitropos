@@ -350,6 +350,16 @@ async function submitScreening(
   });
 
   if (error) {
+    if (error.code === "23505") {
+      return {
+        success: false,
+        error: null,
+        fieldErrors: {
+          case_label: "You already have a screening with this name.",
+        },
+      };
+    }
+
     return {
       success: false,
       error: error.message,
