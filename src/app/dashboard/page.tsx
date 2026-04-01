@@ -268,19 +268,19 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
     return (
         <section className="space-y-8">
-            <header className="max-w-3xl space-y-3">
-                <p className="text-xs uppercase tracking-[0.18em] text-white/55">
-                    Client Portal
+            <header className="max-w-3xl space-y-4">
+                <p className="text-[11px] uppercase tracking-[0.28em] text-white/50">
+                    Dashboard
                 </p>
 
                 <h1
-                    className="text-4xl font-black tracking-tight"
-                    style={{ fontFamily: "var(--font-montserrat)" }}
+                    className="text-5xl leading-none text-white"
+                    style={{ fontFamily: "Georgia, Times New Roman, serif" }}
                 >
-                    Dashboard
+                    Welcome
                 </h1>
 
-                <p className="max-w-2xl text-sm leading-6 text-white/72">
+                <p className="max-w-2xl text-sm leading-6 text-white/68">
                     Use this page to check your current stage, open active items, and access published reports.
                 </p>
             </header>
