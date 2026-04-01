@@ -1,242 +1,265 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import ClientPortalShell from "@/components/dashboard/ClientPortalShell";
+import { getClientPortalCounts } from "@/lib/dashboard/getClientPortalCounts";
 
 function formatCaseStatusLabel(status: string | null | undefined) {
-    if (!status) return "—";
+  if (!status) return "—";
 
-    const labels: Record<string, string> = {
-        active: "Active",
-        analysis: "Analysis",
-        delivered: "Delivered",
-        closed: "Closed",
-    };
+  const labels: Record<string, string> = {
+    active: "Active",
+    analysis: "Analysis",
+    delivered: "Delivered",
+    closed: "Closed",
+  };
 
-    return labels[status] ?? status;
+  return labels[status] ?? status;
 }
 
 function formatClientCaseTitle(title: string | null | undefined) {
-    if (!title) return "Case";
+  if (!title) return "Case";
 
-    return title.startsWith("Case for ") ? title.slice("Case for ".length) : title;
+  return title.startsWith("Case for ")
+    ? title.slice("Case for ".length)
+    : title;
 }
 
 function formatDecisionStatusLabel(status: string | null | undefined) {
-    if (!status || status === "pending") return null;
+  if (!status || status === "pending") return null;
 
-    const labels: Record<string, string> = {
-        recommended: "Recommended",
-        watchlist: "Watchlist",
-        rejected_all: "Not recommended",
-    };
+  const labels: Record<string, string> = {
+    recommended: "Recommended",
+    watchlist: "Watchlist",
+    rejected_all: "Not recommended",
+  };
 
-    return labels[status] ?? null;
+  return labels[status] ?? null;
 }
 
-function formatClientDateTime(value: string | null | undefined) {
-    if (!value) return "—";
+function formatClientDate(value: string | null | undefined) {
+  if (!value) return "—";
 
-    const parts = new Intl.DateTimeFormat("en-GB", {
-        timeZone: "Europe/Sofia",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-    }).formatToParts(new Date(value));
+  const date = new Date(value);
 
-    const day = parts.find((part) => part.type === "day")?.value ?? "--";
-    const month = parts.find((part) => part.type === "month")?.value ?? "--";
-    const year = parts.find((part) => part.type === "year")?.value ?? "----";
-    const hour = parts.find((part) => part.type === "hour")?.value ?? "--";
-    const minute = parts.find((part) => part.type === "minute")?.value ?? "--";
+  if (Number.isNaN(date.getTime())) {
+    return "—";
+  }
 
-    return `${day}.${month}.${year} ${hour}:${minute}`;
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Sofia",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
 }
 
 function getCaseListStatusText(status: string | null | undefined) {
-    switch (status) {
-        case "active":
-            return "Review preparation in progress";
-        case "analysis":
-            return "Analysis in progress";
-        case "delivered":
-            return "Report available";
-        case "closed":
-            return "Case completed";
-        default:
-            return "Case in progress";
-    }
+  switch (status) {
+    case "active":
+      return "Review preparation in progress";
+    case "analysis":
+      return "Analysis in progress";
+    case "delivered":
+      return "Report available";
+    case "closed":
+      return "Case completed";
+    default:
+      return "Case in progress";
+  }
+}
+
+function getSoftStatusClasses(status: string | null | undefined) {
+  switch (status) {
+    case "active":
+    case "delivered":
+      return "border-emerald-400/35 bg-emerald-500/10 text-emerald-900";
+    case "analysis":
+      return "border-amber-400/35 bg-amber-500/10 text-amber-900";
+    case "closed":
+      return "border-[#d8cab8] bg-[#ece2d5] text-[#6c5f51]";
+    default:
+      return "border-[#d8cab8] bg-[#efe6da] text-[#6c5f51]";
+  }
 }
 
 export default async function DashboardCasesPage() {
-    const supabase = await createClient();
+  const supabase = await createClient();
 
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-    if (!user) {
-        redirect("/auth/login?redirect=/dashboard/cases");
-    }
+  if (!user) {
+    redirect("/auth/login?redirect=/dashboard/cases");
+  }
 
-    const { data: cases, error: casesError } = await supabase
-        .from("cases")
-        .select("id, title, status, created_at, decision_status, screening_request_id")
-        .eq("client_id", user.id)
-        .order("created_at", { ascending: false });
+  const counts = await getClientPortalCounts(supabase, user.id);
 
-    if (casesError) {
-        throw new Error(casesError.message);
-    }
+  const { data: cases, error: casesError } = await supabase
+    .from("cases")
+    .select(
+      "id, title, status, created_at, decision_status, screening_request_id",
+    )
+    .eq("client_id", user.id)
+    .order("created_at", { ascending: false });
 
-    const screeningIds = (cases ?? [])
-        .map((item) => item.screening_request_id)
-        .filter(Boolean) as string[];
+  if (casesError) {
+    throw new Error(casesError.message);
+  }
 
-    const { data: screenings, error: screeningsError } =
-        screeningIds.length > 0
-            ? await supabase
-                .from("screening_requests")
-                .select("id, name, budget_range, goal, plan_interest")
-                .in("id", screeningIds)
-            : { data: [], error: null as null | Error };
+  const screeningIds = (cases ?? [])
+    .map((item) => item.screening_request_id)
+    .filter(Boolean) as string[];
 
-    if (screeningsError) {
-        throw new Error(screeningsError.message);
-    }
+  const { data: screenings, error: screeningsError } =
+    screeningIds.length > 0
+      ? await supabase
+          .from("screening_requests")
+          .select("id, name, budget_range, goal, plan_interest")
+          .in("id", screeningIds)
+      : { data: [], error: null as null | Error };
 
-    const screeningsById = new Map((screenings ?? []).map((item) => [item.id, item]));
+  if (screeningsError) {
+    throw new Error(screeningsError.message);
+  }
 
-    return (
-        <section className="space-y-8">
-            <div className="space-y-3">
-                <Link
-                    href="/dashboard"
-                    className="inline-flex text-xs uppercase tracking-[0.16em] text-white/55 hover:text-white transition"
+  const screeningsById = new Map(
+    (screenings ?? []).map((item) => [item.id, item]),
+  );
+
+  return (
+    <ClientPortalShell
+      eyebrow="Client Portal"
+      title="Cases"
+      description="Follow each active or completed engagement, review its current status, and open the case workspace when you need detail."
+      counts={counts}
+    >
+      <div className="space-y-6">
+        {cases && cases.length > 0 ? (
+          <section className="rounded-[28px] border border-[#d8cab8] bg-[#fbf7f1] px-4 py-4 md:px-6 md:py-5">
+            <div className="flex items-end justify-between gap-4 border-b border-[#e3d6c6] pb-4">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.22em] text-[#8f7d68]">
+                  Engagements
+                </p>
+                <h2
+                  className="mt-3 text-3xl leading-none text-[#211b15]"
+                  style={{ fontFamily: "Georgia, Times New Roman, serif" }}
                 >
-                    ← Back to dashboard
-                </Link>
+                  All cases
+                </h2>
+              </div>
 
-                <p className="text-xs uppercase tracking-[0.18em] text-white/55">
-                    Client Portal
-                </p>
-
-                <div className="flex items-center gap-3">
-                    <h1
-                        className="text-4xl font-black tracking-tight"
-                        style={{ fontFamily: "var(--font-montserrat)" }}
-                    >
-                        My Cases
-                    </h1>
-
-                    {cases && cases.length > 0 ? (
-                        <span className="inline-flex min-w-[22px] items-center justify-center rounded-full bg-white/10 px-2 py-1 text-xs font-semibold leading-none text-white/85">
-                            {cases.length}
-                        </span>
-                    ) : null}
-                </div>
-
-                <p className="max-w-3xl text-sm leading-6 text-white/72">
-                    Review each case status, final conclusion, published reports, and next step.
-                </p>
+              <div className="rounded-full border border-[#d8cab8] bg-white/70 px-3 py-1 text-xs font-medium text-[#6e6255]">
+                {cases.length}
+              </div>
             </div>
 
-            <section className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur">
-                <div className="space-y-4">
-                    {cases && cases.length > 0 ? (
-                        cases.map((item) => {
-                            const screening = item.screening_request_id
-                                ? screeningsById.get(item.screening_request_id)
-                                : null;
+            <div className="mt-2 hidden grid-cols-[minmax(0,1.3fr)_110px_150px_140px_180px_110px] gap-4 px-4 py-3 text-[11px] uppercase tracking-[0.18em] text-[#8f7d68] xl:grid">
+              <div>Case</div>
+              <div>Date</div>
+              <div>Selected plan</div>
+              <div>Budget</div>
+              <div>Review focus</div>
+              <div className="text-right">Status</div>
+            </div>
 
-                            return (
-                                <article
-                                    key={item.id}
-                                    className="rounded-2xl border border-white/10 bg-black/10 p-5"
-                                >
-                                    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                                        <div className="space-y-2">
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <span className="rounded-full border border-white/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white">
-                                                    {formatCaseStatusLabel(item.status)}
-                                                </span>
+            <div className="space-y-2">
+              {cases.map((item) => {
+                const screening = item.screening_request_id
+                  ? screeningsById.get(item.screening_request_id)
+                  : null;
 
-                                                {formatDecisionStatusLabel(item.decision_status) ? (
-                                                    <span className="rounded-full border border-emerald-400/20 bg-emerald-500/5 px-2 py-1 text-[10px] uppercase tracking-[0.14em] text-emerald-100/90">
-                                                        {formatDecisionStatusLabel(item.decision_status)}
-                                                    </span>
-                                                ) : null}
-                                            </div>
+                return (
+                  <article
+                    key={item.id}
+                    className="relative rounded-[22px] border border-transparent bg-white/55 px-4 py-4 transition hover:border-[#d8cab8] hover:bg-white"
+                  >
+                    <Link
+                      href={`/dashboard/cases/${item.id}`}
+                      className="absolute inset-0 z-10 rounded-[22px]"
+                      aria-label={`Open ${formatClientCaseTitle(item.title)}`}
+                    />
 
-                                            <div className="space-y-1">
-                                                <p className="text-sm font-semibold text-white">
-                                                    {formatClientCaseTitle(item.title)}
-                                                </p>
-                                                <p className="text-xs text-white/60">
-                                                    {getCaseListStatusText(item.status)}
-                                                </p>
-                                                <p className="text-xs text-white/50">
-                                                    Created {formatClientDateTime(item.created_at)}
-                                                </p>
-                                            </div>
+                    <div className="relative z-0 flex flex-col gap-3 xl:grid xl:grid-cols-[minmax(0,1.3fr)_110px_150px_140px_180px_110px] xl:items-center xl:gap-4">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="truncate text-sm font-semibold text-[#211b15]">
+                            {formatClientCaseTitle(item.title)}
+                          </p>
 
-                                            <dl className="grid gap-2 text-sm text-white/75 md:grid-cols-3">
-                                                <div>
-                                                    <dt className="text-xs uppercase tracking-[0.14em] text-white/45">
-                                                        Budget
-                                                    </dt>
-                                                    <dd className="mt-1 text-sm text-white/80">
-                                                        {screening?.budget_range || "—"}
-                                                    </dd>
-                                                </div>
-
-                                                <div>
-                                                    <dt className="text-xs uppercase tracking-[0.14em] text-white/45">
-                                                        Goal
-                                                    </dt>
-                                                    <dd className="mt-1 text-sm text-white/80">
-                                                        {screening?.goal || "—"}
-                                                    </dd>
-                                                </div>
-
-                                                <div>
-                                                    <dt className="text-xs uppercase tracking-[0.14em] text-white/45">
-                                                        Selected service
-                                                    </dt>
-                                                    <dd className="mt-1 text-sm text-white/80">
-                                                        {screening?.plan_interest || "—"}
-                                                    </dd>
-                                                </div>
-                                            </dl>
-                                        </div>
-
-                                        <div className="flex flex-col gap-3 md:items-end">
-                                            <Link
-                                                href={`/dashboard/cases/${item.id}`}
-                                                className="rounded-xl border border-white/15 px-4 py-2 text-xs hover:bg-white/5 transition"
-                                            >
-                                                View Case
-                                            </Link>
-                                        </div>
-                                    </div>
-                                </article>
-                            );
-                        })
-                    ) : (
-                        <div className="rounded-2xl border border-white/10 bg-black/10 p-5">
-                            <p className="font-medium text-white">No cases available yet.</p>
-                            <p className="mt-2 text-sm text-white/65">
-                                Your case will appear here after payment is confirmed and the review begins.
-                            </p>
-                            <p className="mt-1 text-xs text-white/50">
-                                Once available, each case will show its status, conclusion, and report access.
-                            </p>
+                          {formatDecisionStatusLabel(item.decision_status) ? (
+                            <span className="inline-flex rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-900">
+                              {formatDecisionStatusLabel(item.decision_status)}
+                            </span>
+                          ) : null}
                         </div>
-                    )}
-                </div>
-            </section>
-        </section>
-    );
+
+                        <p className="mt-1 text-xs text-[#8f7d68]">
+                          {getCaseListStatusText(item.status)}
+                        </p>
+                      </div>
+
+                      <div className="text-sm text-[#6e6255]">
+                        {formatClientDate(item.created_at)}
+                      </div>
+
+                      <div className="text-sm text-[#6e6255]">
+                        {screening?.plan_interest
+                          ? screening.plan_interest === "core"
+                            ? "Core Analysis"
+                            : screening.plan_interest === "strategic"
+                              ? "Strategic Analysis"
+                              : screening.plan_interest
+                          : "—"}
+                      </div>
+
+                      <div className="text-sm text-[#6e6255]">
+                        {screening?.budget_range || "—"}
+                      </div>
+
+                      <div className="truncate text-sm text-[#6e6255]">
+                        {screening?.goal || "—"}
+                      </div>
+
+                      <div className="flex justify-start xl:justify-end">
+                        <span
+                          className={[
+                            "inline-flex rounded-full border px-3 py-1 text-xs font-medium",
+                            getSoftStatusClasses(item.status),
+                          ].join(" ")}
+                        >
+                          {formatCaseStatusLabel(item.status)}
+                        </span>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        ) : (
+          <section className="rounded-[28px] border border-[#d8cab8] bg-[#fbf7f1] px-5 py-8 md:px-6">
+            <p
+              className="text-3xl leading-none text-[#211b15]"
+              style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+            >
+              No cases available yet.
+            </p>
+
+            <p className="mt-4 max-w-xl text-sm leading-7 text-[#6e6255]">
+              Your case will appear here after payment is confirmed and the
+              review begins.
+            </p>
+
+            <p className="mt-2 text-sm leading-7 text-[#6e6255]">
+              Once available, each case will show its status, conclusion, and
+              final report access.
+            </p>
+          </section>
+        )}
+      </div>
+    </ClientPortalShell>
+  );
 }

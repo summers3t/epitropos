@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import ClientPortalShell from "@/components/dashboard/ClientPortalShell";
 
 function formatStatusLabel(status: string | null | undefined) {
     if (!status) return "—";
@@ -31,8 +32,8 @@ function formatCaseStatusLabel(status: string | null | undefined) {
 
     const labels: Record<string, string> = {
         active: "Active",
-        analysis: "Analysis in progress",
-        delivered: "Report delivered",
+        analysis: "Analysis",
+        delivered: "Delivered",
         closed: "Closed",
     };
 
@@ -136,6 +137,43 @@ function getScreeningNextStepText({
     }
 }
 
+function formatClientDate(value: string | null | undefined) {
+    if (!value) return "—";
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+        return "—";
+    }
+
+    return new Intl.DateTimeFormat("en-GB", {
+        timeZone: "Europe/Sofia",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+    }).format(date);
+}
+
+function getSoftStatusClasses(status: string | null | undefined) {
+    switch (status) {
+        case "accepted":
+        case "active":
+        case "delivered":
+            return "border-emerald-400/35 bg-emerald-500/10 text-emerald-900";
+        case "offer_sent":
+        case "analysis":
+        case "sent":
+            return "border-amber-400/35 bg-amber-500/10 text-amber-900";
+        case "rejected":
+        case "cancelled":
+        case "expired":
+        case "closed":
+            return "border-[#d8cab8] bg-[#ece2d5] text-[#6c5f51]";
+        default:
+            return "border-[#d8cab8] bg-[#efe6da] text-[#6c5f51]";
+    }
+}
+
 type PageProps = {
     searchParams: Promise<{ screening_created?: string }>;
 };
@@ -169,13 +207,13 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     const { data: offers, error: offersError } =
         screeningIds.length > 0
             ? await supabase
-                .from("offers")
-                .select(
-                    "id, screening_request_id, plan_type, price_amount, currency, status, created_at"
-                )
-                .in("screening_request_id", screeningIds)
-                .in("status", ["sent", "accepted"])
-                .order("created_at", { ascending: false })
+                  .from("offers")
+                  .select(
+                      "id, screening_request_id, plan_type, price_amount, currency, status, created_at"
+                  )
+                  .in("screening_request_id", screeningIds)
+                  .in("status", ["sent", "accepted"])
+                  .order("created_at", { ascending: false })
             : { data: [], error: null as null | Error };
 
     if (offersError) {
@@ -191,9 +229,9 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     const { data: orders, error: ordersLookupError } =
         offerIds.length > 0
             ? await supabase
-                .from("orders")
-                .select("offer_id, payment_status")
-                .in("offer_id", offerIds)
+                  .from("orders")
+                  .select("offer_id, payment_status")
+                  .in("offer_id", offerIds)
             : { data: [], error: null as null | Error };
 
     if (ordersLookupError) {
@@ -250,7 +288,9 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     const reportCount = reports?.length ?? 0;
 
     const latestCaseScreening = latestCase?.screening_request_id
-        ? screeningRequests?.find((request) => request.id === latestCase.screening_request_id) ?? null
+        ? screeningRequests?.find(
+              (request) => request.id === latestCase.screening_request_id
+          ) ?? null
         : null;
 
     const latestOffer = latestScreening
@@ -266,428 +306,408 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     const paymentPaid = latestOrder?.payment_status === "paid";
     const hasCase = !!latestCase;
 
+    const recentScreenings = (screeningRequests ?? []).slice(0, 5);
+    const recentCases = (cases ?? []).slice(0, 4);
+
     return (
-        <section className="space-y-8">
-            <header className="max-w-3xl space-y-4">
-                <p className="text-[11px] uppercase tracking-[0.28em] text-white/50">
-                    Dashboard
-                </p>
-
-                <h1
-                    className="text-5xl leading-none text-white"
-                    style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-                >
-                    Welcome
-                </h1>
-
-                <p className="max-w-2xl text-sm leading-6 text-white/68">
-                    Use this page to check your current stage, open active items, and access published reports.
-                </p>
-            </header>
-
-            {params.screening_created === "1" ? (
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/80">
-                    Screening application submitted successfully.
-                </div>
-            ) : null}
-
-            {hasActionableOffer ? (
-                <section className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur">
-                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                        <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                                <p className="text-xs uppercase tracking-[0.16em] text-white/50">
-                                    Next Action
-                                </p>
-
-                                {!paymentPaid ? (
-                                    <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
-                                        1
-                                    </span>
-                                ) : null}
-                            </div>
-
-                            <h2 className="text-xl font-semibold text-white">
-                                {paymentPaid
-                                    ? "Payment confirmed"
-                                    : paymentPending
-                                        ? "Payment pending confirmation"
-                                        : "Offer available for review"}
-                            </h2>
-
-                            <p className="max-w-2xl text-sm leading-6 text-white/72">
-                                {paymentPaid
-                                    ? "Your payment has been recorded and your case is now open in the client portal."
-                                    : paymentPending
-                                        ? "Your offer has been accepted and payment is awaiting confirmation."
-                                        : "You have a client offer ready for review."}
-                            </p>
-                        </div>
-
-                        <div className="flex flex-wrap gap-3">
-                            <Link
-                                href={
-                                    paymentPaid
-                                        ? "/dashboard/cases"
-                                        : `/dashboard/offers/${latestOffer?.id}`
-                                }
-                                className="rounded-xl border border-white/15 px-4 py-2 text-xs hover:bg-white/5 transition"
-                            >
-                                {paymentPaid
-                                    ? "Open Cases"
-                                    : paymentPending
-                                        ? "Open Offer Status"
-                                        : "View Offer"}
-                            </Link>
-                        </div>
+        <ClientPortalShell
+            eyebrow="Dashboard"
+            title="Welcome"
+            description="Use this page to follow your current stage, open live items, and keep track of the next meaningful step."
+            counts={{
+                screenings: screeningCount,
+                cases: caseCount,
+                reports: reportCount,
+            }}
+        >
+            <div className="space-y-6">
+                {params.screening_created === "1" ? (
+                    <div className="rounded-[24px] border border-emerald-300 bg-emerald-50 px-5 py-4 text-sm text-emerald-900">
+                        Screening application submitted successfully.
                     </div>
-                </section>
-            ) : null}
+                ) : null}
 
-            <div className="grid gap-6 lg:grid-cols-3">
-                <section className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur">
-                    <div className="flex items-start justify-between gap-4">
-                        <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                                <p className="text-xs uppercase tracking-[0.16em] text-white/50">
-                                    My Screenings
-                                </p>
-                                {screeningCount > 0 ? (
-                                    <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white/85">
-                                        {screeningCount}
-                                    </span>
-                                ) : null}
-                            </div>
-                            <h2 className="text-xl font-semibold">Current screening status</h2>
-                        </div>
-
-                        <Link
-                            href="/dashboard/screening"
-                            className="rounded-xl border border-white/15 px-3 py-1.5 text-xs hover:bg-white/5 transition"
-                        >
-                            Open
-                        </Link>
-                    </div>
-
-                    <div className="mt-6">
-                        {latestScreening ? (
-                            <article className="rounded-2xl border border-white/10 bg-black/10 p-5">
-                                <div className="flex items-start justify-between gap-4">
-                                    <div className="space-y-1">
-                                        <p className="text-sm font-semibold text-white">
-                                            {latestScreening.name || "Latest screening request"}
-                                        </p>
-
-                                        <p className="text-xs text-white/50">
-                                            Submitted{" "}
-                                            {new Date(latestScreening.created_at).toLocaleString()}
-                                        </p>
-                                    </div>
-
-                                    <div className="text-right">
-                                        <div className="text-[10px] uppercase tracking-[0.14em] text-white/45">
-                                            Status
-                                        </div>
-                                        <div className="mt-1 text-xs font-semibold tracking-[0.04em] text-white/75">
-                                            {formatStatusLabel(latestScreening.status)}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <dl className="mt-4 grid gap-3">
-                                    <div>
-                                        <dt className="text-xs uppercase tracking-[0.14em] text-white/45">
-                                            Plan
-                                        </dt>
-                                        <dd className="mt-1 text-sm text-white/80">
-                                            {latestScreening.plan_interest || "—"}
-                                        </dd>
-                                    </div>
-
-                                    <div>
-                                        <dt className="text-xs uppercase tracking-[0.14em] text-white/45">
-                                            Budget
-                                        </dt>
-                                        <dd className="mt-1 text-sm text-white/80">
-                                            {latestScreening.budget_range || "—"}
-                                        </dd>
-                                    </div>
-
-                                    <div>
-                                        <dt className="text-xs uppercase tracking-[0.14em] text-white/45">
-                                            Goal
-                                        </dt>
-                                        <dd className="mt-1 text-sm text-white/80">
-                                            {latestScreening.goal || "—"}
-                                        </dd>
-                                    </div>
-                                </dl>
-
-                                <p className="mt-4 text-sm leading-6 text-white/72">
-                                    {getScreeningStatusHelp(latestScreening.status)}
-                                </p>
-
-                                <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
-                                    <div className="text-xs uppercase tracking-[0.14em] text-white/45">
-                                        {getScreeningNextStepTitle({
-                                            screeningStatus: latestScreening.status,
-                                            paymentPending,
-                                            paymentPaid,
-                                            hasCase,
-                                        })}
-                                    </div>
-                                    <p className="mt-2 text-sm leading-6 text-white/75">
-                                        {getScreeningNextStepText({
-                                            screeningStatus: latestScreening.status,
-                                            paymentPending,
-                                            paymentPaid,
-                                            hasCase,
-                                        })}
+                {hasActionableOffer ? (
+                    <section className="rounded-[28px] border border-[#d8cab8] bg-[#fbf7f1] px-5 py-5 shadow-[0_12px_36px_rgba(0,0,0,0.06)] md:px-6">
+                        <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-2">
+                                    <p className="text-[11px] uppercase tracking-[0.22em] text-[#8f7d68]">
+                                        Next action
                                     </p>
-                                    <div className="mt-3 flex flex-wrap gap-2">
-                                        <Link
-                                            href={`/dashboard/screening/${latestScreening.id}`}
-                                            className="inline-flex rounded-xl border border-white/15 px-4 py-2 text-xs hover:bg-white/5 transition"
-                                        >
-                                            Open Screening
-                                        </Link>
 
-                                        {paymentPaid && hasCase ? (
-                                            <Link
-                                                href="/dashboard/cases"
-                                                className="inline-flex rounded-xl border border-white/15 px-4 py-2 text-xs hover:bg-white/5 transition"
-                                            >
-                                                Open Cases
-                                            </Link>
-                                        ) : null}
-                                    </div>
+                                    {!paymentPaid ? (
+                                        <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
+                                            1
+                                        </span>
+                                    ) : null}
                                 </div>
 
-                                {latestOffer ? (
-                                    <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
-                                        <div className="flex flex-col gap-4">
-                                            <div className="flex items-start justify-between gap-4">
-                                                <div>
-                                                    <p className="text-xs uppercase tracking-[0.14em] text-white/45">
-                                                        Related offer
-                                                    </p>
-                                                    <p className="mt-1 text-sm text-white/80">
-                                                        {formatPlanLabel(latestOffer.plan_type)}
-                                                    </p>
-                                                </div>
-
-                                                <div className="text-right">
-                                                    <div className="text-xs uppercase tracking-[0.14em] text-white/45">
-                                                        Offer status
-                                                    </div>
-                                                    <div className="mt-1 text-sm text-white/80">
-                                                        {formatStatusLabel(latestOffer.status)}
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div className="flex flex-wrap items-center justify-between gap-3">
-                                                <p className="text-sm text-white/75">
-                                                    {latestOffer.price_amount} {latestOffer.currency}
-                                                </p>
-
-                                                <Link
-                                                    href={`/dashboard/offers/${latestOffer.id}`}
-                                                    className="rounded-xl border border-white/15 px-4 py-2 text-xs hover:bg-white/5 transition"
-                                                >
-                                                    View Offer
-                                                </Link>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ) : null}
-                            </article>
-                        ) : (
-                            <div className="rounded-2xl border border-white/10 bg-black/10 p-5">
-                                <p className="font-medium text-white">
-                                    No screening request yet.
-                                </p>
-                                <p className="mt-2 text-sm text-white/65">
-                                    Start with the screening form. Screening is required before any offer, payment, or case creation.
-                                </p>
-                                <Link
-                                    href="/screening"
-                                    className="mt-4 inline-flex rounded-xl border border-white/15 px-4 py-2 text-xs hover:bg-white/5 transition"
+                                <h2
+                                    className="text-3xl leading-none text-[#211b15]"
+                                    style={{ fontFamily: "Georgia, Times New Roman, serif" }}
                                 >
-                                    Apply for Screening
+                                    {paymentPaid
+                                        ? "Payment confirmed"
+                                        : paymentPending
+                                          ? "Payment pending confirmation"
+                                          : "Offer available for review"}
+                                </h2>
+
+                                <p className="max-w-2xl text-sm leading-7 text-[#6e6255]">
+                                    {paymentPaid
+                                        ? "Your payment has been recorded and your case is now open in the client portal."
+                                        : paymentPending
+                                          ? "Your offer has been accepted and payment is awaiting confirmation."
+                                          : "You have a client offer ready for review."}
+                                </p>
+                            </div>
+
+                            <div className="flex flex-wrap gap-3">
+                                <Link
+                                    href={
+                                        paymentPaid
+                                            ? "/dashboard/cases"
+                                            : `/dashboard/offers/${latestOffer?.id}`
+                                    }
+                                    className="inline-flex items-center rounded-full border border-[#2c241c] px-5 py-2.5 text-sm text-[#211b15] transition hover:bg-[#211b15] hover:text-white"
+                                >
+                                    {paymentPaid
+                                        ? "Open Cases"
+                                        : paymentPending
+                                          ? "Open Offer Status"
+                                          : "View Offer"}
                                 </Link>
                             </div>
-                        )}
-                    </div>
-                </section>
+                        </div>
+                    </section>
+                ) : null}
 
-                <section className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur">
-                    <div className="flex items-start justify-between gap-4">
-                        <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                                <p className="text-xs uppercase tracking-[0.16em] text-white/50">
-                                    My Cases
+                <div className="grid gap-6 2xl:grid-cols-[1.15fr_0.85fr]">
+                    <section className="rounded-[28px] border border-[#d8cab8] bg-[#fbf7f1] px-4 py-4 md:px-6 md:py-5">
+                        <div className="flex items-end justify-between gap-4 border-b border-[#e3d6c6] pb-4">
+                            <div>
+                                <p className="text-[11px] uppercase tracking-[0.22em] text-[#8f7d68]">
+                                    Active cases
                                 </p>
-                                {caseCount > 0 ? (
-                                    <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white/85">
-                                        {caseCount}
-                                    </span>
-                                ) : null}
+                                <h2
+                                    className="mt-3 text-3xl leading-none text-[#211b15]"
+                                    style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+                                >
+                                    Current engagements
+                                </h2>
                             </div>
-                            <h2 className="text-xl font-semibold">Engagement status</h2>
+
+                            <Link
+                                href="/dashboard/cases"
+                                className="text-sm text-[#6e6255] transition hover:text-[#211b15]"
+                            >
+                                View all
+                            </Link>
                         </div>
 
-                        <Link
-                            href="/dashboard/cases"
-                            className="rounded-xl border border-white/15 px-3 py-1.5 text-xs hover:bg-white/5 transition"
-                        >
-                            Open
-                        </Link>
-                    </div>
-
-                    <div className="mt-6">
-                        {latestCase ? (
-                            <article className="rounded-2xl border border-white/10 bg-black/10 p-5">
-                                <div className="flex items-start justify-between gap-4">
-                                    <div className="space-y-1">
-                                        <p className="text-sm font-semibold text-white">
-                                            {formatClientCaseTitle(latestCase.title)}
-                                        </p>
-
-                                        <p className="text-xs text-white/50">
-                                            Created {new Date(latestCase.created_at).toLocaleString()}
-                                        </p>
-                                    </div>
-
-                                    <div className="text-right">
-                                        <div className="text-[10px] uppercase tracking-[0.14em] text-white/45">
-                                            Status
-                                        </div>
-                                        <div className="mt-1 text-xs font-semibold tracking-[0.04em] text-white/75">
-                                            {formatCaseStatusLabel(latestCase.status)}
-                                        </div>
-                                    </div>
+                        {recentCases.length > 0 ? (
+                            <div className="mt-2">
+                                <div className="hidden grid-cols-[minmax(0,1.5fr)_140px_150px_180px_120px] gap-4 px-4 py-3 text-[11px] uppercase tracking-[0.18em] text-[#8f7d68] lg:grid">
+                                    <div>Case</div>
+                                    <div>Date</div>
+                                    <div>Selected plan</div>
+                                    <div>Review focus</div>
+                                    <div className="text-right">Status</div>
                                 </div>
 
-                                <dl className="mt-4 grid gap-3">
-                                    <div>
-                                        <dt className="text-xs uppercase tracking-[0.14em] text-white/45">
-                                            Budget
-                                        </dt>
-                                        <dd className="mt-1 text-sm text-white/80">
-                                            {latestCaseScreening?.budget_range || "—"}
-                                        </dd>
-                                    </div>
+                                <div className="space-y-2">
+                                    {recentCases.map((item) => {
+                                        const screening = item.screening_request_id
+                                            ? screeningRequests?.find(
+                                                  (request) =>
+                                                      request.id === item.screening_request_id
+                                              ) ?? null
+                                            : null;
 
-                                    <div>
-                                        <dt className="text-xs uppercase tracking-[0.14em] text-white/45">
-                                            Goal
-                                        </dt>
-                                        <dd className="mt-1 text-sm text-white/80">
-                                            {latestCaseScreening?.goal || "—"}
-                                        </dd>
-                                    </div>
+                                        return (
+                                            <article
+                                                key={item.id}
+                                                className="relative rounded-[22px] border border-transparent bg-white/55 px-4 py-4 transition hover:border-[#d8cab8] hover:bg-white"
+                                            >
+                                                <Link
+                                                    href={`/dashboard/cases/${item.id}`}
+                                                    className="absolute inset-0 z-10 rounded-[22px]"
+                                                    aria-label={`Open ${formatClientCaseTitle(item.title)}`}
+                                                />
 
-                                    <div>
-                                        <dt className="text-xs uppercase tracking-[0.14em] text-white/45">
-                                            Selected service
-                                        </dt>
-                                        <dd className="mt-1 text-sm text-white/80">
-                                            {latestCaseScreening?.plan_interest || "—"}
-                                        </dd>
-                                    </div>
-                                </dl>
-                            </article>
+                                                <div className="relative z-0 flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1.5fr)_140px_150px_180px_120px] lg:items-center lg:gap-4">
+                                                    <div className="min-w-0">
+                                                        <p className="truncate text-sm font-semibold text-[#211b15]">
+                                                            {formatClientCaseTitle(item.title)}
+                                                        </p>
+                                                    </div>
+
+                                                    <div className="text-sm text-[#6e6255]">
+                                                        {formatClientDate(item.created_at)}
+                                                    </div>
+
+                                                    <div className="text-sm text-[#6e6255]">
+                                                        {screening?.plan_interest
+                                                            ? formatPlanLabel(screening.plan_interest)
+                                                            : "—"}
+                                                    </div>
+
+                                                    <div className="truncate text-sm text-[#6e6255]">
+                                                        {screening?.goal || "—"}
+                                                    </div>
+
+                                                    <div className="flex justify-start lg:justify-end">
+                                                        <span
+                                                            className={[
+                                                                "inline-flex rounded-full border px-3 py-1 text-xs font-medium",
+                                                                getSoftStatusClasses(item.status),
+                                                            ].join(" ")}
+                                                        >
+                                                            {formatCaseStatusLabel(item.status)}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </article>
+                                        );
+                                    })}
+                                </div>
+                            </div>
                         ) : (
-                            <div className="rounded-2xl border border-white/10 bg-black/10 p-5">
-                                <p className="font-medium text-white">No cases yet.</p>
-                                <p className="mt-2 text-sm text-white/65">
-                                    A case appears here after your payment has been confirmed and the engagement has been opened.
+                            <div className="px-1 py-8">
+                                <p
+                                    className="text-2xl leading-none text-[#211b15]"
+                                    style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+                                >
+                                    No cases yet.
+                                </p>
+                                <p className="mt-3 max-w-xl text-sm leading-7 text-[#6e6255]">
+                                    Your case will appear here after payment is confirmed and the engagement is opened.
                                 </p>
                             </div>
                         )}
-                    </div>
-                </section>
+                    </section>
 
-                <section className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur">
-                    <div className="flex items-start justify-between gap-4">
-                        <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                                <p className="text-xs uppercase tracking-[0.16em] text-white/50">
-                                    My Reports
+                    <section className="rounded-[28px] border border-[#d8cab8] bg-[#fbf7f1] px-4 py-4 md:px-6 md:py-5">
+                        <div className="flex items-end justify-between gap-4 border-b border-[#e3d6c6] pb-4">
+                            <div>
+                                <p className="text-[11px] uppercase tracking-[0.22em] text-[#8f7d68]">
+                                    Recent screenings
                                 </p>
-                                {reportCount > 0 ? (
-                                    <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white/85">
-                                        {reportCount}
-                                    </span>
-                                ) : null}
+                                <h2
+                                    className="mt-3 text-3xl leading-none text-[#211b15]"
+                                    style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+                                >
+                                    Screening history
+                                </h2>
                             </div>
-                            <h2 className="text-xl font-semibold">Published deliverables</h2>
+
+                            <Link
+                                href="/dashboard/screening"
+                                className="text-sm text-[#6e6255] transition hover:text-[#211b15]"
+                            >
+                                View all
+                            </Link>
                         </div>
 
-                        <Link
-                            href="/dashboard/reports"
-                            className="rounded-xl border border-white/15 px-3 py-1.5 text-xs hover:bg-white/5 transition"
-                        >
-                            Open
-                        </Link>
-                    </div>
-
-                    <div className="mt-6">
-                        {latestReport ? (
-                            <article className="rounded-2xl border border-white/10 bg-black/10 p-5">
-                                <div className="space-y-1">
-                                    <p className="text-sm font-semibold text-white">
-                                        {formatClientReportTitle(latestReport.title)}
-                                    </p>
-
-                                    <p className="text-xs text-white/50">
-                                        Published{" "}
-                                        {latestReport.published_at
-                                            ? new Date(latestReport.published_at).toLocaleString()
-                                            : new Date(latestReport.created_at).toLocaleString()}
-                                    </p>
+                        {recentScreenings.length > 0 ? (
+                            <div className="mt-2">
+                                <div className="hidden grid-cols-[minmax(0,1.2fr)_120px_150px_180px_120px] gap-4 px-4 py-3 text-[11px] uppercase tracking-[0.18em] text-[#8f7d68] lg:grid">
+                                    <div>Screening</div>
+                                    <div>Date</div>
+                                    <div>Selected plan</div>
+                                    <div>Review focus</div>
+                                    <div className="text-right">Status</div>
                                 </div>
+
+                                <div className="space-y-2">
+                                    {recentScreenings.map((request) => (
+                                        <article
+                                            key={request.id}
+                                            className="relative rounded-[22px] border border-transparent bg-white/55 px-4 py-4 transition hover:border-[#d8cab8] hover:bg-white"
+                                        >
+                                            <Link
+                                                href={`/dashboard/screening/${request.id}`}
+                                                className="absolute inset-0 z-10 rounded-[22px]"
+                                                aria-label={`Open ${request.name || "screening request"}`}
+                                            />
+
+                                            <div className="relative z-0 flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1.2fr)_120px_150px_180px_120px] lg:items-center lg:gap-4">
+                                                <div className="min-w-0">
+                                                    <p className="truncate text-sm font-semibold text-[#211b15]">
+                                                        {request.name || "Screening request"}
+                                                    </p>
+                                                </div>
+
+                                                <div className="text-sm text-[#6e6255]">
+                                                    {formatClientDate(request.created_at)}
+                                                </div>
+
+                                                <div className="text-sm text-[#6e6255]">
+                                                    {request.plan_interest
+                                                        ? formatPlanLabel(request.plan_interest)
+                                                        : "—"}
+                                                </div>
+
+                                                <div className="truncate text-sm text-[#6e6255]">
+                                                    {request.goal || "—"}
+                                                </div>
+
+                                                <div className="flex justify-start lg:justify-end">
+                                                    <span
+                                                        className={[
+                                                            "inline-flex rounded-full border px-3 py-1 text-xs font-medium",
+                                                            getSoftStatusClasses(request.status),
+                                                        ].join(" ")}
+                                                    >
+                                                        {formatStatusLabel(request.status)}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </article>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="px-1 py-8">
+                                <p
+                                    className="text-2xl leading-none text-[#211b15]"
+                                    style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+                                >
+                                    No screenings yet.
+                                </p>
+                                <p className="mt-3 max-w-xl text-sm leading-7 text-[#6e6255]">
+                                    Screening is the required first step before any offer, payment, or case creation.
+                                </p>
+                                <div className="mt-5">
+                                    <Link
+                                        href="/screening"
+                                        className="inline-flex items-center rounded-full border border-[#2c241c] px-5 py-2.5 text-sm text-[#211b15] transition hover:bg-[#211b15] hover:text-white"
+                                    >
+                                        Apply for Screening
+                                    </Link>
+                                </div>
+                            </div>
+                        )}
+                    </section>
+                </div>
+
+                {latestScreening ? (
+                    <section className="rounded-[28px] border border-[#d8cab8] bg-[#fbf7f1] px-5 py-5 md:px-6">
+                        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                            <div className="space-y-3">
+                                <p className="text-[11px] uppercase tracking-[0.22em] text-[#8f7d68]">
+                                    {getScreeningNextStepTitle({
+                                        screeningStatus: latestScreening.status,
+                                        paymentPending,
+                                        paymentPaid,
+                                        hasCase,
+                                    })}
+                                </p>
+
+                                <h2
+                                    className="text-3xl leading-none text-[#211b15]"
+                                    style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+                                >
+                                    {latestScreening.name || "Latest screening request"}
+                                </h2>
+
+                                <p className="max-w-2xl text-sm leading-7 text-[#6e6255]">
+                                    {getScreeningNextStepText({
+                                        screeningStatus: latestScreening.status,
+                                        paymentPending,
+                                        paymentPaid,
+                                        hasCase,
+                                    })}
+                                </p>
+
+                                <p className="text-sm leading-7 text-[#6e6255]">
+                                    {getScreeningStatusHelp(latestScreening.status)}
+                                </p>
+                            </div>
+
+                            <div className="flex flex-wrap gap-3">
+                                <Link
+                                    href={`/dashboard/screening/${latestScreening.id}`}
+                                    className="inline-flex items-center rounded-full border border-[#2c241c] px-5 py-2.5 text-sm text-[#211b15] transition hover:bg-[#211b15] hover:text-white"
+                                >
+                                    Open Screening
+                                </Link>
+
+                                {paymentPaid && hasCase ? (
+                                    <Link
+                                        href="/dashboard/cases"
+                                        className="inline-flex items-center rounded-full border border-[#d8cab8] bg-white/70 px-5 py-2.5 text-sm text-[#211b15] transition hover:bg-white"
+                                    >
+                                        Open Cases
+                                    </Link>
+                                ) : null}
+
+                                {latestOffer ? (
+                                    <Link
+                                        href={`/dashboard/offers/${latestOffer.id}`}
+                                        className="inline-flex items-center rounded-full border border-[#d8cab8] bg-white/70 px-5 py-2.5 text-sm text-[#211b15] transition hover:bg-white"
+                                    >
+                                        Offer: {formatClientReportTitle(formatPlanLabel(latestOffer.plan_type))}
+                                    </Link>
+                                ) : null}
+                            </div>
+                        </div>
+                    </section>
+                ) : null}
+
+                {latestReport ? (
+                    <section className="rounded-[28px] border border-[#d8cab8] bg-[#fbf7f1] px-5 py-5 md:px-6">
+                        <p className="text-[11px] uppercase tracking-[0.22em] text-[#8f7d68]">
+                            Latest report
+                        </p>
+
+                        <div className="mt-4 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                            <div className="space-y-3">
+                                <h2
+                                    className="text-3xl leading-none text-[#211b15]"
+                                    style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+                                >
+                                    {formatClientReportTitle(latestReport.title)}
+                                </h2>
+
+                                <p className="text-sm text-[#6e6255]">
+                                    Published{" "}
+                                    {latestReport.published_at
+                                        ? formatClientDate(latestReport.published_at)
+                                        : formatClientDate(latestReport.created_at)}
+                                </p>
 
                                 {latestReport.summary ? (
-                                    <p className="mt-4 text-sm leading-6 text-white/72">
+                                    <p className="max-w-2xl text-sm leading-7 text-[#6e6255]">
                                         {latestReport.summary}
                                     </p>
                                 ) : null}
-
-                                <div className="mt-4 flex flex-wrap gap-3">
-                                    <Link
-                                        href="/dashboard/reports"
-                                        className="rounded-xl border border-white/15 px-4 py-2 text-xs hover:bg-white/5 transition"
-                                    >
-                                        Open Reports
-                                    </Link>
-
-                                    {latestReport.file_url ? (
-                                        <a
-                                            href={latestReport.file_url}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="rounded-xl border border-white/15 px-4 py-2 text-xs hover:bg-white/5 transition"
-                                        >
-                                            Open Report
-                                        </a>
-                                    ) : null}
-                                </div>
-                            </article>
-                        ) : (
-                            <div className="rounded-2xl border border-white/10 bg-black/10 p-5">
-                                <p className="font-medium text-white">
-                                    No reports available yet.
-                                </p>
-                                <p className="mt-2 text-sm text-white/65">
-                                    Published reports will appear here when they are ready.
-                                </p>
                             </div>
-                        )}
-                    </div>
-                </section>
+
+                            <div className="flex flex-wrap gap-3">
+                                <Link
+                                    href="/dashboard/reports"
+                                    className="inline-flex items-center rounded-full border border-[#2c241c] px-5 py-2.5 text-sm text-[#211b15] transition hover:bg-[#211b15] hover:text-white"
+                                >
+                                    Open Reports
+                                </Link>
+
+                                {latestReport.file_url ? (
+                                    <a
+                                        href={latestReport.file_url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="inline-flex items-center rounded-full border border-[#d8cab8] bg-white/70 px-5 py-2.5 text-sm text-[#211b15] transition hover:bg-white"
+                                    >
+                                        Open Report
+                                    </a>
+                                ) : null}
+                            </div>
+                        </div>
+                    </section>
+                ) : null}
             </div>
-        </section>
+        </ClientPortalShell>
     );
 }
