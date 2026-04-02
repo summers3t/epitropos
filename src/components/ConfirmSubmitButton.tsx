@@ -16,6 +16,9 @@ export default function ConfirmSubmitButton({
   return (
     <button
       type={type}
+      onMouseDown={(event) => {
+        event.stopPropagation();
+      }}
       onClick={(event) => {
         event.stopPropagation();
 

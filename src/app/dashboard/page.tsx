@@ -7,7 +7,7 @@ function formatStatusLabel(status: string | null | undefined) {
   if (!status) return "—";
 
   const labels: Record<string, string> = {
-    new: "New",
+    new: "Submitted",
     accepted: "Accepted",
     rejected: "Rejected",
     offer_sent: "Offer sent",
@@ -56,21 +56,6 @@ function formatClientReportTitle(title: string | null | undefined) {
   }
 
   return title;
-}
-
-function getScreeningStatusHelp(status: string | null | undefined) {
-  switch (status) {
-    case "new":
-      return "Your request has been received and is waiting for review.";
-    case "accepted":
-      return "Your screening has been accepted and the next step is preparation of your commercial offer.";
-    case "offer_sent":
-      return "Your offer is ready for review in the client portal.";
-    case "rejected":
-      return "This request was reviewed but was not accepted for further engagement.";
-    default:
-      return "Your screening status will appear here.";
-  }
 }
 
 function getScreeningNextStepTitle({
@@ -156,26 +141,6 @@ function formatClientDate(value: string | null | undefined) {
   }).format(date);
 }
 
-function getSoftStatusClasses(status: string | null | undefined) {
-  switch (status) {
-    case "accepted":
-    case "active":
-    case "delivered":
-      return "border-emerald-400/35 bg-emerald-500/10 text-emerald-900";
-    case "offer_sent":
-    case "analysis":
-    case "sent":
-      return "border-amber-400/35 bg-amber-500/10 text-amber-900";
-    case "rejected":
-    case "cancelled":
-    case "expired":
-    case "closed":
-      return "border-[#d8cab8] bg-[#ece2d5] text-[#6c5f51]";
-    default:
-      return "border-[#d8cab8] bg-[#efe6da] text-[#6c5f51]";
-  }
-}
-
 type PageProps = {
   searchParams: Promise<{ screening_created?: string }>;
 };
@@ -244,7 +209,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
   const { data: cases, error: casesError } = await supabase
     .from("cases")
-    .select("id, title, status, created_at, order_id, screening_request_id")
+    .select("id, title, status, created_at, screening_request_id")
     .eq("client_id", user.id)
     .order("created_at", { ascending: false });
 
@@ -316,27 +281,26 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     <ClientPortalShell
       eyebrow="Dashboard"
       title={`Welcome, ${welcomeName}`}
-      description=""
       counts={{
         screenings: screeningCount,
         cases: caseCount,
         reports: reportCount,
       }}
     >
-      <div className="space-y-6">
+      <div className="space-y-10">
         {params.screening_created === "1" ? (
-          <div className="rounded-[24px] border border-emerald-300 bg-emerald-50 px-5 py-4 text-sm text-emerald-900">
+          <div className="border border-emerald-400/30 bg-emerald-500/10 px-5 py-4 text-sm text-emerald-200">
             Screening application submitted successfully.
           </div>
         ) : null}
 
         {hasActionableOffer ? (
-          <section className="border border-white/10 bg-transparent px-5 py-5 md:px-6">
-            <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+          <section className="border border-white/10 px-6 py-6">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <p className="text-[11px] uppercase tracking-[0.22em] text-[#8f7d68]">
-                    Next action
+                  <p className="text-[11px] uppercase tracking-[0.3em] text-[#9aa0ad]">
+                    Next Action
                   </p>
 
                   {!paymentPaid ? (
@@ -347,7 +311,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                 </div>
 
                 <h2
-                  className="text-3xl leading-none text-[#211b15]"
+                  className="text-3xl leading-none text-[#f3e7d8]"
                   style={{ fontFamily: "Georgia, Times New Roman, serif" }}
                 >
                   {paymentPaid
@@ -357,7 +321,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                       : "Offer available for review"}
                 </h2>
 
-                <p className="max-w-2xl text-sm leading-7 text-[#8fa0b8]">
+                <p className="max-w-2xl text-sm leading-7 text-[#8f95a2]">
                   {paymentPaid
                     ? "Your payment has been recorded and your case is now open in the client portal."
                     : paymentPending
@@ -373,7 +337,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                       ? "/dashboard/cases"
                       : `/dashboard/offers/${latestOffer?.id}`
                   }
-                  className="inline-flex items-center rounded-full border border-[#2c241c] px-5 py-2.5 text-sm text-[#211b15] transition hover:bg-[#211b15] hover:text-white"
+                  className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
                 >
                   {paymentPaid
                     ? "Open Cases"
@@ -386,17 +350,15 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           </section>
         ) : null}
 
-        <div className="grid gap-6 2xl:grid-cols-[1.15fr_0.85fr]">
-          <section className="px-0 py-0">
+        <div className="grid gap-10 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
+          <section className="min-w-0">
             <div className="flex items-end justify-between gap-4 border-b border-white/10 pb-4">
-              <div>
-                <p className="text-[11px] uppercase tracking-[0.3em] text-[#9fb1cc]">
-                  Active Cases
-                </p>
-              </div>
+              <p className="text-[11px] uppercase tracking-[0.3em] text-[#9aa0ad]">
+                Active Cases
+              </p>
 
               <Link
-                href="/dashboard/screening"
+                href="/dashboard/cases"
                 className="text-sm text-[#d6b26b] transition hover:text-[#f0c87d]"
               >
                 View All →
@@ -404,17 +366,16 @@ export default async function DashboardPage({ searchParams }: PageProps) {
             </div>
 
             {recentCases.length > 0 ? (
-              <div className="mt-2">
-                <div className="hidden grid-cols-[minmax(0,1.5fr)_140px_150px_180px_120px_40px] gap-4 px-2 py-3 text-[11px] uppercase tracking-[0.3em] text-[#9fb1cc] lg:grid">
+              <div className="min-w-0">
+                <div className="hidden grid-cols-[minmax(0,1.3fr)_120px_170px_110px_36px] gap-6 px-2 py-4 text-[11px] uppercase tracking-[0.3em] text-[#9aa0ad] lg:grid">
                   <div>Case</div>
                   <div>Date</div>
-                  <div>Selected plan</div>
-                  <div>Review focus</div>
+                  <div>Selected Plan</div>
                   <div className="text-right">Status</div>
                   <div />
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-0">
                   {recentCases.map((item) => {
                     const screening = item.screening_request_id
                       ? (screeningRequests?.find(
@@ -425,59 +386,52 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                     return (
                       <article
                         key={item.id}
-                        className="relative border-b border-white/10 px-2 py-5 transition hover:bg-white/[0.02]"
+                        className="border-b border-white/10 px-2 py-5 transition hover:bg-white/[0.02]"
                       >
                         <Link
                           href={`/dashboard/cases/${item.id}`}
-                          className="absolute inset-0 z-10 rounded-[22px]"
-                          aria-label={`Open ${formatClientCaseTitle(item.title)}`}
-                        />
-
-                        <div className="relative z-0 flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1.5fr)_140px_150px_180px_120px_40px] lg:items-center lg:gap-4">
+                          className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1.3fr)_120px_170px_110px_36px] lg:items-center lg:gap-6"
+                        >
                           <div className="min-w-0">
-                            <p className="truncate text-[15px] font-semibold text-[#f6ead9]">
+                            <p className="truncate text-[15px] font-semibold text-[#f3e7d8]">
                               {formatClientCaseTitle(item.title)}
                             </p>
                           </div>
 
-                          <div className="text-sm text-[#9fb1cc]">
+                          <div className="text-sm text-[#9aa0ad]">
                             {formatClientDate(item.created_at)}
                           </div>
 
-                          <div className="text-sm text-[#9fb1cc]">
+                          <div className="truncate text-sm text-[#9aa0ad]">
                             {screening?.plan_interest
                               ? formatPlanLabel(screening.plan_interest)
                               : "—"}
                           </div>
 
-                          <div className="truncate text-sm text-[#9fb1cc]">
-                            {screening?.goal || "—"}
-                          </div>
-
                           <div className="flex justify-start lg:justify-end">
-                            <span className="inline-flex border border-[#d6b26b] px-4 py-2 text-[11px] uppercase tracking-[0.24em] text-[#d6b26b]">
+                            <span className="inline-flex border border-[#b8935c] px-4 py-2 text-[11px] uppercase tracking-[0.24em] text-[#d6b26b]">
                               {formatCaseStatusLabel(item.status)}
                             </span>
                           </div>
 
-                          <div className="hidden justify-end text-[#7f8ea6] lg:flex">
+                          <div className="hidden justify-end text-[#7e8797] lg:flex">
                             <span className="text-2xl leading-none">→</span>
                           </div>
-                        </div>
+                        </Link>
                       </article>
                     );
                   })}
                 </div>
               </div>
             ) : (
-              <div className="px-1 py-8">
+              <div className="py-8">
                 <p
-                  className="text-2xl leading-none text-[#211b15]"
+                  className="text-2xl leading-none text-[#f3e7d8]"
                   style={{ fontFamily: "Georgia, Times New Roman, serif" }}
                 >
-                  No cases yet.
+                  No active cases.
                 </p>
-                <p className="mt-3 max-w-xl text-sm leading-7 text-[#6e6255]">
+                <p className="mt-3 max-w-xl text-sm leading-7 text-[#8f95a2]">
                   Your case will appear here after payment is confirmed and the
                   engagement is opened.
                 </p>
@@ -485,16 +439,14 @@ export default async function DashboardPage({ searchParams }: PageProps) {
             )}
           </section>
 
-          <section className="px-0 py-0">
+          <section className="min-w-0">
             <div className="flex items-end justify-between gap-4 border-b border-white/10 pb-4">
-              <div>
-                <p className="text-[11px] uppercase tracking-[0.3em] text-[#9fb1cc]">
-                  Recent Screenings
-                </p>
-              </div>
+              <p className="text-[11px] uppercase tracking-[0.3em] text-[#9aa0ad]">
+                Recent Screenings
+              </p>
 
               <Link
-                href="/dashboard/cases"
+                href="/dashboard/screening"
                 className="text-sm text-[#d6b26b] transition hover:text-[#f0c87d]"
               >
                 View All →
@@ -502,76 +454,64 @@ export default async function DashboardPage({ searchParams }: PageProps) {
             </div>
 
             {recentScreenings.length > 0 ? (
-              <div className="mt-2">
-                <div className="hidden grid-cols-[minmax(0,1.2fr)_120px_150px_180px_140px] gap-4 px-2 py-3 text-[11px] uppercase tracking-[0.3em] text-[#9fb1cc] lg:grid">
+              <div className="min-w-0">
+                <div className="hidden grid-cols-[minmax(0,1.1fr)_120px_180px_140px] gap-6 px-2 py-4 text-[11px] uppercase tracking-[0.3em] text-[#9aa0ad] lg:grid">
                   <div>Screening</div>
                   <div>Date</div>
-                  <div>Selected plan</div>
                   <div>Budget</div>
                   <div className="text-right">Status</div>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-0">
                   {recentScreenings.map((request) => (
                     <article
                       key={request.id}
-                      className="relative border-b border-white/10 px-2 py-5 transition hover:bg-white/[0.02]"
+                      className="border-b border-white/10 px-2 py-5 transition hover:bg-white/[0.02]"
                     >
                       <Link
                         href={`/dashboard/screening/${request.id}`}
-                        className="absolute inset-0 z-10 rounded-[22px]"
-                        aria-label={`Open ${request.name || "screening request"}`}
-                      />
-
-                      <div className="relative z-0 flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1.2fr)_120px_150px_180px_140px] lg:items-center lg:gap-4">
+                        className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1.1fr)_120px_180px_140px] lg:items-center lg:gap-6"
+                      >
                         <div className="min-w-0">
-                          <p className="truncate text-[15px] font-semibold text-[#f6ead9]">
+                          <p className="truncate text-[15px] font-semibold text-[#f3e7d8]">
                             {request.name || "Screening request"}
                           </p>
                         </div>
 
-                        <div className="text-sm text-[#9fb1cc]">
+                        <div className="text-sm text-[#9aa0ad]">
                           {formatClientDate(request.created_at)}
                         </div>
 
-                        <div className="text-sm text-[#9fb1cc]">
-                          {request.plan_interest
-                            ? formatPlanLabel(request.plan_interest)
-                            : "—"}
-                        </div>
-
-                        <div className="truncate text-sm text-[#9fb1cc]">
+                        <div className="truncate text-sm text-[#9aa0ad]">
                           {request.budget_range || "—"}
                         </div>
 
                         <div className="flex justify-start lg:justify-end">
-                          <span className="inline-flex border border-[#d6b26b] px-4 py-2 text-[11px] uppercase tracking-[0.24em] text-[#d6b26b]">
-                            {request.status === "new"
-                              ? "Submitted"
-                              : formatStatusLabel(request.status)}
+                          <span className="inline-flex border border-[#b8935c] px-4 py-2 text-[11px] uppercase tracking-[0.24em] text-[#d6b26b]">
+                            {formatStatusLabel(request.status)}
                           </span>
                         </div>
-                      </div>
+                      </Link>
                     </article>
                   ))}
                 </div>
               </div>
             ) : (
-              <div className="px-1 py-8">
+              <div className="py-8">
                 <p
-                  className="text-2xl leading-none text-[#211b15]"
+                  className="text-2xl leading-none text-[#f3e7d8]"
                   style={{ fontFamily: "Georgia, Times New Roman, serif" }}
                 >
                   No screenings yet.
                 </p>
-                <p className="mt-3 max-w-xl text-sm leading-7 text-[#6e6255]">
+                <p className="mt-3 max-w-xl text-sm leading-7 text-[#8f95a2]">
                   Screening is the required first step before any offer,
                   payment, or case creation.
                 </p>
                 <div className="mt-5">
                   <Link
                     href="/screening"
-                    className="inline-flex items-center rounded-full border border-[#2c241c] px-5 py-2.5 text-sm text-[#211b15] transition hover:bg-[#211b15] hover:text-white"
+                    className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
                   >
                     Apply for Screening
                   </Link>
@@ -582,10 +522,10 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         </div>
 
         {latestScreening ? (
-          <section className="border border-white/10 bg-transparent px-5 py-5 md:px-6">
-            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <section className="border border-white/10 px-6 py-6">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div className="space-y-3">
-                <p className="text-[11px] uppercase tracking-[0.22em] text-[#8f7d68]">
+                <p className="text-[11px] uppercase tracking-[0.3em] text-[#9aa0ad]">
                   {getScreeningNextStepTitle({
                     screeningStatus: latestScreening.status,
                     paymentPending,
@@ -595,13 +535,13 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                 </p>
 
                 <h2
-                  className="text-3xl leading-none text-[#211b15]"
+                  className="text-3xl leading-none text-[#f3e7d8]"
                   style={{ fontFamily: "Georgia, Times New Roman, serif" }}
                 >
                   {latestScreening.name || "Latest screening request"}
                 </h2>
 
-                <p className="max-w-2xl text-sm leading-7 text-[#8fa0b8]">
+                <p className="max-w-2xl text-sm leading-7 text-[#8f95a2]">
                   {getScreeningNextStepText({
                     screeningStatus: latestScreening.status,
                     paymentPending,
@@ -609,16 +549,12 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                     hasCase,
                   })}
                 </p>
-
-                <p className="text-sm leading-7 text-[#6e6255]">
-                  {getScreeningStatusHelp(latestScreening.status)}
-                </p>
               </div>
 
               <div className="flex flex-wrap gap-3">
                 <Link
                   href={`/dashboard/screening/${latestScreening.id}`}
-                  className="inline-flex items-center rounded-full border border-[#2c241c] px-5 py-2.5 text-sm text-[#211b15] transition hover:bg-[#211b15] hover:text-white"
+                  className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
                 >
                   Open Screening
                 </Link>
@@ -626,7 +562,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                 {paymentPaid && hasCase ? (
                   <Link
                     href="/dashboard/cases"
-                    className="inline-flex items-center rounded-full border border-[#d8cab8] bg-white/70 px-5 py-2.5 text-sm text-[#211b15] transition hover:bg-white"
+                    className="inline-flex items-center border border-white/10 px-5 py-2.5 text-sm text-[#c9cdd5] transition hover:bg-white/[0.04] hover:text-white"
                   >
                     Open Cases
                   </Link>
@@ -635,12 +571,9 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                 {latestOffer ? (
                   <Link
                     href={`/dashboard/offers/${latestOffer.id}`}
-                    className="inline-flex items-center rounded-full border border-[#d8cab8] bg-white/70 px-5 py-2.5 text-sm text-[#211b15] transition hover:bg-white"
+                    className="inline-flex items-center border border-white/10 px-5 py-2.5 text-sm text-[#c9cdd5] transition hover:bg-white/[0.04] hover:text-white"
                   >
-                    Offer:{" "}
-                    {formatClientReportTitle(
-                      formatPlanLabel(latestOffer.plan_type),
-                    )}
+                    {formatPlanLabel(latestOffer.plan_type)}
                   </Link>
                 ) : null}
               </div>
@@ -649,21 +582,21 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         ) : null}
 
         {latestReport ? (
-          <section className="border border-white/10 bg-transparent px-5 py-5 md:px-6">
-            <p className="text-[11px] uppercase tracking-[0.22em] text-[#8f7d68]">
-              Latest report
+          <section className="border border-white/10 px-6 py-6">
+            <p className="text-[11px] uppercase tracking-[0.3em] text-[#9aa0ad]">
+              Latest Report
             </p>
 
-            <div className="mt-4 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div className="space-y-3">
                 <h2
-                  className="text-3xl leading-none text-[#211b15]"
+                  className="text-3xl leading-none text-[#f3e7d8]"
                   style={{ fontFamily: "Georgia, Times New Roman, serif" }}
                 >
                   {formatClientReportTitle(latestReport.title)}
                 </h2>
 
-                <p className="text-sm text-[#6e6255]">
+                <p className="text-sm text-[#8f95a2]">
                   Published{" "}
                   {latestReport.published_at
                     ? formatClientDate(latestReport.published_at)
@@ -671,7 +604,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                 </p>
 
                 {latestReport.summary ? (
-                  <p className="max-w-2xl text-sm leading-7 text-[#8fa0b8]">
+                  <p className="max-w-2xl text-sm leading-7 text-[#8f95a2]">
                     {latestReport.summary}
                   </p>
                 ) : null}
@@ -680,7 +613,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
               <div className="flex flex-wrap gap-3">
                 <Link
                   href="/dashboard/reports"
-                  className="inline-flex items-center rounded-full border border-[#2c241c] px-5 py-2.5 text-sm text-[#211b15] transition hover:bg-[#211b15] hover:text-white"
+                  className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
                 >
                   Open Reports
                 </Link>
@@ -690,7 +623,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                     href={latestReport.file_url}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center rounded-full border border-[#d8cab8] bg-white/70 px-5 py-2.5 text-sm text-[#211b15] transition hover:bg-white"
+                    className="inline-flex items-center border border-white/10 px-5 py-2.5 text-sm text-[#c9cdd5] transition hover:bg-white/[0.04] hover:text-white"
                   >
                     Open Report
                   </a>

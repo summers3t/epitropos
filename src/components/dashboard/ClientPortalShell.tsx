@@ -7,13 +7,13 @@ import type { ClientPortalCounts } from "@/lib/dashboard/getClientPortalCounts";
 type ClientPortalShellProps = {
   eyebrow: string;
   title: string;
-  description: string;
+  description?: string;
   counts: ClientPortalCounts;
   children: React.ReactNode;
 };
 
 type NavItem = {
-  href: string;
+  href?: string;
   label: string;
   countKey?: keyof ClientPortalCounts;
 };
@@ -34,7 +34,6 @@ const navItems: NavItem[] = [
     countKey: "cases",
   },
   {
-    href: "/dashboard/offers",
     label: "Offers",
   },
   {
@@ -44,13 +43,11 @@ const navItems: NavItem[] = [
   },
 ];
 
-function isActivePath(pathname: string, href: string) {
+function isActivePath(pathname: string, href?: string) {
+  if (!href) return pathname.startsWith("/dashboard/offers");
+
   if (href === "/dashboard") {
     return pathname === href;
-  }
-
-  if (href === "/dashboard/offers") {
-    return pathname.startsWith("/dashboard/offers");
   }
 
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -154,47 +151,49 @@ export default function ClientPortalShell({
   const pathname = usePathname();
 
   return (
-    <section className="min-h-[calc(100vh-7rem)] overflow-hidden rounded-[28px] border border-white/10 bg-[#070c16] text-white shadow-[0_24px_80px_rgba(0,0,0,0.28)] xl:grid xl:grid-cols-[340px_minmax(0,1fr)] xl:gap-0">
-      <aside className="flex min-h-full flex-col border-r border-white/10 bg-[#0a0f19]">
-        <div className="border-b border-white/10 px-6 py-8">
-          <Link href="/" className="inline-block">
-            <div
-              className="text-[18px] font-semibold tracking-[0.02em] text-[#f6ead9]"
-              style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-            >
-              EPITROPOS
-            </div>
-            <div className="mt-3 text-[11px] uppercase tracking-[0.3em] text-[#9fb1cc]">
-              Client Portal
-            </div>
-          </Link>
-        </div>
-
+    <section className="h-[calc(100vh-5.5rem)] overflow-hidden rounded-[26px] border border-white/10 bg-[#090b10] text-white shadow-[0_24px_80px_rgba(0,0,0,0.28)] xl:grid xl:grid-cols-[280px_minmax(0,1fr)]">
+      <aside className="flex h-full flex-col border-r border-white/10 bg-[#0b0d12]">
         <nav className="px-3 py-5">
           <div className="space-y-2">
             {navItems.map((item) => {
               const isActive = isActivePath(pathname, item.href);
               const count = item.countKey ? counts[item.countKey] : 0;
 
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={[
-                    "flex items-center justify-between gap-3 rounded-none border border-transparent px-4 py-4 text-[15px] transition",
-                    isActive
-                      ? "bg-white/[0.06] text-white"
-                      : "text-[#b2bfd3] hover:bg-white/[0.035] hover:text-white",
-                  ].join(" ")}
-                >
+              const sharedClassName = [
+                "flex items-center justify-between gap-3 rounded-none border border-transparent px-4 py-4 text-[15px] transition",
+                isActive
+                  ? "bg-white/[0.06] text-white"
+                  : "text-[#b8bcc5] hover:bg-white/[0.035] hover:text-white",
+              ].join(" ");
+
+              const content = (
+                <>
                   <span className="flex items-center gap-3">
-                    <span className="text-[#9ea9bc]">
+                    <span className="text-[#8f95a2]">
                       <NavIcon label={item.label} />
                     </span>
                     <span className="font-medium">{item.label}</span>
                   </span>
 
                   {item.countKey ? <SidebarBadge count={count} /> : null}
+                </>
+              );
+
+              if (!item.href) {
+                return (
+                  <div key={item.label} className={sharedClassName}>
+                    {content}
+                  </div>
+                );
+              }
+
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={sharedClassName}
+                >
+                  {content}
                 </Link>
               );
             })}
@@ -204,7 +203,7 @@ export default function ClientPortalShell({
         <div className="mt-auto border-t border-white/10 px-6 py-6">
           <Link
             href="/auth/logout"
-            className="flex items-center gap-3 text-[15px] text-[#b2bfd3] transition hover:text-white"
+            className="flex items-center gap-3 text-[15px] text-[#b8bcc5] transition hover:text-white"
           >
             <svg
               className="h-[18px] w-[18px]"
@@ -222,25 +221,29 @@ export default function ClientPortalShell({
         </div>
       </aside>
 
-      <div className="min-w-0 bg-[#070c16]">
-        <header className="px-8 py-10 md:px-12 md:py-14">
-          <p className="text-[11px] uppercase tracking-[0.3em] text-[#9fb1cc]">
+      <div className="flex h-full min-w-0 flex-col bg-[#090b10]">
+        <header className="shrink-0 px-8 pb-6 pt-8 md:px-10 md:pb-7 md:pt-9 xl:px-12">
+          <p className="text-[11px] uppercase tracking-[0.3em] text-[#9aa0ad]">
             {eyebrow}
           </p>
 
           <h1
-            className="mt-5 text-4xl leading-none text-[#f6ead9] md:text-5xl"
+            className="mt-5 text-4xl leading-none text-[#f3e7d8] md:text-5xl"
             style={{ fontFamily: "Georgia, Times New Roman, serif" }}
           >
             {title}
           </h1>
 
-          <p className="mt-5 max-w-2xl text-sm leading-7 text-[#8fa0b8]">
-            {description}
-          </p>
+          {description ? (
+            <p className="mt-5 max-w-2xl text-sm leading-7 text-[#8f95a2]">
+              {description}
+            </p>
+          ) : null}
         </header>
 
-        <div className="px-6 pb-10 md:px-10 md:pb-12 xl:px-12">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-10 md:px-8 md:pb-12 xl:px-10">
+          {children}
+        </div>
       </div>
     </section>
   );

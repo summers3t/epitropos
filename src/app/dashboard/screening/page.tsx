@@ -10,7 +10,7 @@ function formatStatusLabel(status: string | null | undefined) {
   if (!status) return "—";
 
   const labels: Record<string, string> = {
-    new: "New",
+    new: "Submitted",
     accepted: "Accepted",
     rejected: "Rejected",
     offer_sent: "Offer sent",
@@ -58,19 +58,6 @@ function getStatusHelp(status: string | null | undefined) {
   }
 }
 
-function getSoftStatusClasses(status: string | null | undefined) {
-  switch (status) {
-    case "accepted":
-      return "border-emerald-400/35 bg-emerald-500/10 text-emerald-900";
-    case "offer_sent":
-      return "border-amber-400/35 bg-amber-500/10 text-amber-900";
-    case "rejected":
-      return "border-[#d8cab8] bg-[#ece2d5] text-[#6c5f51]";
-    default:
-      return "border-[#d8cab8] bg-[#efe6da] text-[#6c5f51]";
-  }
-}
-
 export default async function DashboardScreeningPage() {
   const supabase = await createClient();
   const {
@@ -95,99 +82,84 @@ export default async function DashboardScreeningPage() {
     <ClientPortalShell
       eyebrow="Client Portal"
       title="Screenings"
-      description="Track submitted screening requests, review their status, and move into the next step when the engagement advances."
+      description="Track submitted screening requests and review the next relevant step."
       counts={counts}
     >
-      <div className="space-y-6">
+      <div className="space-y-8">
         {error ? (
-          <div className="rounded-[24px] border border-[#d8cab8] bg-[#fbf7f1] px-5 py-5 text-sm text-[#6e6255]">
+          <div className="border border-white/10 px-5 py-5 text-sm text-[#8f95a2]">
             Screening requests could not be loaded right now.
           </div>
         ) : screeningRequests && screeningRequests.length > 0 ? (
-          <section className="rounded-[28px] border border-[#d8cab8] bg-[#fbf7f1] px-4 py-4 md:px-6 md:py-5">
-            <div className="flex items-end justify-between gap-4 border-b border-[#e3d6c6] pb-4">
+          <section className="min-w-0">
+            <div className="flex items-end justify-between gap-4 border-b border-white/10 pb-4">
               <div>
-                <p className="text-[11px] uppercase tracking-[0.22em] text-[#8f7d68]">
-                  Screening history
+                <p className="text-[11px] uppercase tracking-[0.3em] text-[#9aa0ad]">
+                  Screening History
                 </p>
-                <h2
-                  className="mt-3 text-3xl leading-none text-[#211b15]"
-                  style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-                >
-                  All screening requests
-                </h2>
               </div>
 
-              <div className="rounded-full border border-[#d8cab8] bg-white/70 px-3 py-1 text-xs font-medium text-[#6e6255]">
+              <div className="border border-white/10 px-3 py-1 text-xs text-[#8f95a2]">
                 {screeningRequests.length}
               </div>
             </div>
 
-            <div className="mt-2 hidden grid-cols-[minmax(0,1.25fr)_110px_150px_140px_180px_110px_96px] gap-4 px-4 py-3 text-[11px] uppercase tracking-[0.18em] text-[#8f7d68] xl:grid">
-              <div>Screening</div>
+            <div className="hidden grid-cols-[110px_170px_150px_minmax(0,1fr)_120px_110px] gap-6 px-2 py-4 text-[11px] uppercase tracking-[0.3em] text-[#9aa0ad] xl:grid">
               <div>Date</div>
-              <div>Selected plan</div>
+              <div>Selected Plan</div>
               <div>Budget</div>
-              <div>Review focus</div>
+              <div>Review Focus</div>
               <div className="text-right">Status</div>
               <div className="text-right">Action</div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-0">
               {screeningRequests.map((request) => {
                 const canDelete = ["new"].includes(request.status ?? "");
 
                 return (
                   <article
                     key={request.id}
-                    className="relative rounded-[22px] border border-transparent bg-white/55 px-4 py-4 transition hover:border-[#d8cab8] hover:bg-white"
+                    className="border-b border-white/10 px-2 py-5 transition hover:bg-white/[0.02]"
                   >
-                    <Link
-                      href={`/dashboard/screening/${request.id}`}
-                      className="absolute inset-0 z-10 rounded-[22px]"
-                      aria-label={`Open ${request.name || "screening request"}`}
-                    />
-
-                    <div className="relative z-0 flex flex-col gap-3 xl:grid xl:grid-cols-[minmax(0,1.25fr)_110px_150px_140px_180px_110px_96px] xl:items-center xl:gap-4">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-[#211b15]">
+                    <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_110px_170px_150px_minmax(0,1fr)_120px_110px] xl:items-center xl:gap-6">
+                      <Link
+                        href={`/dashboard/screening/${request.id}`}
+                        className="min-w-0 xl:order-1"
+                      >
+                        <p className="truncate text-[15px] font-semibold text-[#f3e7d8]">
                           {request.name || "Screening request"}
                         </p>
-                        <p className="mt-1 text-xs text-[#8f7d68]">
+                        <p className="mt-1 text-xs text-[#8f95a2]">
                           {getStatusHelp(request.status)}
                         </p>
-                      </div>
+                      </Link>
 
-                      <div className="text-sm text-[#6e6255]">
+                      <div className="text-sm text-[#9aa0ad] xl:order-2">
                         {formatClientDate(request.created_at)}
                       </div>
 
-                      <div className="text-sm text-[#6e6255]">
+                      <div className="truncate text-sm text-[#9aa0ad] xl:order-3">
                         {request.plan_interest
                           ? formatPlanLabel(request.plan_interest)
                           : "—"}
                       </div>
 
-                      <div className="text-sm text-[#6e6255]">
+                      <div className="text-sm text-[#9aa0ad] xl:order-4">
                         {request.budget_range || "—"}
                       </div>
 
-                      <div className="truncate text-sm text-[#6e6255]">
+                      <div className="truncate text-sm text-[#9aa0ad] xl:order-5">
                         {request.goal || "—"}
                       </div>
 
-                      <div className="flex justify-start xl:justify-end">
-                        <span
-                          className={[
-                            "inline-flex rounded-full border px-3 py-1 text-xs font-medium",
-                            getSoftStatusClasses(request.status),
-                          ].join(" ")}
-                        >
+                      <div className="flex justify-start xl:order-6 xl:justify-end">
+                        <span className="inline-flex border border-[#b8935c] px-4 py-2 text-[11px] uppercase tracking-[0.24em] text-[#d6b26b]">
                           {formatStatusLabel(request.status)}
                         </span>
                       </div>
 
-                      <div className="flex justify-start xl:justify-end">
+                      <div className="flex justify-start xl:order-7 xl:justify-end">
                         {canDelete ? (
                           <form
                             action={deleteOwnScreeningRequest.bind(
@@ -198,13 +170,13 @@ export default async function DashboardScreeningPage() {
                           >
                             <ConfirmSubmitButton
                               confirmMessage="Delete this screening request? This cannot be undone."
-                              className="rounded-full border border-red-400/30 px-4 py-2 text-xs text-red-700 transition hover:bg-red-500/10"
+                              className="relative z-20 border border-red-400/30 px-4 py-2 text-xs text-red-300 transition hover:bg-red-500/10"
                             >
                               Delete
                             </ConfirmSubmitButton>
                           </form>
                         ) : (
-                          <span className="text-xs text-[#8f7d68]">—</span>
+                          <span className="text-xs text-[#6f7682]">—</span>
                         )}
                       </div>
                     </div>
@@ -214,15 +186,15 @@ export default async function DashboardScreeningPage() {
             </div>
           </section>
         ) : (
-          <section className="rounded-[28px] border border-[#d8cab8] bg-[#fbf7f1] px-5 py-8 md:px-6">
+          <section className="border border-white/10 px-5 py-8">
             <p
-              className="text-3xl leading-none text-[#211b15]"
+              className="text-3xl leading-none text-[#f3e7d8]"
               style={{ fontFamily: "Georgia, Times New Roman, serif" }}
             >
               No screening requests found.
             </p>
 
-            <p className="mt-4 max-w-xl text-sm leading-7 text-[#6e6255]">
+            <p className="mt-4 max-w-xl text-sm leading-7 text-[#8f95a2]">
               Screening is the required first step before any offer, payment, or
               case creation.
             </p>
@@ -230,7 +202,7 @@ export default async function DashboardScreeningPage() {
             <div className="mt-6">
               <Link
                 href="/screening"
-                className="inline-flex items-center rounded-full border border-[#2c241c] px-5 py-2.5 text-sm text-[#211b15] transition hover:bg-[#211b15] hover:text-white"
+                className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
               >
                 Apply for Screening
               </Link>
