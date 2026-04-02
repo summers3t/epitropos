@@ -21,8 +21,8 @@ function formatStatusLabel(status: string | null | undefined) {
 
 function formatPlanLabel(planType: string | null | undefined) {
   if (!planType) return "—";
-  if (planType === "core") return "Core Analysis";
-  if (planType === "strategic") return "Strategic Analysis";
+  if (planType === "core") return "Core";
+  if (planType === "strategic") return "Strategic";
   return planType;
 }
 
@@ -85,81 +85,80 @@ export default async function DashboardScreeningPage() {
       description="Track submitted screening requests and review the next relevant step."
       counts={counts}
     >
-      <div className="space-y-8">
+      <div className="space-y-6">
         {error ? (
-          <div className="border border-white/10 px-5 py-5 text-sm text-[#8f95a2]">
+          <div className="border border-white/10 px-5 py-5 text-sm text-[#6a7080]">
             Screening requests could not be loaded right now.
           </div>
         ) : screeningRequests && screeningRequests.length > 0 ? (
           <section className="min-w-0">
-            <div className="flex items-end justify-between gap-4 border-b border-white/10 pb-4">
-              <div>
-                <p className="text-[11px] uppercase tracking-[0.3em] text-[#9aa0ad]">
-                  Screening History
-                </p>
-              </div>
+            <div className="flex items-center justify-between border-b border-white/[0.07] pb-3">
+              <p className="text-[9px] uppercase tracking-[0.35em] text-[#3a4050]">
+                Screening History
+              </p>
 
-              <div className="border border-white/10 px-3 py-1 text-xs text-[#8f95a2]">
+              <span className="border border-white/[0.07] px-2.5 py-0.5 text-[11px] text-[#4a5060]">
                 {screeningRequests.length}
-              </div>
+              </span>
             </div>
 
-            <div className="hidden grid-cols-[110px_170px_150px_minmax(0,1fr)_120px_110px] gap-6 px-2 py-4 text-[11px] uppercase tracking-[0.3em] text-[#9aa0ad] xl:grid">
+            <div className="hidden grid-cols-[minmax(0,1fr)_90px_110px_130px_minmax(0,0.7fr)_100px_80px] gap-4 px-2 py-3 text-[9px] uppercase tracking-[0.35em] text-[#3a4050] xl:grid">
+              <div>Name</div>
               <div>Date</div>
-              <div>Selected Plan</div>
+              <div>Plan</div>
               <div>Budget</div>
-              <div>Review Focus</div>
+              <div>Goal</div>
               <div className="text-right">Status</div>
               <div className="text-right">Action</div>
             </div>
 
-            <div className="space-y-0">
+            <div>
               {screeningRequests.map((request) => {
-                const canDelete = ["new"].includes(request.status ?? "");
+                const canDelete = request.status === "new";
 
                 return (
                   <article
                     key={request.id}
-                    className="border-b border-white/10 px-2 py-5 transition hover:bg-white/[0.02]"
+                    className="border-b border-white/[0.07] transition hover:bg-white/[0.02]"
                   >
-                    <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_110px_170px_150px_minmax(0,1fr)_120px_110px] xl:items-center xl:gap-6">
+                    <div className="grid min-w-0 items-center gap-4 px-2 py-4 xl:grid-cols-[minmax(0,1fr)_90px_110px_130px_minmax(0,0.7fr)_100px_80px] xl:gap-4">
                       <Link
                         href={`/dashboard/screening/${request.id}`}
-                        className="min-w-0 xl:order-1"
+                        className="min-w-0"
                       >
-                        <p className="truncate text-[15px] font-semibold text-[#f3e7d8]">
+                        <p className="truncate text-[14px] font-semibold text-[#f0e6d3]">
                           {request.name || "Screening request"}
                         </p>
-                        <p className="mt-1 text-xs text-[#8f95a2]">
+                        <p className="mt-0.5 text-[11px] text-[#4a5060]">
                           {getStatusHelp(request.status)}
                         </p>
                       </Link>
 
-                      <div className="text-sm text-[#9aa0ad] xl:order-2">
+                      <div className="text-[13px] text-[#6a7080]">
                         {formatClientDate(request.created_at)}
                       </div>
 
-                      <div className="truncate text-sm text-[#9aa0ad] xl:order-3">
+                      <div className="truncate text-[13px] text-[#6a7080]">
                         {request.plan_interest
                           ? formatPlanLabel(request.plan_interest)
                           : "—"}
                       </div>
 
-                      <div className="text-sm text-[#9aa0ad] xl:order-4">
+                      <div className="text-[13px] text-[#6a7080]">
                         {request.budget_range || "—"}
                       </div>
 
-                      <div className="truncate text-sm text-[#9aa0ad] xl:order-5">
+                      <div className="truncate text-[13px] text-[#6a7080]">
                         {request.goal || "—"}
                       </div>
 
-                      <div className="flex justify-start xl:order-6 xl:justify-end">
-                        <span className="inline-flex border border-[#b8935c] px-4 py-2 text-[11px] uppercase tracking-[0.24em] text-[#d6b26b]">
+                      <div className="flex justify-start xl:justify-end">
+                        <span className="inline-flex border border-[#b8935c]/60 px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-[#d6b26b]">
                           {formatStatusLabel(request.status)}
                         </span>
                       </div>
 
-                      <div className="flex justify-start xl:order-7 xl:justify-end">
+                      <div className="flex justify-start xl:justify-end">
                         {canDelete ? (
                           <form
                             action={deleteOwnScreeningRequest.bind(
@@ -170,13 +169,13 @@ export default async function DashboardScreeningPage() {
                           >
                             <ConfirmSubmitButton
                               confirmMessage="Delete this screening request? This cannot be undone."
-                              className="relative z-20 border border-red-400/30 px-4 py-2 text-xs text-red-300 transition hover:bg-red-500/10"
+                              className="relative z-20 border border-red-400/20 px-3 py-1.5 text-[11px] text-red-400/70 transition hover:bg-red-500/10"
                             >
                               Delete
                             </ConfirmSubmitButton>
                           </form>
                         ) : (
-                          <span className="text-xs text-[#6f7682]">—</span>
+                          <span className="text-[11px] text-[#3a4050]">—</span>
                         )}
                       </div>
                     </div>
@@ -186,20 +185,20 @@ export default async function DashboardScreeningPage() {
             </div>
           </section>
         ) : (
-          <section className="border border-white/10 px-5 py-8">
+          <section className="border border-white/[0.07] px-6 py-8">
             <p
-              className="text-3xl leading-none text-[#f3e7d8]"
-              style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+              className="text-2xl leading-none text-[#f0e6d3]"
+              style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
             >
               No screening requests found.
             </p>
 
-            <p className="mt-4 max-w-xl text-sm leading-7 text-[#8f95a2]">
+            <p className="mt-3 max-w-xl text-[13px] leading-relaxed text-[#5a6070]">
               Screening is the required first step before any offer, payment, or
               case creation.
             </p>
 
-            <div className="mt-6">
+            <div className="mt-5">
               <Link
                 href="/screening"
                 className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"

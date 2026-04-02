@@ -48,3 +48,17 @@ h1, h2, h3, h4 {
 ::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.06); }
 ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.18); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.28); }
+
+/* Dashboard app frame */
+:root {
+  --header-h: 61px;
+}
+
+.dashboard-frame {
+  position: fixed;
+  top: var(--header-h);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+}
