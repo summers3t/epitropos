@@ -294,16 +294,45 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           </div>
         ) : null}
 
-        {hasActionableOffer ? (
+        {latestScreening ? (
           <section className="border border-white/10 px-6 py-6">
-            <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_1px_minmax(0,1fr)] lg:items-start">
               <div className="space-y-3">
+                <p className="text-[11px] uppercase tracking-[0.3em] text-[#9aa0ad]">
+                  {getScreeningNextStepTitle({
+                    screeningStatus: latestScreening.status,
+                    paymentPending,
+                    paymentPaid,
+                    hasCase,
+                  })}
+                </p>
+
+                <h2
+                  className="text-3xl leading-none text-[#f3e7d8]"
+                  style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+                >
+                  {latestScreening.name || "Latest screening request"}
+                </h2>
+
+                <p className="max-w-2xl text-sm leading-7 text-[#8f95a2]">
+                  {getScreeningNextStepText({
+                    screeningStatus: latestScreening.status,
+                    paymentPending,
+                    paymentPaid,
+                    hasCase,
+                  })}
+                </p>
+              </div>
+
+              <div className="hidden bg-white/10 lg:block" />
+
+              <div className="space-y-3 lg:pl-2">
                 <div className="flex items-center gap-2">
                   <p className="text-[11px] uppercase tracking-[0.3em] text-[#9aa0ad]">
                     Next Action
                   </p>
 
-                  {!paymentPaid ? (
+                  {!paymentPaid && hasActionableOffer ? (
                     <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
                       1
                     </span>
@@ -318,7 +347,9 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                     ? "Payment confirmed"
                     : paymentPending
                       ? "Payment pending confirmation"
-                      : "Offer available for review"}
+                      : hasActionableOffer
+                        ? "Offer available for review"
+                        : "No action required"}
                 </h2>
 
                 <p className="max-w-2xl text-sm leading-7 text-[#8f95a2]">
@@ -326,25 +357,28 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                     ? "Your payment has been recorded and your case is now open in the client portal."
                     : paymentPending
                       ? "Your offer has been accepted and payment is awaiting confirmation."
-                      : "You have a client offer ready for review."}
+                      : hasActionableOffer
+                        ? "You have a client offer ready for review."
+                        : "There is no client action required at this stage."}
                 </p>
-              </div>
 
-              <div className="flex flex-wrap gap-3">
-                <Link
-                  href={
-                    paymentPaid
-                      ? "/dashboard/cases"
-                      : `/dashboard/offers/${latestOffer?.id}`
-                  }
-                  className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
-                >
-                  {paymentPaid
-                    ? "Open Cases"
-                    : paymentPending
-                      ? "Open Offer Status"
-                      : "View Offer"}
-                </Link>
+                <div className="flex flex-wrap gap-3 pt-1">
+                  {paymentPaid ? (
+                    <Link
+                      href="/dashboard/cases"
+                      className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
+                    >
+                      Open Cases
+                    </Link>
+                  ) : hasActionableOffer ? (
+                    <Link
+                      href={`/dashboard/offers/${latestOffer?.id}`}
+                      className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
+                    >
+                      {paymentPending ? "Open Offer Status" : "View Offer"}
+                    </Link>
+                  ) : null}
+                </div>
               </div>
             </div>
           </section>
@@ -519,66 +553,6 @@ export default async function DashboardPage({ searchParams }: PageProps) {
             )}
           </section>
         </div>
-
-        {latestScreening ? (
-          <section className="border border-white/10 px-6 py-6">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div className="space-y-3">
-                <p className="text-[11px] uppercase tracking-[0.3em] text-[#9aa0ad]">
-                  {getScreeningNextStepTitle({
-                    screeningStatus: latestScreening.status,
-                    paymentPending,
-                    paymentPaid,
-                    hasCase,
-                  })}
-                </p>
-
-                <h2
-                  className="text-3xl leading-none text-[#f3e7d8]"
-                  style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-                >
-                  {latestScreening.name || "Latest screening request"}
-                </h2>
-
-                <p className="max-w-2xl text-sm leading-7 text-[#8f95a2]">
-                  {getScreeningNextStepText({
-                    screeningStatus: latestScreening.status,
-                    paymentPending,
-                    paymentPaid,
-                    hasCase,
-                  })}
-                </p>
-              </div>
-
-              <div className="flex flex-wrap gap-3">
-                <Link
-                  href={`/dashboard/screening/${latestScreening.id}`}
-                  className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
-                >
-                  Open Screening
-                </Link>
-
-                {paymentPaid && hasCase ? (
-                  <Link
-                    href="/dashboard/cases"
-                    className="inline-flex items-center border border-white/10 px-5 py-2.5 text-sm text-[#c9cdd5] transition hover:bg-white/[0.04] hover:text-white"
-                  >
-                    Open Cases
-                  </Link>
-                ) : null}
-
-                {latestOffer ? (
-                  <Link
-                    href={`/dashboard/offers/${latestOffer.id}`}
-                    className="inline-flex items-center border border-white/10 px-5 py-2.5 text-sm text-[#c9cdd5] transition hover:bg-white/[0.04] hover:text-white"
-                  >
-                    {formatPlanLabel(latestOffer.plan_type)}
-                  </Link>
-                ) : null}
-              </div>
-            </div>
-          </section>
-        ) : null}
 
         {latestReport ? (
           <section className="border border-white/10 px-6 py-6">

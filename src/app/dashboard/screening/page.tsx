@@ -119,20 +119,23 @@ export default async function DashboardScreeningPage() {
                 return (
                   <article
                     key={request.id}
-                    className="border-b border-white/[0.07] transition hover:bg-white/[0.02]"
+                    className="relative border-b border-white/[0.07] transition hover:bg-white/[0.02]"
                   >
+                    <Link
+                      href={`/dashboard/screening/${request.id}`}
+                      className="absolute inset-0 z-10"
+                      aria-label={`Open ${request.name || "screening request"}`}
+                    />
+
                     <div className="grid min-w-0 items-center gap-4 px-2 py-4 xl:grid-cols-[minmax(0,0.9fr)_110px_140px_160px_minmax(0,0.9fr)_110px_90px] xl:gap-4">
-                      <Link
-                        href={`/dashboard/screening/${request.id}`}
-                        className="min-w-0"
-                      >
+                      <div className="min-w-0">
                         <p className="truncate text-[14px] font-semibold text-[#f0e6d3]">
                           {request.name || "Screening request"}
                         </p>
                         <p className="mt-0.5 text-[11px] text-[#4a5060]">
                           {getStatusHelp(request.status)}
                         </p>
-                      </Link>
+                      </div>
 
                       <div className="text-[13px] text-[#6a7080]">
                         {formatClientDate(request.created_at)}
@@ -158,7 +161,7 @@ export default async function DashboardScreeningPage() {
                         </span>
                       </div>
 
-                      <div className="flex justify-start xl:justify-end">
+                      <div className="relative z-20 flex justify-start xl:justify-end">
                         {canDelete ? (
                           <form
                             action={deleteOwnScreeningRequest.bind(

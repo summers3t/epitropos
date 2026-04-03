@@ -104,3 +104,7 @@ h4 {
   overflow: hidden;
   z-index: 50;
 }
+
+body:has(.dashboard-frame) footer {
+  display: none;
+}
