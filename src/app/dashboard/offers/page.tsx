@@ -100,11 +100,11 @@ export default async function DashboardOffersPage() {
               </span>
             </div>
 
-            <div className="hidden grid-cols-[150px_minmax(180px,0.9fr)_220px_150px] gap-5 px-2 py-3 text-[10px] uppercase tracking-[0.32em] text-[#9a8660] md:grid">
+            <div className="hidden grid-cols-[170px_1fr_1fr_160px] gap-6 px-2 py-3 text-[10px] uppercase tracking-[0.32em] text-[#9a8660] md:grid">
               <div>Date</div>
               <div>Plan</div>
               <div>Amount</div>
-              <div className="text-right">Status</div>
+              <div className="text-center">Status</div>
             </div>
 
             <div className="space-y-0">
@@ -115,7 +115,7 @@ export default async function DashboardOffersPage() {
                 >
                   <Link
                     href={`/dashboard/offers/${offer.id}`}
-                    className="grid min-w-0 items-center gap-4 px-2 py-4 md:grid-cols-[150px_minmax(180px,0.9fr)_220px_150px] md:gap-5"
+                    className="grid min-w-0 items-center gap-4 px-2 py-4 md:grid-cols-[170px_1fr_1fr_160px] md:gap-6"
                   >
                     <div className="text-[13px] text-[#6b7280]">
                       {formatClientDate(offer.created_at)}
@@ -131,7 +131,7 @@ export default async function DashboardOffersPage() {
                         : "—"}
                     </div>
 
-                    <div className="flex justify-start md:justify-end">
+                    <div className="flex justify-start md:justify-center">
                       <span className="inline-flex min-w-[118px] justify-center rounded-full border border-[#d6b67a] bg-white/80 px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-[#9a6a16] shadow-sm">
                         {formatOfferStatus(offer.status)}
                       </span>

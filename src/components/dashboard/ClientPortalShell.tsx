@@ -142,10 +142,10 @@ export default function ClientPortalShell({
                   key={item.href}
                   href={item.href}
                   className={[
-                    "flex items-center justify-between gap-3 rounded-xl px-4 py-3 text-[15px] transition-all duration-200 ease-out",
+                    "flex items-center justify-between gap-3 rounded-xl px-4 py-3 text-[15px] transition-all duration-300 ease-out",
                     isActive
-                      ? "bg-white/85 text-[#0f1c2e] shadow-[0_12px_30px_rgba(15,28,46,0.08)] ring-1 ring-[#dcc79e]/80"
-                      : "text-[#6b7280] hover:bg-white/75 hover:text-[#0f1c2e] hover:shadow-[0_8px_22px_rgba(15,28,46,0.06)]",
+                      ? "bg-white/88 text-[#0f1c2e] shadow-[0_12px_30px_rgba(15,28,46,0.08)] ring-1 ring-[#dcc79e]/80"
+                      : "text-[#6b7280] hover:bg-white/88 hover:text-[#0f1c2e] hover:shadow-[0_10px_24px_rgba(15,28,46,0.08)] hover:-translate-y-[1px]",
                   ].join(" ")}
                 >
                   <span className="flex items-center gap-3">
