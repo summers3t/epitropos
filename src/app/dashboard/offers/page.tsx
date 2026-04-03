@@ -115,7 +115,7 @@ export default async function DashboardOffersPage() {
                 >
                   <Link
                     href={`/dashboard/offers/${offer.id}`}
-                    className="grid min-w-0 items-center gap-4 px-2 py-4 md:grid-cols-[110px_minmax(0,1fr)_140px_110px] md:gap-6"
+                    className="grid min-w-0 items-center gap-4 px-2 py-4 md:grid-cols-[120px_minmax(0,0.9fr)_160px_120px] md:gap-6"
                   >
                     <div className="text-[13px] text-[#6a7080]">
                       {formatClientDate(offer.created_at)}

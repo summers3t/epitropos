@@ -350,7 +350,87 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           </section>
         ) : null}
 
-        <div className="grid gap-10 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
+        <div className="space-y-10">
+          <section className="min-w-0">
+            <div className="flex items-end justify-between gap-4 border-b border-white/10 pb-4">
+              <p className="text-[11px] uppercase tracking-[0.3em] text-[#9aa0ad]">
+                Recent Screenings
+              </p>
+
+              <Link
+                href="/dashboard/screening"
+                className="text-sm text-[#d6b26b] transition hover:text-[#f0c87d]"
+              >
+                View All →
+              </Link>
+            </div>
+
+            {recentScreenings.length > 0 ? (
+              <div className="min-w-0">
+                <div className="hidden grid-cols-[minmax(0,1.1fr)_120px_180px_140px] gap-6 px-2 py-4 text-[11px] uppercase tracking-[0.3em] text-[#9aa0ad] lg:grid">
+                  <div>Screening</div>
+                  <div>Date</div>
+                  <div>Budget</div>
+                  <div className="text-right">Status</div>
+                </div>
+
+                <div className="space-y-0">
+                  {recentScreenings.map((request) => (
+                    <article
+                      key={request.id}
+                      className="border-b border-white/10 px-2 py-5 transition hover:bg-white/[0.02]"
+                    >
+                      <Link
+                        href={`/dashboard/screening/${request.id}`}
+                        className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1.1fr)_120px_180px_140px] lg:items-center lg:gap-6"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-[15px] font-semibold text-[#f3e7d8]">
+                            {request.name || "Screening request"}
+                          </p>
+                        </div>
+
+                        <div className="text-sm text-[#9aa0ad]">
+                          {formatClientDate(request.created_at)}
+                        </div>
+
+                        <div className="truncate text-sm text-[#9aa0ad]">
+                          {request.budget_range || "—"}
+                        </div>
+
+                        <div className="flex justify-start lg:justify-end">
+                          <span className="inline-flex border border-[#b8935c] px-4 py-2 text-[11px] uppercase tracking-[0.24em] text-[#d6b26b]">
+                            {formatStatusLabel(request.status)}
+                          </span>
+                        </div>
+                      </Link>
+                    </article>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="py-8">
+                <p
+                  className="text-2xl leading-none text-[#f3e7d8]"
+                  style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+                >
+                  No screenings yet.
+                </p>
+                <p className="mt-3 max-w-xl text-sm leading-7 text-[#8f95a2]">
+                  Screening is the required first step before any offer,
+                  payment, or case creation.
+                </p>
+                <div className="mt-5">
+                  <Link
+                    href="/screening"
+                    className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
+                  >
+                    Apply for Screening
+                  </Link>
+                </div>
+              </div>
+            )}
+          </section>
           <section className="min-w-0">
             <div className="flex items-end justify-between gap-4 border-b border-white/10 pb-4">
               <p className="text-[11px] uppercase tracking-[0.3em] text-[#9aa0ad]">
@@ -435,87 +515,6 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                   Your case will appear here after payment is confirmed and the
                   engagement is opened.
                 </p>
-              </div>
-            )}
-          </section>
-
-          <section className="min-w-0">
-            <div className="flex items-end justify-between gap-4 border-b border-white/10 pb-4">
-              <p className="text-[11px] uppercase tracking-[0.3em] text-[#9aa0ad]">
-                Recent Screenings
-              </p>
-
-              <Link
-                href="/dashboard/screening"
-                className="text-sm text-[#d6b26b] transition hover:text-[#f0c87d]"
-              >
-                View All →
-              </Link>
-            </div>
-
-            {recentScreenings.length > 0 ? (
-              <div className="min-w-0">
-                <div className="hidden grid-cols-[minmax(0,1.1fr)_120px_180px_140px] gap-6 px-2 py-4 text-[11px] uppercase tracking-[0.3em] text-[#9aa0ad] lg:grid">
-                  <div>Screening</div>
-                  <div>Date</div>
-                  <div>Budget</div>
-                  <div className="text-right">Status</div>
-                </div>
-
-                <div className="space-y-0">
-                  {recentScreenings.map((request) => (
-                    <article
-                      key={request.id}
-                      className="border-b border-white/10 px-2 py-5 transition hover:bg-white/[0.02]"
-                    >
-                      <Link
-                        href={`/dashboard/screening/${request.id}`}
-                        className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1.1fr)_120px_180px_140px] lg:items-center lg:gap-6"
-                      >
-                        <div className="min-w-0">
-                          <p className="truncate text-[15px] font-semibold text-[#f3e7d8]">
-                            {request.name || "Screening request"}
-                          </p>
-                        </div>
-
-                        <div className="text-sm text-[#9aa0ad]">
-                          {formatClientDate(request.created_at)}
-                        </div>
-
-                        <div className="truncate text-sm text-[#9aa0ad]">
-                          {request.budget_range || "—"}
-                        </div>
-
-                        <div className="flex justify-start lg:justify-end">
-                          <span className="inline-flex border border-[#b8935c] px-4 py-2 text-[11px] uppercase tracking-[0.24em] text-[#d6b26b]">
-                            {formatStatusLabel(request.status)}
-                          </span>
-                        </div>
-                      </Link>
-                    </article>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="py-8">
-                <p
-                  className="text-2xl leading-none text-[#f3e7d8]"
-                  style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-                >
-                  No screenings yet.
-                </p>
-                <p className="mt-3 max-w-xl text-sm leading-7 text-[#8f95a2]">
-                  Screening is the required first step before any offer,
-                  payment, or case creation.
-                </p>
-                <div className="mt-5">
-                  <Link
-                    href="/screening"
-                    className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
-                  >
-                    Apply for Screening
-                  </Link>
-                </div>
               </div>
             )}
           </section>

@@ -121,7 +121,7 @@ export default async function DashboardScreeningPage() {
                     key={request.id}
                     className="border-b border-white/[0.07] transition hover:bg-white/[0.02]"
                   >
-                    <div className="grid min-w-0 items-center gap-4 px-2 py-4 xl:grid-cols-[minmax(0,1fr)_90px_110px_130px_minmax(0,0.7fr)_100px_80px] xl:gap-4">
+                    <div className="grid min-w-0 items-center gap-4 px-2 py-4 xl:grid-cols-[minmax(0,0.9fr)_110px_140px_160px_minmax(0,0.9fr)_110px_90px] xl:gap-4">
                       <Link
                         href={`/dashboard/screening/${request.id}`}
                         className="min-w-0"
