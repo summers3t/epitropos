@@ -1,169 +1,179 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import ClientPortalShell from "@/components/dashboard/ClientPortalShell";
+import { getClientPortalCounts } from "@/lib/dashboard/getClientPortalCounts";
 
 function formatClientCaseTitle(title: string | null | undefined) {
-    if (!title) return "Client Case";
+  if (!title) return "Client Case";
 
-    return title.startsWith("Case for ") ? title.slice("Case for ".length) : title;
+  return title.startsWith("Case for ")
+    ? title.slice("Case for ".length)
+    : title;
 }
 
 function formatClientReportTitle(title: string | null | undefined) {
-    if (!title) return "Report";
+  if (!title) return "Report";
 
-    if (title.startsWith("Case for ") && title.endsWith(" Report")) {
-        return `Report for ${title.slice("Case for ".length, -(" Report".length))}`;
-    }
+  if (title.startsWith("Case for ") && title.endsWith(" Report")) {
+    return `Report for ${title.slice("Case for ".length, -" Report".length)}`;
+  }
 
-    return title;
+  return title;
+}
+
+function formatClientDate(value: string | null | undefined) {
+  if (!value) return "—";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "—";
+  }
+
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Sofia",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
 }
 
 export default async function DashboardReportsPage() {
-    const supabase = await createClient();
+  const supabase = await createClient();
 
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-    if (!user) {
-        redirect("/auth/login?redirect=/dashboard/reports");
-    }
+  if (!user) {
+    redirect("/auth/login?redirect=/dashboard/reports");
+  }
 
-    const { data: reports, error } = await supabase
-        .from("reports")
-        .select(
-            `
-            id,
-            title,
-            summary,
-            storage_path,
-            published,
-            created_at,
-            published_at,
-            case_id,
-            cases!inner (
-                id,
-                title,
-                client_id
-            )
-            `
-        )
-        .eq("published", true)
-        .eq("cases.client_id", user.id)
-        .order("published_at", { ascending: false });
+  const counts = await getClientPortalCounts(supabase, user.id);
 
-    if (error) {
-        throw new Error(error.message);
-    }
+  const { data: reports, error } = await supabase
+    .from("reports")
+    .select(
+      `
+      id,
+      title,
+      summary,
+      storage_path,
+      published,
+      created_at,
+      published_at,
+      case_id,
+      cases!inner (
+        id,
+        title,
+        client_id
+      )
+      `,
+    )
+    .eq("published", true)
+    .eq("cases.client_id", user.id)
+    .order("published_at", { ascending: false });
 
-    return (
-        <section className="space-y-8">
-            <div className="space-y-3">
-                <Link
-                    href="/dashboard"
-                    className="inline-flex text-xs uppercase tracking-[0.16em] text-white/55 hover:text-white transition"
-                >
-                    ← Back to dashboard
-                </Link>
+  if (error) {
+    throw new Error(error.message);
+  }
 
-                <p className="text-xs uppercase tracking-[0.18em] text-white/55">
-                    Client Portal
-                </p>
+  return (
+    <ClientPortalShell
+      eyebrow="Client Portal"
+      title="Reports"
+      description="Published investment analysis reports."
+      counts={counts}
+    >
+      <div className="space-y-6">
+        {reports && reports.length > 0 ? (
+          <section className="min-w-0">
+            <div className="flex items-center justify-between border-b border-white/[0.07] pb-3">
+              <p className="text-[9px] uppercase tracking-[0.35em] text-[#3a4050]">
+                Published Reports
+              </p>
 
-                <div className="flex items-center gap-3">
-                    <h1
-                        className="text-4xl font-black tracking-tight"
-                        style={{ fontFamily: "var(--font-montserrat)" }}
-                    >
-                        Reports
-                    </h1>
-
-                    {reports && reports.length > 0 ? (
-                        <span className="inline-flex min-w-[22px] items-center justify-center rounded-full bg-white/10 px-2 py-1 text-xs font-semibold leading-none text-white/85">
-                            {reports.length}
-                        </span>
-                    ) : null}
-                </div>
-
-                <p className="max-w-3xl text-sm leading-6 text-white/72">
-                    Open the published reports available for your cases.
-                </p>
+              <span className="border border-white/[0.07] px-2.5 py-0.5 text-[11px] text-[#4a5060]">
+                {reports.length}
+              </span>
             </div>
 
-            <section className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur">
-                <div className="space-y-4">
-                    {reports && reports.length > 0 ? (
-                        reports.map((report) => {
-                            const caseTitle =
-                                Array.isArray(report.cases) && report.cases.length > 0
-                                    ? report.cases[0]?.title
-                                    : (report.cases as { title?: string } | null)?.title;
+            <div className="space-y-0">
+              {reports.map((report) => {
+                const caseTitle =
+                  Array.isArray(report.cases) && report.cases.length > 0
+                    ? report.cases[0]?.title
+                    : (report.cases as { title?: string } | null)?.title;
 
-                            return (
-                                <article
-                                    key={report.id}
-                                    className="rounded-2xl border border-white/10 bg-black/10 p-5"
-                                >
-                                    <div className="space-y-2">
-                                        <span className="rounded-full border border-white/15 px-2 py-1 text-[10px] uppercase tracking-[0.14em] text-white">
-                                            Published
-                                        </span>
+                return (
+                  <article
+                    key={report.id}
+                    className="border-b border-white/[0.07] px-2 py-5 transition hover:bg-white/[0.02]"
+                  >
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="min-w-0 space-y-2">
+                        <p className="text-[14px] font-semibold text-[#f0e6d3]">
+                          {formatClientReportTitle(report.title)}
+                        </p>
 
-                                        <div>
-                                            <p className="text-sm font-semibold text-white">
-                                                {formatClientReportTitle(report.title)}
-                                            </p>
-                                            <p className="text-xs text-white/55">
-                                                {formatClientCaseTitle(caseTitle)}
-                                            </p>
-                                        </div>
+                        <p className="text-[13px] text-[#6a7080]">
+                          {formatClientCaseTitle(caseTitle)}
+                        </p>
 
-                                        <div className="text-xs text-white/55">
-                                            Published{" "}
-                                            {report.published_at
-                                                ? new Date(report.published_at)
-                                                    .toISOString()
-                                                    .slice(0, 10)
-                                                : "—"}
-                                        </div>
+                        <p className="text-[13px] text-[#6a7080]">
+                          Published{" "}
+                          {report.published_at
+                            ? formatClientDate(report.published_at)
+                            : formatClientDate(report.created_at)}
+                        </p>
 
-                                        <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/75">
-                                            {report.summary || "No summary available yet."}
-                                        </div>
-
-                                        <div className="pt-2 flex flex-wrap gap-2">
-                                            <Link
-                                                href={`/dashboard/cases/${report.case_id}`}
-                                                className="inline-flex rounded-xl border border-white/15 px-4 py-2 text-xs hover:bg-white/5 transition"
-                                            >
-                                                Open Case
-                                            </Link>
-
-                                            {report.storage_path ? (
-                                                <a
-                                                    href={`/api/reports/${report.id}/download`}
-                                                    target="_blank"
-                                                    rel="noreferrer"
-                                                    className="inline-flex rounded-xl border border-white/15 px-4 py-2 text-xs hover:bg-white/5 transition"
-                                                >
-                                                    Open Report
-                                                </a>
-                                            ) : null}
-                                        </div>
-                                    </div>
-                                </article>
-                            );
-                        })
-                    ) : (
-                        <div className="rounded-2xl border border-white/10 bg-black/10 p-5">
-                            <p className="font-medium text-white">No published reports yet.</p>
-                            <p className="mt-2 text-sm text-white/65">
-                                Published deliverables will appear here after your case work has been completed and a report is released.
-                            </p>
+                        <div className="max-w-3xl text-[13px] leading-relaxed text-[#9aa0ad]">
+                          {report.summary || "No summary available yet."}
                         </div>
-                    )}
-                </div>
-            </section>
-        </section>
-    );
+                      </div>
+
+                      <div className="flex shrink-0 flex-wrap gap-3">
+                        <Link
+                          href={`/dashboard/cases/${report.case_id}`}
+                          className="inline-flex items-center border border-white/[0.07] px-4 py-2 text-sm text-[#c9cdd5] transition hover:bg-white/[0.04] hover:text-white"
+                        >
+                          Open Case
+                        </Link>
+
+                        {report.storage_path ? (
+                          <a
+                            href={`/api/reports/${report.id}/download`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center border border-[#b8935c] px-4 py-2 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
+                          >
+                            Open Report
+                          </a>
+                        ) : null}
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        ) : (
+          <section className="border border-white/[0.07] px-6 py-8">
+            <p
+              className="text-2xl leading-none text-[#f0e6d3]"
+              style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
+            >
+              No published reports yet.
+            </p>
+
+            <p className="mt-3 max-w-xl text-[13px] leading-relaxed text-[#5a6070]">
+              Published deliverables will appear here after your case work has
+              been completed and a report is released.
+            </p>
+          </section>
+        )}
+      </div>
+    </ClientPortalShell>
+  );
 }

@@ -100,7 +100,7 @@ export default async function DashboardOffersPage() {
               </span>
             </div>
 
-            <div className="hidden grid-cols-[110px_minmax(0,1fr)_140px_110px] gap-6 px-2 py-3 text-[9px] uppercase tracking-[0.35em] text-[#3a4050] md:grid">
+            <div className="hidden grid-cols-[120px_minmax(0,0.9fr)_160px_120px] gap-6 px-2 py-3 text-[9px] uppercase tracking-[0.35em] text-[#3a4050] md:grid">
               <div>Date</div>
               <div>Plan</div>
               <div>Amount</div>

@@ -143,11 +143,12 @@ export default async function DashboardCasesPage() {
               </div>
             </div>
 
-            <div className="hidden grid-cols-[110px_170px_150px_minmax(0,1fr)_120px] gap-6 px-2 py-4 text-[11px] uppercase tracking-[0.3em] text-[#9aa0ad] xl:grid">
+            <div className="hidden grid-cols-[minmax(0,0.9fr)_110px_150px_170px_minmax(0,0.9fr)_110px] gap-4 px-2 py-3 text-[9px] uppercase tracking-[0.35em] text-[#3a4050] xl:grid">
+              <div>Case</div>
               <div>Date</div>
-              <div>Selected Plan</div>
+              <div>Plan</div>
               <div>Budget</div>
-              <div>Review Focus</div>
+              <div>Goal</div>
               <div className="text-right">Status</div>
             </div>
 
@@ -164,7 +165,7 @@ export default async function DashboardCasesPage() {
                   >
                     <Link
                       href={`/dashboard/cases/${item.id}`}
-                      className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_110px_170px_150px_minmax(0,1fr)_120px] xl:items-center xl:gap-6"
+                      className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,0.9fr)_110px_150px_170px_minmax(0,0.9fr)_110px] xl:items-center xl:gap-4"
                     >
                       <div className="min-w-0 xl:order-1">
                         <div className="flex flex-wrap items-center gap-2">

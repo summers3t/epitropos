@@ -102,7 +102,7 @@ export default async function DashboardScreeningPage() {
               </span>
             </div>
 
-            <div className="hidden grid-cols-[minmax(0,1fr)_90px_110px_130px_minmax(0,0.7fr)_100px_80px] gap-4 px-2 py-3 text-[9px] uppercase tracking-[0.35em] text-[#3a4050] xl:grid">
+            <div className="hidden grid-cols-[minmax(0,0.9fr)_110px_140px_160px_minmax(0,0.9fr)_110px_90px] gap-4 px-2 py-3 text-[9px] uppercase tracking-[0.35em] text-[#3a4050] xl:grid">
               <div>Name</div>
               <div>Date</div>
               <div>Plan</div>
