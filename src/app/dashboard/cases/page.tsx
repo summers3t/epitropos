@@ -130,8 +130,8 @@ export default async function DashboardCasesPage() {
     >
       <div className="space-y-8">
         {cases && cases.length > 0 ? (
-          <section className="min-w-0">
-            <div className="flex items-end justify-between gap-4 border-b border-white/10 pb-4">
+          <section className="min-w-0 rounded-[24px] border border-[#dcc79e]/70 bg-white/55 px-6 py-5 shadow-[0_20px_60px_rgba(148,119,66,0.10)] backdrop-blur-xl">
+            <div className="flex items-end justify-between gap-4 border-b border-[#e2d4b6] pb-4">
               <div>
                 <p className="text-[11px] uppercase tracking-[0.3em] text-[#9aa0ad]">
                   Engagements
@@ -143,7 +143,7 @@ export default async function DashboardCasesPage() {
               </div>
             </div>
 
-            <div className="hidden grid-cols-[minmax(0,0.9fr)_110px_150px_170px_minmax(0,0.9fr)_110px] gap-4 px-2 py-3 text-[9px] uppercase tracking-[0.35em] text-[#3a4050] xl:grid">
+            <div className="hidden grid-cols-[minmax(0,0.9fr)_120px_150px_170px_minmax(0,0.9fr)_120px] gap-4 px-2 py-3 text-[10px] uppercase tracking-[0.32em] text-[#9a8660] xl:grid">
               <div>Case</div>
               <div>Date</div>
               <div>Plan</div>
@@ -161,7 +161,7 @@ export default async function DashboardCasesPage() {
                 return (
                   <article
                     key={item.id}
-                    className="border-b border-white/10 px-2 py-5 transition hover:bg-white/[0.02]"
+                    className="border-b border-[#eadfca] px-2 py-4 transition hover:bg-[#fffaf0]/70"
                   >
                     <Link
                       href={`/dashboard/cases/${item.id}`}
@@ -169,23 +169,23 @@ export default async function DashboardCasesPage() {
                     >
                       <div className="min-w-0 xl:order-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          <p className="truncate text-[15px] font-semibold text-[#f3e7d8]">
+                          <p className="truncate text-[14px] font-semibold text-[#0f1c2e]">
                             {formatClientCaseTitle(item.title)}
                           </p>
 
                           {formatDecisionStatusLabel(item.decision_status) ? (
-                            <span className="inline-flex border border-emerald-400/30 px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-emerald-300">
+                            <span className="inline-flex rounded-full border border-[#cfd9e8] bg-[#eef4fb] px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-[#35506f]">
                               {formatDecisionStatusLabel(item.decision_status)}
                             </span>
                           ) : null}
                         </div>
 
-                        <p className="mt-1 text-xs text-[#8f95a2]">
+                        <p className="mt-1 text-[11px] text-[#8b7a5c]">
                           {getCaseListStatusText(item.status)}
                         </p>
                       </div>
 
-                      <div className="text-sm text-[#9aa0ad] xl:order-2">
+                      <div className="text-[13px] text-[#6b7280] xl:order-2">
                         {formatClientDate(item.created_at)}
                       </div>
 
@@ -204,7 +204,7 @@ export default async function DashboardCasesPage() {
                       </div>
 
                       <div className="flex justify-start xl:order-6 xl:justify-end">
-                        <span className="inline-flex border border-[#b8935c] px-4 py-2 text-[11px] uppercase tracking-[0.24em] text-[#d6b26b]">
+                        <span className="inline-flex min-w-[118px] justify-center rounded-full border border-[#d6b67a] bg-white/80 px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-[#9a6a16] shadow-sm">
                           {formatCaseStatusLabel(item.status)}
                         </span>
                       </div>

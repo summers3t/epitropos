@@ -493,15 +493,15 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         ) : null}
 
         {latestScreening ? (
-          <section className="border border-white/10 px-6 py-6">
-            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_1px_minmax(0,1fr)] lg:items-start">
-              <div className="space-y-3">
+          <section className="rounded-[24px] border border-[#dcc79e]/70 bg-white/55 px-6 py-5 shadow-[0_20px_60px_rgba(148,119,66,0.10)] backdrop-blur-xl">
+            <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_1px_minmax(0,1fr)] lg:items-start">
+              <div className="space-y-2.5">
                 <p className="text-[11px] uppercase tracking-[0.3em] text-[#9aa0ad]">
                   Current Stage
                 </p>
 
                 <h2
-                  className="text-3xl leading-none text-[#f3e7d8]"
+                  className="text-[28px] leading-tight text-[#0f1c2e]"
                   style={{ fontFamily: "Georgia, Times New Roman, serif" }}
                 >
                   {getCurrentStageTitle({
@@ -514,7 +514,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                   })}
                 </h2>
 
-                <p className="max-w-2xl text-sm leading-7 text-[#8f95a2]">
+                <p className="max-w-2xl text-[13px] leading-6 text-[#6b7280]">
                   {getCurrentStageText({
                     screeningStatus: latestScreening.status,
                     caseStatus: latestCaseStatus,
@@ -526,7 +526,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                 </p>
               </div>
 
-              <div className="hidden bg-white/10 lg:block" />
+              <div className="hidden bg-[#d7c39d] lg:block lg:opacity-80" />
 
               <div className="space-y-3 lg:pl-2">
                 <div className="flex items-center gap-2">
@@ -552,7 +552,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                 </div>
 
                 <h2
-                  className="text-3xl leading-none text-[#f3e7d8]"
+                  className="text-[28px] leading-tight text-[#0f1c2e]"
                   style={{ fontFamily: "Georgia, Times New Roman, serif" }}
                 >
                   {getNextActionHeading({
@@ -565,7 +565,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                   })}
                 </h2>
 
-                <p className="max-w-2xl text-sm leading-7 text-[#8f95a2]">
+                <p className="max-w-2xl text-[13px] leading-6 text-[#6b7280]">
                   {getNextActionText({
                     screeningStatus: latestScreening.status,
                     caseStatus: latestCaseStatus,
@@ -620,15 +620,15 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         ) : null}
 
         <div className="space-y-10">
-          <section className="min-w-0">
-            <div className="flex items-end justify-between gap-4 border-b border-white/10 pb-4">
-              <p className="text-[11px] uppercase tracking-[0.3em] text-[#9aa0ad]">
+          <section className="min-w-0 rounded-[24px] border border-[#dcc79e]/70 bg-white/55 px-6 py-5 shadow-[0_20px_60px_rgba(148,119,66,0.10)] backdrop-blur-xl">
+            <div className="flex items-end justify-between gap-4 border-b border-[#e2d4b6] pb-4">
+              <p className="text-[10px] uppercase tracking-[0.32em] text-[#9a8660]">
                 Recent Screenings
               </p>
 
               <Link
                 href="/dashboard/screening"
-                className="text-sm text-[#d6b26b] transition hover:text-[#f0c87d]"
+                className="text-sm text-[#9a6a16] transition hover:text-[#0f1c2e]"
               >
                 View All →
               </Link>
@@ -636,7 +636,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
             {recentScreenings.length > 0 ? (
               <div className="min-w-0">
-                <div className="hidden grid-cols-[minmax(0,1.1fr)_120px_180px_140px] gap-6 px-2 py-4 text-[11px] uppercase tracking-[0.3em] text-[#9aa0ad] lg:grid">
+                <div className="hidden grid-cols-[minmax(0,0.95fr)_130px_180px_130px] gap-4 px-2 py-3 text-[10px] uppercase tracking-[0.32em] text-[#9a8660] lg:grid">
                   <div>Screening</div>
                   <div>Date</div>
                   <div>Budget</div>
@@ -647,19 +647,19 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                   {recentScreenings.map((request) => (
                     <article
                       key={request.id}
-                      className="border-b border-white/10 px-2 py-5 transition hover:bg-white/[0.02]"
+                      className="border-b border-[#eadfca] px-2 py-4 transition hover:bg-[#fffaf0]/70"
                     >
                       <Link
                         href={`/dashboard/screening/${request.id}`}
-                        className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1.1fr)_120px_180px_140px] lg:items-center lg:gap-6"
+                        className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,0.95fr)_130px_180px_130px] lg:items-center lg:gap-4"
                       >
                         <div className="min-w-0">
-                          <p className="truncate text-[15px] font-semibold text-[#f3e7d8]">
+                          <p className="truncate text-[14px] font-semibold text-[#0f1c2e]">
                             {request.name || "Screening request"}
                           </p>
                         </div>
 
-                        <div className="text-sm text-[#9aa0ad]">
+                        <div className="text-[13px] text-[#6b7280]">
                           {formatClientDate(request.created_at)}
                         </div>
 
@@ -668,7 +668,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                         </div>
 
                         <div className="flex justify-start lg:justify-end">
-                          <span className="inline-flex border border-[#b8935c] px-4 py-2 text-[11px] uppercase tracking-[0.24em] text-[#d6b26b]">
+                          <span className="inline-flex min-w-[118px] justify-center rounded-full border border-[#d6b67a] bg-white/75 px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-[#9a6a16] shadow-sm">
                             {formatStatusLabel(request.status)}
                           </span>
                         </div>
@@ -700,15 +700,15 @@ export default async function DashboardPage({ searchParams }: PageProps) {
               </div>
             )}
           </section>
-          <section className="min-w-0">
-            <div className="flex items-end justify-between gap-4 border-b border-white/10 pb-4">
-              <p className="text-[11px] uppercase tracking-[0.3em] text-[#9aa0ad]">
+          <section className="min-w-0 rounded-[24px] border border-[#dcc79e]/70 bg-white/55 px-6 py-5 shadow-[0_20px_60px_rgba(148,119,66,0.10)] backdrop-blur-xl">
+            <div className="flex items-end justify-between gap-4 border-b border-[#e2d4b6] pb-4">
+              <p className="text-[10px] uppercase tracking-[0.32em] text-[#9a8660]">
                 Active Cases
               </p>
 
               <Link
                 href="/dashboard/cases"
-                className="text-sm text-[#d6b26b] transition hover:text-[#f0c87d]"
+                className="text-sm text-[#9a6a16] transition hover:text-[#0f1c2e]"
               >
                 View All →
               </Link>
@@ -716,12 +716,11 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
             {recentCases.length > 0 ? (
               <div className="min-w-0">
-                <div className="hidden grid-cols-[minmax(0,1.3fr)_120px_170px_110px_36px] gap-6 px-2 py-4 text-[11px] uppercase tracking-[0.3em] text-[#9aa0ad] lg:grid">
+                <div className="hidden grid-cols-[minmax(0,0.95fr)_130px_180px_130px] gap-4 px-2 py-3 text-[10px] uppercase tracking-[0.32em] text-[#9a8660] lg:grid">
                   <div>Case</div>
                   <div>Date</div>
-                  <div>Selected Plan</div>
+                  <div>Plan</div>
                   <div className="text-right">Status</div>
-                  <div />
                 </div>
 
                 <div className="space-y-0">
@@ -735,19 +734,19 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                     return (
                       <article
                         key={item.id}
-                        className="border-b border-white/10 px-2 py-5 transition hover:bg-white/[0.02]"
+                        className="border-b border-[#eadfca] px-2 py-4 transition hover:bg-[#fffaf0]/70"
                       >
                         <Link
                           href={`/dashboard/cases/${item.id}`}
-                          className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1.3fr)_120px_170px_110px_36px] lg:items-center lg:gap-6"
+                          className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,0.95fr)_130px_180px_130px] lg:items-center lg:gap-4"
                         >
                           <div className="min-w-0">
-                            <p className="truncate text-[15px] font-semibold text-[#f3e7d8]">
+                            <p className="truncate text-[14px] font-semibold text-[#0f1c2e]">
                               {formatClientCaseTitle(item.title)}
                             </p>
                           </div>
 
-                          <div className="text-sm text-[#9aa0ad]">
+                          <div className="text-[13px] text-[#6b7280]">
                             {formatClientDate(item.created_at)}
                           </div>
 
@@ -758,13 +757,9 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                           </div>
 
                           <div className="flex justify-start lg:justify-end">
-                            <span className="inline-flex border border-[#b8935c] px-4 py-2 text-[11px] uppercase tracking-[0.24em] text-[#d6b26b]">
+                            <span className="inline-flex min-w-[118px] justify-center rounded-full border border-[#d6b67a] bg-white/75 px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-[#9a6a16] shadow-sm">
                               {formatCaseStatusLabel(item.status)}
                             </span>
-                          </div>
-
-                          <div className="hidden justify-end text-[#7e8797] lg:flex">
-                            <span className="text-2xl leading-none">→</span>
                           </div>
                         </Link>
                       </article>
@@ -796,7 +791,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
             </p>
 
             <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 <h2
                   className="text-3xl leading-none text-[#f3e7d8]"
                   style={{ fontFamily: "Georgia, Times New Roman, serif" }}
