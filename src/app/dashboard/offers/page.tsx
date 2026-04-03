@@ -100,7 +100,7 @@ export default async function DashboardOffersPage() {
               </span>
             </div>
 
-            <div className="hidden grid-cols-[140px_minmax(220px,1.15fr)_170px_140px] gap-5 px-2 py-3 text-[10px] uppercase tracking-[0.32em] text-[#9a8660] md:grid">
+            <div className="hidden grid-cols-[150px_minmax(180px,0.9fr)_220px_150px] gap-5 px-2 py-3 text-[10px] uppercase tracking-[0.32em] text-[#9a8660] md:grid">
               <div>Date</div>
               <div>Plan</div>
               <div>Amount</div>
@@ -115,7 +115,7 @@ export default async function DashboardOffersPage() {
                 >
                   <Link
                     href={`/dashboard/offers/${offer.id}`}
-                    className="grid min-w-0 items-center gap-4 px-2 py-4 md:grid-cols-[140px_minmax(220px,1.15fr)_170px_140px] md:gap-5"
+                    className="grid min-w-0 items-center gap-4 px-2 py-4 md:grid-cols-[150px_minmax(180px,0.9fr)_220px_150px] md:gap-5"
                   >
                     <div className="text-[13px] text-[#6b7280]">
                       {formatClientDate(offer.created_at)}
