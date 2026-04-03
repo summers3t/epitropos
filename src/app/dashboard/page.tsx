@@ -58,69 +58,264 @@ function formatClientReportTitle(title: string | null | undefined) {
   return title;
 }
 
-function getScreeningNextStepTitle({
+function getCurrentStageTitle({
   screeningStatus,
+  caseStatus,
+  hasReport,
   paymentPending,
   paymentPaid,
   hasCase,
 }: {
   screeningStatus: string | null | undefined;
+  caseStatus: string | null | undefined;
+  hasReport: boolean;
   paymentPending: boolean;
   paymentPaid: boolean;
   hasCase: boolean;
 }) {
-  if (paymentPaid && hasCase) {
-    return "Current stage";
+  if (hasReport || caseStatus === "closed") {
+    return "Completed engagement";
+  }
+
+  if (caseStatus === "delivered") {
+    return "Report delivered";
+  }
+
+  if (caseStatus === "analysis") {
+    return "In analysis";
+  }
+
+  if (caseStatus === "active") {
+    return "Case open";
   }
 
   if (paymentPending) {
-    return "Next expected step";
+    return "Payment pending";
+  }
+
+  if (paymentPaid && hasCase) {
+    return "Case open";
   }
 
   switch (screeningStatus) {
     case "new":
-      return "What happens next";
+      return "Screening submitted";
     case "accepted":
-      return "Next expected step";
+      return "Accepted for offer";
     case "offer_sent":
-      return "What you should do now";
+      return "Offer issued";
     case "rejected":
-      return "Current outcome";
+      return "Screening closed";
     default:
-      return "Next step";
+      return "Current stage";
   }
 }
 
-function getScreeningNextStepText({
+function getCurrentStageText({
   screeningStatus,
+  caseStatus,
+  hasReport,
   paymentPending,
   paymentPaid,
   hasCase,
 }: {
   screeningStatus: string | null | undefined;
+  caseStatus: string | null | undefined;
+  hasReport: boolean;
   paymentPending: boolean;
   paymentPaid: boolean;
   hasCase: boolean;
 }) {
+  if (hasReport || caseStatus === "closed") {
+    return "Your latest screening and case cycle has been completed. The report has already been delivered and no further action is required for this engagement.";
+  }
+
+  if (caseStatus === "delivered") {
+    return "Your report has been delivered and is available in the portal. This engagement is now in its final stage.";
+  }
+
+  if (caseStatus === "analysis") {
+    return "Your case is currently in analysis. The engagement is active and the report is not yet finalized.";
+  }
+
+  if (caseStatus === "active") {
+    return "Your payment has been confirmed and your case is open in the client portal.";
+  }
+
+  if (paymentPending) {
+    return "Your offer has been accepted and payment is awaiting confirmation before the case can be opened.";
+  }
+
   if (paymentPaid && hasCase) {
     return "Your payment has been confirmed and your case is already open. You can now follow the analysis through your case workspace.";
   }
 
+  switch (screeningStatus) {
+    case "new":
+      return "Your screening request has been submitted and is awaiting review.";
+    case "accepted":
+      return "Your screening has been accepted and the commercial offer is being prepared.";
+    case "offer_sent":
+      return "Your offer has already been issued and is awaiting your decision or payment completion.";
+    case "rejected":
+      return "This screening request was reviewed and closed without moving forward to engagement.";
+    default:
+      return "Open the screening record for more detail.";
+  }
+}
+
+function getNextActionTitle({
+  screeningStatus,
+  caseStatus,
+  hasReport,
+  paymentPending,
+  paymentPaid,
+  hasActionableOffer,
+}: {
+  screeningStatus: string | null | undefined;
+  caseStatus: string | null | undefined;
+  hasReport: boolean;
+  paymentPending: boolean;
+  paymentPaid: boolean;
+  hasActionableOffer: boolean;
+}) {
+  if (hasReport || caseStatus === "closed") {
+    return "Next Action";
+  }
+
+  if (caseStatus === "delivered") {
+    return "Next Action";
+  }
+
+  if (caseStatus === "analysis" || caseStatus === "active") {
+    return "Next Action";
+  }
+
   if (paymentPending) {
-    return "Your offer has been accepted and payment is awaiting confirmation. Once confirmed, your case will appear in the client portal.";
+    return "Next Action";
+  }
+
+  if (paymentPaid) {
+    return "Next Action";
   }
 
   switch (screeningStatus) {
     case "new":
-      return "We review your submitted details and decide whether to move this request into the commercial offer stage.";
+      return "Next Action";
     case "accepted":
-      return "We prepare your commercial offer. Once it is issued, it will appear here and in your offers section.";
+      return "Next Action";
     case "offer_sent":
-      return "Open the related offer, review the terms, and follow the payment step if you choose to proceed.";
+      return "Next Action";
     case "rejected":
-      return "No further action is required from you for this screening request.";
+      return "Next Action";
     default:
-      return "Open the screening record for more detail.";
+      return "Next Action";
+  }
+}
+
+function getNextActionHeading({
+  screeningStatus,
+  caseStatus,
+  hasReport,
+  paymentPending,
+  paymentPaid,
+  hasActionableOffer,
+}: {
+  screeningStatus: string | null | undefined;
+  caseStatus: string | null | undefined;
+  hasReport: boolean;
+  paymentPending: boolean;
+  paymentPaid: boolean;
+  hasActionableOffer: boolean;
+}) {
+  if (hasReport || caseStatus === "closed") {
+    return "Begin new screening";
+  }
+
+  if (caseStatus === "delivered") {
+    return "Review your report";
+  }
+
+  if (caseStatus === "analysis" || caseStatus === "active") {
+    return "Open active case";
+  }
+
+  if (paymentPending) {
+    return "Await payment confirmation";
+  }
+
+  if (paymentPaid) {
+    return "Open active case";
+  }
+
+  if (hasActionableOffer) {
+    return "Offer available for review";
+  }
+
+  switch (screeningStatus) {
+    case "new":
+      return "Await screening review";
+    case "accepted":
+      return "Await issued offer";
+    case "offer_sent":
+      return "Review issued offer";
+    case "rejected":
+      return "Begin new screening";
+    default:
+      return "No action required";
+  }
+}
+
+function getNextActionText({
+  screeningStatus,
+  caseStatus,
+  hasReport,
+  paymentPending,
+  paymentPaid,
+  hasActionableOffer,
+}: {
+  screeningStatus: string | null | undefined;
+  caseStatus: string | null | undefined;
+  hasReport: boolean;
+  paymentPending: boolean;
+  paymentPaid: boolean;
+  hasActionableOffer: boolean;
+}) {
+  if (hasReport || caseStatus === "closed") {
+    return "This engagement is finished. If you want a new property review, begin a new screening request.";
+  }
+
+  if (caseStatus === "delivered") {
+    return "Your report is already available. Review the completed deliverable from the reports section.";
+  }
+
+  if (caseStatus === "analysis" || caseStatus === "active") {
+    return "Your engagement is still active. Continue from the case workspace.";
+  }
+
+  if (paymentPending) {
+    return "Your offer has been accepted and payment is awaiting confirmation.";
+  }
+
+  if (paymentPaid) {
+    return "Your payment has been recorded and your case is now open in the client portal.";
+  }
+
+  if (hasActionableOffer) {
+    return "You have a client offer ready for review.";
+  }
+
+  switch (screeningStatus) {
+    case "new":
+      return "No client action is required while the screening is under review.";
+    case "accepted":
+      return "No client action is required until the offer is issued.";
+    case "offer_sent":
+      return "Open the related offer, review the terms, and proceed if you want to continue.";
+    case "rejected":
+      return "This screening cycle is complete. Start a new screening if you want to submit another property request.";
+    default:
+      return "There is no client action required at this stage.";
   }
 }
 
@@ -252,6 +447,9 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const caseCount = cases?.length ?? 0;
   const reportCount = reports?.length ?? 0;
 
+  const latestCaseStatus = latestCase?.status ?? null;
+  const hasDeliveredReport = !!latestReport;
+
   const latestOffer = latestScreening
     ? activeOfferByScreeningId.get(latestScreening.id)
     : null;
@@ -299,24 +497,28 @@ export default async function DashboardPage({ searchParams }: PageProps) {
             <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_1px_minmax(0,1fr)] lg:items-start">
               <div className="space-y-3">
                 <p className="text-[11px] uppercase tracking-[0.3em] text-[#9aa0ad]">
-                  {getScreeningNextStepTitle({
-                    screeningStatus: latestScreening.status,
-                    paymentPending,
-                    paymentPaid,
-                    hasCase,
-                  })}
+                  Current Stage
                 </p>
 
                 <h2
                   className="text-3xl leading-none text-[#f3e7d8]"
                   style={{ fontFamily: "Georgia, Times New Roman, serif" }}
                 >
-                  {latestScreening.name || "Latest screening request"}
+                  {getCurrentStageTitle({
+                    screeningStatus: latestScreening.status,
+                    caseStatus: latestCaseStatus,
+                    hasReport: hasDeliveredReport,
+                    paymentPending,
+                    paymentPaid,
+                    hasCase,
+                  })}
                 </h2>
 
                 <p className="max-w-2xl text-sm leading-7 text-[#8f95a2]">
-                  {getScreeningNextStepText({
+                  {getCurrentStageText({
                     screeningStatus: latestScreening.status,
+                    caseStatus: latestCaseStatus,
+                    hasReport: hasDeliveredReport,
                     paymentPending,
                     paymentPaid,
                     hasCase,
@@ -329,10 +531,20 @@ export default async function DashboardPage({ searchParams }: PageProps) {
               <div className="space-y-3 lg:pl-2">
                 <div className="flex items-center gap-2">
                   <p className="text-[11px] uppercase tracking-[0.3em] text-[#9aa0ad]">
-                    Next Action
+                    {getNextActionTitle({
+                      screeningStatus: latestScreening.status,
+                      caseStatus: latestCaseStatus,
+                      hasReport: hasDeliveredReport,
+                      paymentPending,
+                      paymentPaid,
+                      hasActionableOffer,
+                    })}
                   </p>
 
-                  {!paymentPaid && hasActionableOffer ? (
+                  {!hasDeliveredReport &&
+                  latestCaseStatus !== "closed" &&
+                  !paymentPaid &&
+                  hasActionableOffer ? (
                     <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
                       1
                     </span>
@@ -343,27 +555,43 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                   className="text-3xl leading-none text-[#f3e7d8]"
                   style={{ fontFamily: "Georgia, Times New Roman, serif" }}
                 >
-                  {paymentPaid
-                    ? "Payment confirmed"
-                    : paymentPending
-                      ? "Payment pending confirmation"
-                      : hasActionableOffer
-                        ? "Offer available for review"
-                        : "No action required"}
+                  {getNextActionHeading({
+                    screeningStatus: latestScreening.status,
+                    caseStatus: latestCaseStatus,
+                    hasReport: hasDeliveredReport,
+                    paymentPending,
+                    paymentPaid,
+                    hasActionableOffer,
+                  })}
                 </h2>
 
                 <p className="max-w-2xl text-sm leading-7 text-[#8f95a2]">
-                  {paymentPaid
-                    ? "Your payment has been recorded and your case is now open in the client portal."
-                    : paymentPending
-                      ? "Your offer has been accepted and payment is awaiting confirmation."
-                      : hasActionableOffer
-                        ? "You have a client offer ready for review."
-                        : "There is no client action required at this stage."}
+                  {getNextActionText({
+                    screeningStatus: latestScreening.status,
+                    caseStatus: latestCaseStatus,
+                    hasReport: hasDeliveredReport,
+                    paymentPending,
+                    paymentPaid,
+                    hasActionableOffer,
+                  })}
                 </p>
 
                 <div className="flex flex-wrap gap-3 pt-1">
-                  {paymentPaid ? (
+                  {hasDeliveredReport || latestCaseStatus === "closed" ? (
+                    <Link
+                      href="/screening"
+                      className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
+                    >
+                      Begin Screening
+                    </Link>
+                  ) : latestCaseStatus === "delivered" ? (
+                    <Link
+                      href="/dashboard/reports"
+                      className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
+                    >
+                      Open Reports
+                    </Link>
+                  ) : paymentPaid ? (
                     <Link
                       href="/dashboard/cases"
                       className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
@@ -376,6 +604,13 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                       className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
                     >
                       {paymentPending ? "Open Offer Status" : "View Offer"}
+                    </Link>
+                  ) : latestScreening.status === "rejected" ? (
+                    <Link
+                      href="/screening"
+                      className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
+                    >
+                      Begin Screening
                     </Link>
                   ) : null}
                 </div>
