@@ -494,14 +494,14 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
         {latestScreening ? (
           <section className="rounded-[24px] border border-[#dcc79e]/70 bg-white/55 px-6 py-5 shadow-[0_20px_60px_rgba(148,119,66,0.10)] backdrop-blur-xl">
-            <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_1px_minmax(0,1fr)] lg:items-start">
-              <div className="space-y-2.5">
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_2px_minmax(0,1fr)] lg:items-stretch">
+              <div className="space-y-2 min-h-[172px] pr-2">
                 <p className="text-[11px] uppercase tracking-[0.3em] text-[#9aa0ad]">
                   Current Stage
                 </p>
 
                 <h2
-                  className="text-[28px] leading-tight text-[#0f1c2e]"
+                  className="text-[26px] leading-tight text-[#0f1c2e]"
                   style={{ fontFamily: "Georgia, Times New Roman, serif" }}
                 >
                   {getCurrentStageTitle({
@@ -514,7 +514,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                   })}
                 </h2>
 
-                <p className="max-w-2xl text-[13px] leading-6 text-[#6b7280]">
+                <p className="max-w-2xl text-[13px] leading-[1.55] text-[#6b7280]">
                   {getCurrentStageText({
                     screeningStatus: latestScreening.status,
                     caseStatus: latestCaseStatus,
@@ -526,11 +526,11 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                 </p>
               </div>
 
-              <div className="hidden bg-[#d7c39d] lg:block lg:opacity-80" />
+              <div className="hidden rounded-full bg-[#ccb07a] lg:block lg:opacity-95" />
 
-              <div className="space-y-3 lg:pl-2">
+              <div className="space-y-2 min-h-[172px] lg:pl-4">
                 <div className="flex items-center gap-2">
-                  <p className="text-[11px] uppercase tracking-[0.3em] text-[#9aa0ad]">
+                  <p className="text-[10px] uppercase tracking-[0.32em] text-[#9a8660]">
                     {getNextActionTitle({
                       screeningStatus: latestScreening.status,
                       caseStatus: latestCaseStatus,
@@ -552,7 +552,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                 </div>
 
                 <h2
-                  className="text-[28px] leading-tight text-[#0f1c2e]"
+                  className="text-[26px] leading-tight text-[#0f1c2e]"
                   style={{ fontFamily: "Georgia, Times New Roman, serif" }}
                 >
                   {getNextActionHeading({
@@ -565,7 +565,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                   })}
                 </h2>
 
-                <p className="max-w-2xl text-[13px] leading-6 text-[#6b7280]">
+                <p className="max-w-2xl text-[13px] leading-[1.55] text-[#6b7280]">
                   {getNextActionText({
                     screeningStatus: latestScreening.status,
                     caseStatus: latestCaseStatus,
@@ -636,7 +636,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
             {recentScreenings.length > 0 ? (
               <div className="min-w-0">
-                <div className="hidden grid-cols-[minmax(0,0.95fr)_130px_180px_130px] gap-4 px-2 py-3 text-[10px] uppercase tracking-[0.32em] text-[#9a8660] lg:grid">
+                <div className="hidden grid-cols-[minmax(220px,1.15fr)_150px_170px_140px] gap-5 px-2 py-3 text-[10px] uppercase tracking-[0.32em] text-[#9a8660] lg:grid">
                   <div>Screening</div>
                   <div>Date</div>
                   <div>Budget</div>
@@ -651,7 +651,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                     >
                       <Link
                         href={`/dashboard/screening/${request.id}`}
-                        className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,0.95fr)_130px_180px_130px] lg:items-center lg:gap-4"
+                        className="grid min-w-0 gap-3 lg:grid-cols-[minmax(220px,1.15fr)_150px_170px_140px] lg:items-center lg:gap-5"
                       >
                         <div className="min-w-0">
                           <p className="truncate text-[14px] font-semibold text-[#0f1c2e]">
@@ -663,7 +663,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                           {formatClientDate(request.created_at)}
                         </div>
 
-                        <div className="truncate text-sm text-[#9aa0ad]">
+                        <div className="truncate text-[13px] text-[#6b7280]">
                           {request.budget_range || "—"}
                         </div>
 
@@ -716,7 +716,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
             {recentCases.length > 0 ? (
               <div className="min-w-0">
-                <div className="hidden grid-cols-[minmax(0,0.95fr)_130px_180px_130px] gap-4 px-2 py-3 text-[10px] uppercase tracking-[0.32em] text-[#9a8660] lg:grid">
+                <div className="hidden grid-cols-[minmax(220px,1.15fr)_150px_170px_140px] gap-5 px-2 py-3 text-[10px] uppercase tracking-[0.32em] text-[#9a8660] lg:grid">
                   <div>Case</div>
                   <div>Date</div>
                   <div>Plan</div>
@@ -738,7 +738,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                       >
                         <Link
                           href={`/dashboard/cases/${item.id}`}
-                          className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,0.95fr)_130px_180px_130px] lg:items-center lg:gap-4"
+                          className="grid min-w-0 gap-3 lg:grid-cols-[minmax(220px,1.15fr)_150px_170px_140px] lg:items-center lg:gap-5"
                         >
                           <div className="min-w-0">
                             <p className="truncate text-[14px] font-semibold text-[#0f1c2e]">
@@ -750,7 +750,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                             {formatClientDate(item.created_at)}
                           </div>
 
-                          <div className="truncate text-sm text-[#9aa0ad]">
+                          <div className="truncate text-[13px] text-[#6b7280]">
                             {screening?.plan_interest
                               ? formatPlanLabel(screening.plan_interest)
                               : "—"}
@@ -791,7 +791,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
             </p>
 
             <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div className="space-y-2.5">
+              <div className="space-y-2 min-h-[172px] pr-2">
                 <h2
                   className="text-3xl leading-none text-[#f3e7d8]"
                   style={{ fontFamily: "Georgia, Times New Roman, serif" }}

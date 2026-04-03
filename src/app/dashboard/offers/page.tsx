@@ -89,50 +89,50 @@ export default async function DashboardOffersPage() {
     >
       <div className="space-y-6">
         {offers && offers.length > 0 ? (
-          <section className="min-w-0">
-            <div className="flex items-center justify-between border-b border-white/[0.07] pb-3">
-              <p className="text-[9px] uppercase tracking-[0.35em] text-[#3a4050]">
+          <section className="min-w-0 rounded-[24px] border border-[#dcc79e]/70 bg-white/55 px-6 py-5 shadow-[0_20px_60px_rgba(148,119,66,0.10)] backdrop-blur-xl">
+            <div className="flex items-center justify-between border-b border-[#e2d4b6] pb-4">
+              <p className="text-[10px] uppercase tracking-[0.32em] text-[#9a8660]">
                 All Offers
               </p>
 
-              <span className="border border-white/[0.07] px-2.5 py-0.5 text-[11px] text-[#4a5060]">
+              <span className="border border-[#dcc79e]/70 bg-white/70 px-2.5 py-0.5 text-[11px] text-[#8b7a5c]">
                 {offers.length}
               </span>
             </div>
 
-            <div className="hidden grid-cols-[120px_minmax(0,0.9fr)_160px_120px] gap-6 px-2 py-3 text-[9px] uppercase tracking-[0.35em] text-[#3a4050] md:grid">
+            <div className="hidden grid-cols-[140px_minmax(220px,1.15fr)_170px_140px] gap-5 px-2 py-3 text-[10px] uppercase tracking-[0.32em] text-[#9a8660] md:grid">
               <div>Date</div>
               <div>Plan</div>
               <div>Amount</div>
               <div className="text-right">Status</div>
             </div>
 
-            <div>
+            <div className="space-y-0">
               {offers.map((offer) => (
                 <article
                   key={offer.id}
-                  className="border-b border-white/[0.07] transition hover:bg-white/[0.02]"
+                  className="border-b border-[#eadfca] transition hover:bg-[#fffaf0]/70"
                 >
                   <Link
                     href={`/dashboard/offers/${offer.id}`}
-                    className="grid min-w-0 items-center gap-4 px-2 py-4 md:grid-cols-[120px_minmax(0,0.9fr)_160px_120px] md:gap-6"
+                    className="grid min-w-0 items-center gap-4 px-2 py-4 md:grid-cols-[140px_minmax(220px,1.15fr)_170px_140px] md:gap-5"
                   >
-                    <div className="text-[13px] text-[#6a7080]">
+                    <div className="text-[13px] text-[#6b7280]">
                       {formatClientDate(offer.created_at)}
                     </div>
 
-                    <div className="truncate text-[14px] font-semibold text-[#f0e6d3]">
+                    <div className="truncate text-[14px] font-semibold text-[#0f1c2e]">
                       {formatPlanLabel(offer.plan_type)}
                     </div>
 
-                    <div className="text-[13px] text-[#9aa0ad]">
+                    <div className="text-[13px] text-[#6b7280]">
                       {offer.price_amount
                         ? `${offer.currency ?? "EUR"} ${Number(offer.price_amount).toLocaleString("en-GB")}`
                         : "—"}
                     </div>
 
                     <div className="flex justify-start md:justify-end">
-                      <span className="inline-flex border border-[#b8935c]/60 px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-[#d6b26b]">
+                      <span className="inline-flex min-w-[118px] justify-center rounded-full border border-[#d6b67a] bg-white/80 px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-[#9a6a16] shadow-sm">
                         {formatOfferStatus(offer.status)}
                       </span>
                     </div>
@@ -142,15 +142,15 @@ export default async function DashboardOffersPage() {
             </div>
           </section>
         ) : (
-          <section className="border border-white/[0.07] px-6 py-8">
+          <section className="rounded-[24px] border border-[#dcc79e]/70 bg-white/55 px-6 py-8 shadow-[0_20px_60px_rgba(148,119,66,0.10)] backdrop-blur-xl">
             <p
-              className="text-2xl leading-none text-[#f0e6d3]"
+              className="text-2xl leading-none text-[#0f1c2e]"
               style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
             >
               No offers yet.
             </p>
 
-            <p className="mt-3 max-w-xl text-[13px] leading-relaxed text-[#5a6070]">
+            <p className="mt-3 max-w-xl text-[13px] leading-relaxed text-[#6b7280]">
               Offers are issued after your screening request has been reviewed
               and accepted.
             </p>

@@ -130,7 +130,7 @@ export default function ClientPortalShell({
 
   return (
     <div className="flex h-full w-full overflow-hidden bg-[linear-gradient(180deg,#fbf7ef_0%,#f6efdf_100%)] text-[#1f2937]">
-      <aside className="flex w-[236px] shrink-0 flex-col border-r border-[#d9c9a8]/70 bg-white/45 backdrop-blur-xl shadow-[10px_0_30px_rgba(148,119,66,0.08)]">
+      <aside className="flex w-[248px] shrink-0 flex-col border-r border-[#d9c9a8]/70 bg-white/45 backdrop-blur-xl shadow-[10px_0_30px_rgba(148,119,66,0.08)]">
         <nav className="flex-1 px-3 pt-6">
           <div className="space-y-1">
             {navItems.map((item) => {
@@ -142,7 +142,7 @@ export default function ClientPortalShell({
                   key={item.href}
                   href={item.href}
                   className={[
-                    "flex items-center justify-between gap-3 rounded-xl px-4 py-3 text-[14px] transition-all",
+                    "flex items-center justify-between gap-3 rounded-xl px-4 py-3 text-[15px] transition-all",
                     isActive
                       ? "bg-white/80 text-[#0f1c2e] shadow-[0_10px_30px_rgba(15,28,46,0.08)] ring-1 ring-[#dcc79e]/70"
                       : "text-[#6b7280] hover:bg-white/55 hover:text-[#0f1c2e]",
