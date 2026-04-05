@@ -98,8 +98,8 @@ export default async function DashboardScreeningPage() {
               <div>Plan</div>
               <div>Budget</div>
               <div>Goal</div>
-              <div className="text-right">Status</div>
-              <div className="text-right">Action</div>
+              <div className="text-center">Status</div>
+              <div className="text-center">Action</div>
             </div>
 
             <div>

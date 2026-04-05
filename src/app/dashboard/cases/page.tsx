@@ -137,7 +137,7 @@ export default async function DashboardCasesPage() {
               <div>Plan</div>
               <div>Budget</div>
               <div>Goal</div>
-              <div className="text-right">Status</div>
+              <div className="text-center">Status</div>
             </div>
 
             <div className="space-y-0">
