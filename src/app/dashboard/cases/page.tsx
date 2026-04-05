@@ -130,20 +130,8 @@ export default async function DashboardCasesPage() {
     >
       <div className="space-y-8">
         {cases && cases.length > 0 ? (
-          <section className="min-w-0 rounded-[24px] border border-[#dcc79e]/70 bg-white/55 px-6 py-5 shadow-[0_20px_60px_rgba(148,119,66,0.10)] backdrop-blur-xl">
-            <div className="flex items-end justify-between gap-4 border-b border-[#e2d4b6] pb-4">
-              <div>
-                <p className="text-[11px] uppercase tracking-[0.3em] text-[#9aa0ad]">
-                  Engagements
-                </p>
-              </div>
-
-              <div className="border border-white/10 px-3 py-1 text-xs text-[#8f95a2]">
-                {cases.length}
-              </div>
-            </div>
-
-            <div className="hidden grid-cols-[minmax(0,0.9fr)_120px_150px_170px_minmax(0,0.9fr)_120px] gap-4 px-2 py-3 text-[10px] uppercase tracking-[0.32em] text-[#9a8660] xl:grid">
+          <section className="min-w-0">
+            <div className="hidden grid-cols-[minmax(0,1fr)_1fr_1fr_1fr_1fr_160px] gap-6 px-2 py-3 text-[10px] uppercase tracking-[0.32em] text-[#9a8660] xl:grid">
               <div>Case</div>
               <div>Date</div>
               <div>Plan</div>
@@ -161,11 +149,11 @@ export default async function DashboardCasesPage() {
                 return (
                   <article
                     key={item.id}
-                    className="border-b border-[#eadfca] px-2 py-4 transition hover:bg-[#fffaf0]/70"
+                    className="border-b border-[#eadfca] px-2 py-4 transition duration-300 ease-out hover:bg-[#fffaf0] hover:shadow-[0_8px_20px_rgba(148,119,66,0.08)]"
                   >
                     <Link
                       href={`/dashboard/cases/${item.id}`}
-                      className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,0.9fr)_110px_150px_170px_minmax(0,0.9fr)_110px] xl:items-center xl:gap-4"
+                      className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_1fr_1fr_1fr_1fr_160px] xl:items-center xl:gap-6"
                     >
                       <div className="min-w-0 xl:order-1">
                         <div className="flex flex-wrap items-center gap-2">
@@ -189,24 +177,26 @@ export default async function DashboardCasesPage() {
                         {formatClientDate(item.created_at)}
                       </div>
 
-                      <div className="truncate text-sm text-[#9aa0ad] xl:order-3">
+                      <div className="text-[13px] text-[#6b7280] xl:order-3">
                         {screening?.plan_interest
                           ? formatPlanLabel(screening.plan_interest)
                           : "—"}
                       </div>
 
-                      <div className="text-sm text-[#9aa0ad] xl:order-4">
+                      <div className="text-[13px] text-[#6b7280] xl:order-4">
                         {screening?.budget_range || "—"}
                       </div>
 
-                      <div className="truncate text-sm text-[#9aa0ad] xl:order-5">
+                      <div className="text-[13px] text-[#6b7280] xl:order-5">
                         {screening?.goal || "—"}
                       </div>
 
-                      <div className="flex justify-start xl:order-6 xl:justify-end">
-                        <span className="inline-flex min-w-[118px] justify-center rounded-full border border-[#d6b67a] bg-white/80 px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-[#9a6a16] shadow-sm">
-                          {formatCaseStatusLabel(item.status)}
-                        </span>
+                      <div className="flex justify-start xl:order-6 xl:justify-center">
+                        <div className="flex w-full justify-start xl:justify-center">
+                          <span className="inline-flex min-w-[118px] justify-center rounded-full border border-[#d6b67a] bg-white/80 px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-[#9a6a16] shadow-sm">
+                            {formatCaseStatusLabel(item.status)}
+                          </span>
+                        </div>
                       </div>
                     </Link>
                   </article>
