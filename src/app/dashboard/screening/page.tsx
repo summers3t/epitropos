@@ -92,17 +92,7 @@ export default async function DashboardScreeningPage() {
           </div>
         ) : screeningRequests && screeningRequests.length > 0 ? (
           <section className="min-w-0">
-            <div className="flex items-center justify-between border-b border-white/[0.07] pb-3">
-              <p className="text-[9px] uppercase tracking-[0.35em] text-[#3a4050]">
-                Screening History
-              </p>
-
-              <span className="border border-white/[0.07] px-2.5 py-0.5 text-[11px] text-[#4a5060]">
-                {screeningRequests.length}
-              </span>
-            </div>
-
-            <div className="hidden grid-cols-[minmax(0,0.9fr)_120px_150px_170px_minmax(0,0.9fr)_120px_90px] gap-4 px-3 py-3 text-[10px] uppercase tracking-[0.32em] text-[#9a8660] xl:grid">
+            <div className="hidden grid-cols-[minmax(0,1fr)_1fr_1fr_1fr_1fr_160px_110px] gap-6 px-2 py-3 text-[10px] uppercase tracking-[0.32em] text-[#9a8660] xl:grid">
               <div>Name</div>
               <div>Date</div>
               <div>Plan</div>
@@ -119,7 +109,7 @@ export default async function DashboardScreeningPage() {
                 return (
                   <article
                     key={request.id}
-                    className="relative rounded-xl border border-[#eadfca] bg-white/60 px-2 transition hover:bg-[#fffaf0]/80 hover:shadow-[0_10px_30px_rgba(148,119,66,0.08)]"
+                    className="relative border-b border-[#eadfca] px-2 py-4 transition duration-300 ease-out hover:bg-[#fffaf0] hover:shadow-[0_8px_20px_rgba(148,119,66,0.08)]"
                   >
                     <Link
                       href={`/dashboard/screening/${request.id}`}
@@ -127,7 +117,7 @@ export default async function DashboardScreeningPage() {
                       aria-label={`Open ${request.name || "screening request"}`}
                     />
 
-                    <div className="grid min-w-0 items-center gap-4 px-3 py-4 xl:grid-cols-[minmax(0,0.9fr)_120px_150px_170px_minmax(0,0.9fr)_120px_90px] xl:gap-4">
+                    <div className="grid min-w-0 items-center gap-4 xl:grid-cols-[minmax(0,1fr)_1fr_1fr_1fr_1fr_160px_110px] xl:gap-6">
                       <div className="min-w-0">
                         <p className="truncate text-[14px] font-semibold text-[#0f1c2e]">
                           {request.name || "Screening request"}
@@ -141,27 +131,29 @@ export default async function DashboardScreeningPage() {
                         {formatClientDate(request.created_at)}
                       </div>
 
-                      <div className="truncate text-[13px] text-[#6a7080]">
+                      <div className="text-[13px] text-[#6b7280]">
                         {request.plan_interest
                           ? formatPlanLabel(request.plan_interest)
                           : "—"}
                       </div>
 
-                      <div className="text-[13px] text-[#6a7080]">
+                      <div className="text-[13px] text-[#6b7280]">
                         {request.budget_range || "—"}
                       </div>
 
-                      <div className="truncate text-[13px] text-[#6a7080]">
+                      <div className="text-[13px] text-[#6b7280]">
                         {request.goal || "—"}
                       </div>
 
-                      <div className="flex justify-start xl:justify-end">
-                        <span className="inline-flex min-w-[118px] justify-center rounded-full border border-[#d6b67a] bg-white/80 px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-[#9a6a16] shadow-sm">
-                          {formatStatusLabel(request.status)}
-                        </span>
+                      <div className="flex justify-start xl:justify-center">
+                        <div className="flex w-full justify-start xl:justify-center">
+                          <span className="inline-flex min-w-[118px] justify-center rounded-full border border-[#d6b67a] bg-white/80 px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-[#9a6a16] shadow-sm">
+                            {formatStatusLabel(request.status)}
+                          </span>
+                        </div>
                       </div>
 
-                      <div className="relative z-20 flex justify-start xl:justify-end">
+                      <div className="relative z-20 flex justify-start xl:justify-center">
                         {canDelete ? (
                           <form
                             action={deleteOwnScreeningRequest.bind(
