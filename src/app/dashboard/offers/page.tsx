@@ -134,18 +134,27 @@ export default async function DashboardOffersPage() {
             </div>
           </section>
         ) : (
-          <section className="rounded-[24px] border border-[#dcc79e]/70 bg-white/55 px-6 py-8 shadow-[0_20px_60px_rgba(148,119,66,0.10)] backdrop-blur-xl">
+          <section className="py-8">
             <p
-              className="text-2xl leading-none text-[#0f1c2e]"
+              className="text-[28px] leading-none text-[#0f1c2e]"
               style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
             >
               No offers yet.
             </p>
 
-            <p className="mt-3 max-w-xl text-[13px] leading-relaxed text-[#6b7280]">
+            <p className="mt-3 max-w-xl text-[13px] leading-6 text-[#6b7280]">
               Offers are issued after your screening request has been reviewed
               and accepted.
             </p>
+
+            <div className="mt-5">
+              <Link
+                href="/screening"
+                className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
+              >
+                Apply for Screening
+              </Link>
+            </div>
           </section>
         )}
       </div>

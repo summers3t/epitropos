@@ -205,23 +205,32 @@ export default async function DashboardCasesPage() {
             </div>
           </section>
         ) : (
-          <section className="border border-white/10 px-5 py-8">
+          <section className="py-8">
             <p
-              className="text-3xl leading-none text-[#f3e7d8]"
+              className="text-[28px] leading-none text-[#0f1c2e]"
               style={{ fontFamily: "Georgia, Times New Roman, serif" }}
             >
               No cases available yet.
             </p>
 
-            <p className="mt-4 max-w-xl text-sm leading-7 text-[#8f95a2]">
+            <p className="mt-3 max-w-xl text-[13px] leading-6 text-[#6b7280]">
               Your case will appear here after payment is confirmed and the
               review begins.
             </p>
 
-            <p className="mt-2 text-sm leading-7 text-[#8f95a2]">
+            <p className="mt-2 max-w-xl text-[13px] leading-6 text-[#6b7280]">
               Once available, each case will show its status, conclusion, and
               final report access.
             </p>
+
+            <div className="mt-5">
+              <Link
+                href="/screening"
+                className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
+              >
+                Apply for Screening
+              </Link>
+            </div>
           </section>
         )}
       </div>

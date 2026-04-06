@@ -180,15 +180,15 @@ export default async function DashboardScreeningPage() {
             </div>
           </section>
         ) : (
-          <section className="border border-white/[0.07] px-6 py-8">
+          <section className="py-8">
             <p
-              className="text-2xl leading-none text-[#f0e6d3]"
+              className="text-[28px] leading-none text-[#0f1c2e]"
               style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
             >
               No screening requests found.
             </p>
 
-            <p className="mt-3 max-w-xl text-[13px] leading-relaxed text-[#5a6070]">
+            <p className="mt-3 max-w-xl text-[13px] leading-6 text-[#6b7280]">
               Screening is the required first step before any offer, payment, or
               case creation.
             </p>
