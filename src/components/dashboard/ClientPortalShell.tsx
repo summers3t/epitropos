@@ -181,56 +181,47 @@ export default function ClientPortalShell({
           </div>
         </nav>
 
-        <div className="border-t border-[#dcc79e]/60 px-5 py-4">
+        <div className="border-t border-[#d9c9a8]/70 px-3 py-4">
           <Link
             href="/auth/logout"
-            className="flex items-center gap-2.5 text-[13px] text-[#8b7a5c] transition hover:text-[#0f1c2e]"
+            className="flex items-center justify-between rounded-xl px-4 py-3 text-[15px] text-[#6b7280] transition-all duration-300 ease-out hover:bg-white/88 hover:text-[#0f1c2e] hover:shadow-[0_10px_24px_rgba(15,28,46,0.08)] hover:-translate-y-[1px]"
           >
-            <svg
-              className="h-[15px] w-[15px]"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.7"
-            >
-              <path d="M15 3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3" />
-              <path d="M10 17l5-5-5-5" />
-              <path d="M15 12H3" />
-            </svg>
-            <span>Sign Out</span>
+            <span className="font-medium">Sign Out</span>
           </Link>
         </div>
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="shrink-0 border-b border-[#dcc79e]/60 bg-white/30 px-10 py-5 backdrop-blur-md">
-          {headerContent ? (
-            headerContent
-          ) : (
-            <>
-              <p className="text-[10px] uppercase tracking-[0.32em] text-[#9a8660]">
-                {eyebrow}
-              </p>
-
-              <h1
-                className="mt-1.5 text-[30px] leading-tight text-[#0f1c2e]"
-                style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
-              >
-                {title}
-              </h1>
-
-              {description ? (
-                <p className="mt-1 text-[14px] leading-relaxed text-[#6b7280]">
-                  {description}
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <header className="sticky top-0 z-30 border-b border-[#dcc79e]/70 bg-white/30 backdrop-blur-xl">
+          <div className="px-6 py-4 lg:px-8 lg:py-5">
+            {headerContent ? (
+              headerContent
+            ) : (
+              <>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-[#9a8660]">
+                  {eyebrow}
                 </p>
-              ) : null}
-            </>
-          )}
+
+                <h1
+                  className="mt-2 text-[32px] leading-none text-[#0f1c2e]"
+                  style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
+                >
+                  {title}
+                </h1>
+
+                {description ? (
+                  <p className="mt-3 max-w-2xl text-[13px] leading-6 text-[#6b7280]">
+                    {description}
+                  </p>
+                ) : null}
+              </>
+            )}
+          </div>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-10 py-7">
+        <main className="min-h-0 flex-1 overflow-y-auto px-6 py-6 lg:px-8 lg:py-8">
           {children}
-        </div>
+        </main>
       </div>
     </div>
   );
