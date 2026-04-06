@@ -24,6 +24,7 @@ const navItems: NavItem[] = [
   { href: "/dashboard/screening", label: "Screenings", countKey: "screenings" },
   { href: "/dashboard/cases", label: "Cases", countKey: "cases" },
   { href: "/dashboard/offers", label: "Offers" },
+  { href: "/dashboard/payments", label: "Payments" },
   { href: "/dashboard/reports", label: "Reports", countKey: "reports" },
 ];
 
@@ -98,6 +99,20 @@ function NavIcon({ label }: { label: string }) {
         >
           <path d="M12 2v20" />
           <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14.5a3.5 3.5 0 0 1 0 7H6" />
+        </svg>
+      );
+    case "Payments":
+      return (
+        <svg
+          className="h-[17px] w-[17px]"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.7"
+        >
+          <rect x="2.5" y="5" width="19" height="14" rx="2.5" />
+          <path d="M2.5 9.5h19" />
+          <path d="M7 15h3" />
         </svg>
       );
     case "Reports":
