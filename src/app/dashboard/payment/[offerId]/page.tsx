@@ -93,7 +93,7 @@ export default async function PaymentPlaceholderPage({ params }: PageProps) {
 
   if (!order) {
     throw new Error(
-      "Payment placeholder order is missing. Apply Step 29 migration and verify accepted-offer backfill.",
+      "Accepted offer has no linked order. Check accept_offer_and_create_order lifecycle integrity.",
     );
   }
 

@@ -96,6 +96,10 @@ export default async function DashboardReportsPage() {
                     ? report.cases[0]?.title
                     : (report.cases as { title?: string } | null)?.title;
 
+                const hasAttachedFile =
+                  typeof report.storage_path === "string" &&
+                  report.storage_path.trim().length > 0;
+
                 return (
                   <article
                     key={report.id}
@@ -125,6 +129,13 @@ export default async function DashboardReportsPage() {
                         <div className="max-w-3xl text-[13px] leading-relaxed text-[#6b7280]">
                           {report.summary || "No summary available yet."}
                         </div>
+
+                        {!hasAttachedFile ? (
+                          <div className="text-[12px] text-[#9a6a16]">
+                            Report file is currently unavailable. Please contact
+                            support or the administrator.
+                          </div>
+                        ) : null}
                       </div>
 
                       <div className="flex shrink-0 flex-wrap gap-3">
@@ -135,7 +146,7 @@ export default async function DashboardReportsPage() {
                           Open Case
                         </Link>
 
-                        {report.storage_path ? (
+                        {hasAttachedFile ? (
                           <a
                             href={`/api/reports/${report.id}/download`}
                             target="_blank"
