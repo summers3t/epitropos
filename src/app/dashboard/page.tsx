@@ -440,18 +440,29 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   }
 
   const latestScreening = screeningRequests?.[0] ?? null;
+
   const latestCase = cases?.[0] ?? null;
+
   const latestReport = reports?.[0] ?? null;
 
   const screeningCount = screeningRequests?.length ?? 0;
+
   const caseCount = cases?.length ?? 0;
+
   const reportCount = reports?.length ?? 0;
 
   const latestCaseStatus = latestCase?.status ?? null;
+
   const hasDeliveredReport = !!latestReport;
 
-  const latestOffer = latestScreening
-    ? activeOfferByScreeningId.get(latestScreening.id)
+  const prioritizedJourneyScreening =
+    (screeningRequests ?? []).find((request) => {
+      const offer = activeOfferByScreeningId.get(request.id);
+      return offer?.status === "sent" || offer?.status === "accepted";
+    }) ?? latestScreening;
+
+  const latestOffer = prioritizedJourneyScreening
+    ? activeOfferByScreeningId.get(prioritizedJourneyScreening.id)
     : null;
 
   const latestOrder = latestOffer ? ordersByOfferId.get(latestOffer.id) : null;
@@ -460,7 +471,9 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     latestOffer?.status === "sent" || latestOffer?.status === "accepted";
 
   const paymentPending = latestOrder?.payment_status === "pending";
+
   const paymentPaid = latestOrder?.payment_status === "paid";
+
   const hasCase = !!latestCase;
 
   const recentScreenings = (screeningRequests ?? []).slice(0, 5);
@@ -576,22 +589,32 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                   style={{ fontFamily: "Georgia, Times New Roman, serif" }}
                 >
                   {getNextActionHeading({
-                    screeningStatus: latestScreening.status,
+                    screeningStatus: prioritizedJourneyScreening?.status,
+
                     caseStatus: latestCaseStatus,
+
                     hasReport: hasDeliveredReport,
+
                     paymentPending,
+
                     paymentPaid,
+
                     hasActionableOffer,
                   })}
                 </h2>
 
                 <p className="max-w-2xl text-[12.5px] leading-[1.5] text-[#6b7280]">
                   {getNextActionText({
-                    screeningStatus: latestScreening.status,
+                    screeningStatus: prioritizedJourneyScreening?.status,
+
                     caseStatus: latestCaseStatus,
+
                     hasReport: hasDeliveredReport,
+
                     paymentPending,
+
                     paymentPaid,
+
                     hasActionableOffer,
                   })}
                 </p>
@@ -632,7 +655,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                     >
                       View Offer
                     </Link>
-                  ) : latestScreening.status === "rejected" ? (
+                  ) : prioritizedJourneyScreening?.status === "rejected" ? (
                     <Link
                       href="/screening"
                       className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
