@@ -126,7 +126,7 @@ export default async function DashboardReportsPage() {
                       <div className="flex shrink-0 flex-wrap gap-3">
                         <Link
                           href={`/dashboard/cases/${report.case_id}`}
-                          className="inline-flex items-center rounded-xl border border-[#b8935c] bg-white/80 px-4 py-2 text-sm text-[#9a6a16] transition hover:bg-[#fff8ea]"
+                          className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
                         >
                           Open Case
                         </Link>
@@ -136,7 +136,7 @@ export default async function DashboardReportsPage() {
                             href={`/api/reports/${report.id}/download`}
                             target="_blank"
                             rel="noreferrer"
-                            className="inline-flex items-center rounded-xl border border-[#b8935c] bg-white/80 px-4 py-2 text-sm text-[#9a6a16] transition hover:bg-[#fff8ea]"
+                            className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
                           >
                             Open Report
                           </a>

@@ -795,7 +795,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                 <div className="flex flex-wrap gap-3">
                   <Link
                     href="/dashboard/reports"
-                    className="inline-flex items-center rounded-xl border border-[#b8935c] bg-[#0f1c2e] px-5 py-2.5 text-sm text-white transition hover:bg-[#16304f]"
+                    className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
                   >
                     Open Reports
                   </Link>
@@ -805,7 +805,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                       href={latestReport.file_url}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center rounded-xl border border-[#b8935c] bg-[#0f1c2e] px-5 py-2.5 text-sm text-white transition hover:bg-[#16304f]"
+                      className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
                     >
                       Open Report
                     </a>
