@@ -58,111 +58,7 @@ function formatClientReportTitle(title: string | null | undefined) {
   return title;
 }
 
-function getCurrentStageTitle({
-  screeningStatus,
-  caseStatus,
-  hasReport,
-  paymentPending,
-  paymentPaid,
-  hasCase,
-}: {
-  screeningStatus: string | null | undefined;
-  caseStatus: string | null | undefined;
-  hasReport: boolean;
-  paymentPending: boolean;
-  paymentPaid: boolean;
-  hasCase: boolean;
-}) {
-  if (hasReport || caseStatus === "closed") {
-    return "Completed engagement";
-  }
 
-  if (caseStatus === "delivered") {
-    return "Report delivered";
-  }
-
-  if (caseStatus === "analysis") {
-    return "In analysis";
-  }
-
-  if (caseStatus === "active") {
-    return "Case open";
-  }
-
-  if (paymentPending) {
-    return "Payment pending";
-  }
-
-  if (paymentPaid && hasCase) {
-    return "Case open";
-  }
-
-  switch (screeningStatus) {
-    case "new":
-      return "Screening submitted";
-    case "accepted":
-      return "Accepted for offer";
-    case "offer_sent":
-      return "Offer issued";
-    case "rejected":
-      return "Screening closed";
-    default:
-      return "Current stage";
-  }
-}
-
-function getCurrentStageText({
-  screeningStatus,
-  caseStatus,
-  hasReport,
-  paymentPending,
-  paymentPaid,
-  hasCase,
-}: {
-  screeningStatus: string | null | undefined;
-  caseStatus: string | null | undefined;
-  hasReport: boolean;
-  paymentPending: boolean;
-  paymentPaid: boolean;
-  hasCase: boolean;
-}) {
-  if (hasReport || caseStatus === "closed") {
-    return "Your latest screening and case cycle has been completed. The report has already been delivered and no further action is required for this engagement.";
-  }
-
-  if (caseStatus === "delivered") {
-    return "Your report has been delivered and is available in the portal. This engagement is now in its final stage.";
-  }
-
-  if (caseStatus === "analysis") {
-    return "Your case is currently in analysis. The engagement is active and the report is not yet finalized.";
-  }
-
-  if (caseStatus === "active") {
-    return "Your payment has been confirmed and your case is open in the client portal.";
-  }
-
-  if (paymentPending) {
-    return "Your offer has been accepted and payment is awaiting confirmation before the case can be opened.";
-  }
-
-  if (paymentPaid && hasCase) {
-    return "Your payment has been confirmed and your case is already open. You can now follow the analysis through your case workspace.";
-  }
-
-  switch (screeningStatus) {
-    case "new":
-      return "Your screening request has been submitted and is awaiting review.";
-    case "accepted":
-      return "Your screening has been accepted and the commercial offer is being prepared.";
-    case "offer_sent":
-      return "Your offer has already been issued and is awaiting your decision or payment completion.";
-    case "rejected":
-      return "This screening request was reviewed and closed without moving forward to engagement.";
-    default:
-      return "Open the screening record for more detail.";
-  }
-}
 
 function getNextActionTitle({
   screeningStatus,
@@ -466,8 +362,6 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
   const paymentPaid = latestOrder?.payment_status === "paid";
 
-  const hasCase = !!latestCase;
-
   const recentScreenings = (screeningRequests ?? []).slice(0, 5);
   const recentCases = (cases ?? []).slice(0, 4);
 
@@ -492,23 +386,23 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       headerContent={
         <div
           className={[
-            "grid gap-3 lg:items-center",
+            "grid gap-2 lg:items-center",
             latestScreening
               ? "lg:grid-cols-[minmax(0,1fr)_1px_minmax(0,1fr)]"
               : "lg:grid-cols-[minmax(0,1fr)]",
           ].join(" ")}
         >
-          <div className="space-y-1.5 min-h-[72px] pr-3">
+          <div className="space-y-1 min-h-[56px] pr-3">
             <p className="text-[10px] uppercase tracking-[0.32em] text-[#9a8660]">
               Dashboard
             </p>
             <h1
-              className="text-[22px] leading-tight text-[#0f1c2e]"
+              className="text-[20px] leading-tight text-[#0f1c2e]"
               style={{ fontFamily: "Georgia, Times New Roman, serif" }}
             >
               Welcome, {welcomeName}
             </h1>
-            <p className="max-w-2xl text-[12px] leading-[1.45] text-[#6b7280]">
+            <p className="max-w-2xl text-[11px] leading-[1.35] text-[#6b7280]">
               Follow your screening progress, active engagement, and published
               deliverables from one place.
             </p>
@@ -516,9 +410,9 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
           {latestScreening ? (
             <>
-              <div className="hidden bg-[#ccb07a] lg:block lg:opacity-75" />
+              <div className="hidden bg-[#ccb07a] lg:block lg:opacity-60" />
 
-              <div className="space-y-1.5 min-h-[72px] pl-3">
+              <div className="space-y-1 min-h-[56px] pl-3">
                 <div className="flex items-center gap-2">
                   <p className="text-[10px] uppercase tracking-[0.32em] text-[#9a8660]">
                     {getNextActionTitle({
@@ -542,7 +436,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                 </div>
 
                 <h2
-                  className="text-[22px] leading-tight text-[#0f1c2e]"
+                  className="text-[20px] leading-tight text-[#0f1c2e]"
                   style={{ fontFamily: "Georgia, Times New Roman, serif" }}
                 >
                   {getNextActionHeading({
@@ -555,7 +449,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                   })}
                 </h2>
 
-                <p className="max-w-2xl text-[12px] leading-[1.45] text-[#6b7280]">
+                <p className="max-w-2xl text-[11px] leading-[1.35] text-[#6b7280]">
                   {getNextActionText({
                     screeningStatus: prioritizedJourneyScreening?.status,
                     caseStatus: latestCaseStatus,
@@ -566,7 +460,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                   })}
                 </p>
 
-                <div className="flex flex-wrap gap-3 pt-1">
+                <div className="flex flex-wrap gap-3 pt-0.5">
                   {paymentPending ? (
                     <Link
                       href={`/dashboard/payment/${latestOffer?.id}`}
