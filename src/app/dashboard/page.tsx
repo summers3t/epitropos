@@ -430,7 +430,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                 ) : null}
               </div>
 
-              <div className="mt-1 grid gap-4 lg:grid-cols-[minmax(0,1fr)_118px] lg:items-center">
+              <div className="mt-1 grid gap-4 lg:grid-cols-[minmax(0,1fr)_176px] lg:items-center">
                 <div className="min-w-0 space-y-1">
                   <h2
                     className="text-[22px] leading-tight text-[#0f1c2e]"
@@ -458,18 +458,18 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                   </p>
                 </div>
 
-                <div className="flex justify-start lg:justify-center">
+                <div className="flex items-center justify-start lg:h-full lg:justify-center">
                   {paymentPending ? (
                     <Link
                       href={`/dashboard/payment/${latestOffer?.id}`}
-                      className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
+                      className="inline-flex items-center whitespace-nowrap border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
                     >
                       Open Payment Status
                     </Link>
                   ) : hasActionableOffer ? (
                     <Link
                       href={`/dashboard/offers/${latestOffer?.id}`}
-                      className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
+                      className="inline-flex items-center whitespace-nowrap border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
                     >
                       View Offer
                     </Link>
@@ -478,14 +478,14 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                     latestCaseStatus === "active" ? (
                     <Link
                       href="/dashboard/cases"
-                      className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
+                      className="inline-flex items-center whitespace-nowrap border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
                     >
                       Open Cases
                     </Link>
                   ) : latestCaseStatus === "delivered" ? (
                     <Link
                       href="/dashboard/reports"
-                      className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
+                      className="inline-flex items-center whitespace-nowrap border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
                     >
                       Open Reports
                     </Link>
@@ -494,7 +494,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                     latestCaseStatus === "closed" ? (
                     <Link
                       href="/screening"
-                      className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
+                      className="inline-flex items-center whitespace-nowrap border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
                     >
                       Begin Screening
                     </Link>
@@ -659,7 +659,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         {latestReport ? (
           <section className="min-w-0">
             <div className="border-b border-[#eadfca] px-2 py-4 transition duration-300 ease-out hover:bg-[#fffaf0] hover:shadow-[0_8px_20px_rgba(148,119,66,0.08)]">
-              <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_118px] lg:items-center lg:gap-6">
+              <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_176px] lg:items-center lg:gap-6">
                 <div className="space-y-2 pr-2">
                   <p className="text-[10px] uppercase tracking-[0.32em] text-[#9a8660]">
                     Latest Report
@@ -686,10 +686,10 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                   ) : null}
                 </div>
 
-                <div className="flex flex-wrap justify-start gap-3 lg:justify-center">
+                <div className="flex flex-wrap items-center justify-start gap-3 lg:h-full lg:justify-center">
                   <Link
                     href="/dashboard/reports"
-                    className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
+                    className="inline-flex items-center whitespace-nowrap border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
                   >
                     Open Reports
                   </Link>
@@ -699,7 +699,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                       href={latestReport.file_url}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
+                      className="inline-flex items-center whitespace-nowrap border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
                     >
                       Open Report
                     </a>
