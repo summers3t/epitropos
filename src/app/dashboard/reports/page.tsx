@@ -89,16 +89,6 @@ export default async function DashboardReportsPage() {
       <div className="space-y-6">
         {reports && reports.length > 0 ? (
           <section className="min-w-0">
-            <div className="flex items-center justify-between border-b border-white/[0.07] pb-3">
-              <p className="text-[9px] uppercase tracking-[0.35em] text-[#3a4050]">
-                Published Reports
-              </p>
-
-              <span className="border border-white/[0.07] px-2.5 py-0.5 text-[11px] text-[#4a5060]">
-                {reports.length}
-              </span>
-            </div>
-
             <div className="space-y-0">
               {reports.map((report) => {
                 const caseTitle =
@@ -109,28 +99,27 @@ export default async function DashboardReportsPage() {
                 return (
                   <article
                     key={report.id}
-                    className="border-b border-white/[0.07] px-2 py-5 transition hover:bg-white/[0.02]"
+                    className="border-b border-[#eadfca] px-2 py-4 transition duration-300 ease-out hover:bg-[#fffaf0] hover:shadow-[0_8px_20px_rgba(148,119,66,0.08)]"
                   >
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                       <div className="min-w-0 space-y-2">
-                        <p className="text-[14px] font-semibold text-[#f0e6d3]">
-                          {formatClientReportTitle(report.title)}
-                        </p>
+                        <Link
+                          href={`/dashboard/cases/${report.case_id}`}
+                          className="inline-flex items-center rounded-xl border border-[#dcc79e]/70 bg-white/70 px-4 py-2 text-sm text-[#6b7280] transition hover:bg-[#fffaf0] hover:text-[#0f1c2e]"
+                        >
+                          Open Case
+                        </Link>
 
-                        <p className="text-[13px] text-[#6a7080]">
-                          {formatClientCaseTitle(caseTitle)}
-                        </p>
-
-                        <p className="text-[13px] text-[#6a7080]">
-                          Published{" "}
-                          {report.published_at
-                            ? formatClientDate(report.published_at)
-                            : formatClientDate(report.created_at)}
-                        </p>
-
-                        <div className="max-w-3xl text-[13px] leading-relaxed text-[#9aa0ad]">
-                          {report.summary || "No summary available yet."}
-                        </div>
+                        {report.storage_path ? (
+                          <a
+                            href={`/api/reports/${report.id}/download`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center rounded-xl border border-[#b8935c] bg-white/80 px-4 py-2 text-sm text-[#9a6a16] transition hover:bg-[#fff8ea]"
+                          >
+                            Open Report
+                          </a>
+                        ) : null}
                       </div>
 
                       <div className="flex shrink-0 flex-wrap gap-3">
@@ -159,15 +148,15 @@ export default async function DashboardReportsPage() {
             </div>
           </section>
         ) : (
-          <section className="border border-white/[0.07] px-6 py-8">
+          <section className="rounded-[24px] border border-[#dcc79e]/70 bg-white/55 px-6 py-8 shadow-[0_20px_60px_rgba(148,119,66,0.10)] backdrop-blur-xl">
             <p
-              className="text-2xl leading-none text-[#f0e6d3]"
+              className="text-2xl leading-none text-[#0f1c2e]"
               style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
             >
               No published reports yet.
             </p>
 
-            <p className="mt-3 max-w-xl text-[13px] leading-relaxed text-[#5a6070]">
+            <p className="mt-3 max-w-xl text-[13px] leading-relaxed text-[#6b7280]">
               Published deliverables will appear here after your case work has
               been completed and a report is released.
             </p>

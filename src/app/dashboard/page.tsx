@@ -763,21 +763,21 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         </div>
 
         {latestReport ? (
-          <section className="border border-white/10 px-6 py-6">
-            <p className="text-[11px] uppercase tracking-[0.3em] text-[#9aa0ad]">
+          <section className="rounded-[24px] border border-[#dcc79e]/70 bg-white/55 px-6 py-6 shadow-[0_20px_60px_rgba(148,119,66,0.10)] backdrop-blur-xl">
+            <p className="text-[10px] uppercase tracking-[0.32em] text-[#9a8660]">
               Latest Report
             </p>
 
             <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div className="space-y-2 min-h-[146px] pr-2">
+              <div className="space-y-2 pr-2">
                 <h2
-                  className="text-3xl leading-none text-[#f3e7d8]"
+                  className="text-[24px] leading-tight text-[#0f1c2e]"
                   style={{ fontFamily: "Georgia, Times New Roman, serif" }}
                 >
                   {formatClientReportTitle(latestReport.title)}
                 </h2>
 
-                <p className="text-sm text-[#8f95a2]">
+                <p className="text-[13px] text-[#6b7280]">
                   Published{" "}
                   {latestReport.published_at
                     ? formatClientDate(latestReport.published_at)
@@ -785,7 +785,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                 </p>
 
                 {latestReport.summary ? (
-                  <p className="max-w-2xl text-sm leading-7 text-[#8f95a2]">
+                  <p className="max-w-2xl text-[13px] leading-6 text-[#6b7280]">
                     {latestReport.summary}
                   </p>
                 ) : null}
@@ -794,7 +794,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
               <div className="flex flex-wrap gap-3">
                 <Link
                   href="/dashboard/reports"
-                  className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
+                  className="inline-flex items-center rounded-xl border border-[#b8935c] bg-white/80 px-5 py-2.5 text-sm text-[#9a6a16] transition hover:bg-[#fff8ea]"
                 >
                   Open Reports
                 </Link>
@@ -804,7 +804,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                     href={latestReport.file_url}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center border border-white/10 px-5 py-2.5 text-sm text-[#c9cdd5] transition hover:bg-white/[0.04] hover:text-white"
+                    className="inline-flex items-center rounded-xl border border-[#dcc79e]/70 bg-white/70 px-5 py-2.5 text-sm text-[#6b7280] transition hover:bg-[#fffaf0] hover:text-[#0f1c2e]"
                   >
                     Open Report
                   </a>
