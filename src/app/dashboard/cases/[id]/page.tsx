@@ -339,7 +339,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
               </dd>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-black/10 p-4 md:col-span-2">
+            <div className="rounded-2xl border border-[#eadfca] bg-white/70 p-4 md:col-span-2">
               <dt className="text-[10px] uppercase tracking-[0.14em] text-[#9a8660]">
                 {getScreeningLabelTitle()}
               </dt>
@@ -348,7 +348,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
               </dd>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-black/10 p-4 md:col-span-2">
+            <div className="rounded-2xl border border-[#eadfca] bg-white/70 p-4 md:col-span-2">
               <dt className="text-[10px] uppercase tracking-[0.14em] text-[#9a8660]">
                 {getReviewFocusLabel()}
               </dt>
