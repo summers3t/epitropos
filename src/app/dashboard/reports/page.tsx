@@ -103,9 +103,30 @@ export default async function DashboardReportsPage() {
                   >
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                       <div className="min-w-0 space-y-2">
+                        <p className="text-[14px] font-semibold text-[#0f1c2e]">
+                          {formatClientReportTitle(report.title)}
+                        </p>
+
+                        <p className="text-[13px] text-[#6b7280]">
+                          {formatClientCaseTitle(caseTitle)}
+                        </p>
+
+                        <p className="text-[13px] text-[#6b7280]">
+                          Published{" "}
+                          {report.published_at
+                            ? formatClientDate(report.published_at)
+                            : formatClientDate(report.created_at)}
+                        </p>
+
+                        <div className="max-w-3xl text-[13px] leading-relaxed text-[#6b7280]">
+                          {report.summary || "No summary available yet."}
+                        </div>
+                      </div>
+
+                      <div className="flex shrink-0 flex-wrap gap-3">
                         <Link
                           href={`/dashboard/cases/${report.case_id}`}
-                          className="inline-flex items-center rounded-xl border border-[#dcc79e]/70 bg-white/70 px-4 py-2 text-sm text-[#6b7280] transition hover:bg-[#fffaf0] hover:text-[#0f1c2e]"
+                          className="inline-flex items-center rounded-xl border border-[#b8935c] bg-white/80 px-4 py-2 text-sm text-[#9a6a16] transition hover:bg-[#fff8ea]"
                         >
                           Open Case
                         </Link>
@@ -116,26 +137,6 @@ export default async function DashboardReportsPage() {
                             target="_blank"
                             rel="noreferrer"
                             className="inline-flex items-center rounded-xl border border-[#b8935c] bg-white/80 px-4 py-2 text-sm text-[#9a6a16] transition hover:bg-[#fff8ea]"
-                          >
-                            Open Report
-                          </a>
-                        ) : null}
-                      </div>
-
-                      <div className="flex shrink-0 flex-wrap gap-3">
-                        <Link
-                          href={`/dashboard/cases/${report.case_id}`}
-                          className="inline-flex items-center border border-white/[0.07] px-4 py-2 text-sm text-[#c9cdd5] transition hover:bg-white/[0.04] hover:text-white"
-                        >
-                          Open Case
-                        </Link>
-
-                        {report.storage_path ? (
-                          <a
-                            href={`/api/reports/${report.id}/download`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center border border-[#b8935c] px-4 py-2 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
                           >
                             Open Report
                           </a>

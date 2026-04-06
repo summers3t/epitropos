@@ -763,52 +763,54 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         </div>
 
         {latestReport ? (
-          <section className="rounded-[24px] border border-[#dcc79e]/70 bg-white/55 px-6 py-6 shadow-[0_20px_60px_rgba(148,119,66,0.10)] backdrop-blur-xl">
-            <p className="text-[10px] uppercase tracking-[0.32em] text-[#9a8660]">
-              Latest Report
-            </p>
-
-            <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div className="space-y-2 pr-2">
-                <h2
-                  className="text-[24px] leading-tight text-[#0f1c2e]"
-                  style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-                >
-                  {formatClientReportTitle(latestReport.title)}
-                </h2>
-
-                <p className="text-[13px] text-[#6b7280]">
-                  Published{" "}
-                  {latestReport.published_at
-                    ? formatClientDate(latestReport.published_at)
-                    : formatClientDate(latestReport.created_at)}
-                </p>
-
-                {latestReport.summary ? (
-                  <p className="max-w-2xl text-[13px] leading-6 text-[#6b7280]">
-                    {latestReport.summary}
+          <section className="min-w-0">
+            <div className="border-b border-[#eadfca] px-2 py-4 transition duration-300 ease-out hover:bg-[#fffaf0] hover:shadow-[0_8px_20px_rgba(148,119,66,0.08)]">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="space-y-2 pr-2">
+                  <p className="text-[10px] uppercase tracking-[0.32em] text-[#9a8660]">
+                    Latest Report
                   </p>
-                ) : null}
-              </div>
 
-              <div className="flex flex-wrap gap-3">
-                <Link
-                  href="/dashboard/reports"
-                  className="inline-flex items-center rounded-xl border border-[#b8935c] bg-white/80 px-5 py-2.5 text-sm text-[#9a6a16] transition hover:bg-[#fff8ea]"
-                >
-                  Open Reports
-                </Link>
-
-                {latestReport.file_url ? (
-                  <a
-                    href={latestReport.file_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center rounded-xl border border-[#dcc79e]/70 bg-white/70 px-5 py-2.5 text-sm text-[#6b7280] transition hover:bg-[#fffaf0] hover:text-[#0f1c2e]"
+                  <h2
+                    className="text-[20px] leading-tight text-[#0f1c2e]"
+                    style={{ fontFamily: "Georgia, Times New Roman, serif" }}
                   >
-                    Open Report
-                  </a>
-                ) : null}
+                    {formatClientReportTitle(latestReport.title)}
+                  </h2>
+
+                  <p className="text-[13px] text-[#6b7280]">
+                    Published{" "}
+                    {latestReport.published_at
+                      ? formatClientDate(latestReport.published_at)
+                      : formatClientDate(latestReport.created_at)}
+                  </p>
+
+                  {latestReport.summary ? (
+                    <p className="max-w-2xl text-[13px] leading-6 text-[#6b7280]">
+                      {latestReport.summary}
+                    </p>
+                  ) : null}
+                </div>
+
+                <div className="flex flex-wrap gap-3">
+                  <Link
+                    href="/dashboard/reports"
+                    className="inline-flex items-center rounded-xl border border-[#b8935c] bg-[#0f1c2e] px-5 py-2.5 text-sm text-white transition hover:bg-[#16304f]"
+                  >
+                    Open Reports
+                  </Link>
+
+                  {latestReport.file_url ? (
+                    <a
+                      href={latestReport.file_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center rounded-xl border border-[#b8935c] bg-[#0f1c2e] px-5 py-2.5 text-sm text-white transition hover:bg-[#16304f]"
+                    >
+                      Open Report
+                    </a>
+                  ) : null}
+                </div>
               </div>
             </div>
           </section>
