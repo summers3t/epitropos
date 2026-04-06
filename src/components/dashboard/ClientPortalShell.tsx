@@ -24,7 +24,7 @@ const navItems: NavItem[] = [
   { href: "/dashboard/screening", label: "Screenings", countKey: "screenings" },
   { href: "/dashboard/cases", label: "Cases", countKey: "cases" },
   { href: "/dashboard/offers", label: "Offers" },
-  { href: "/dashboard/payments", label: "Payments" },
+  { href: "/dashboard/payment", label: "Payments" },
   { href: "/dashboard/reports", label: "Reports", countKey: "reports" },
 ];
 

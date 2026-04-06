@@ -109,7 +109,7 @@ export default async function PaymentPlaceholderPage({ params }: PageProps) {
       <section className="max-w-4xl space-y-6">
         <div>
           <Link
-            href="/dashboard/payments"
+            href="/dashboard/payment"
             className="inline-flex text-[11px] uppercase tracking-[0.2em] text-[#9a8660] transition hover:text-[#0f1c2e]"
           >
             ← Back to payments
@@ -197,7 +197,7 @@ export default async function PaymentPlaceholderPage({ params }: PageProps) {
 
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
-              href="/dashboard/payments"
+              href="/dashboard/payment"
               className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
             >
               Back to Payments

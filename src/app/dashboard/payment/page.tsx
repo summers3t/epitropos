@@ -49,7 +49,7 @@ export default async function DashboardPaymentsPage() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/auth/login?redirect=/dashboard/payments");
+    redirect("/auth/login?redirect=/dashboard/payment");
   }
 
   const counts = await getClientPortalCounts(supabase, user.id);
