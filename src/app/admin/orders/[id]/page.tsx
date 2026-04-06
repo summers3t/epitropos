@@ -268,21 +268,24 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
                         </form>
                     ) : isPaid ? (
                         <div className="space-y-3">
-                            <p className="text-sm text-white/75 leading-6">
-                                Payment has been confirmed for this order.
-                                {linkedCase
-                                    ? " The engagement case has already been created."
-                                    : " The engagement case should now exist for this order."}
-                            </p>
-
                             {linkedCase ? (
-                                <Link
-                                    href={`/admin/cases/${linkedCase.id}`}
-                                    className="inline-flex rounded-xl border border-white/15 px-4 py-2 text-xs hover:bg-white/5 transition"
-                                >
-                                    Open Case
-                                </Link>
-                            ) : null}
+                                <>
+                                    <p className="text-sm text-white/75 leading-6">
+                                        Payment has been confirmed for this order. The engagement case has already been created.
+                                    </p>
+
+                                    <Link
+                                        href={`/admin/cases/${linkedCase.id}`}
+                                        className="inline-flex rounded-xl border border-white/15 px-4 py-2 text-xs hover:bg-white/5 transition"
+                                    >
+                                        Open Case
+                                    </Link>
+                                </>
+                            ) : (
+                                <div className="rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                                    Payment is marked as confirmed, but no linked case exists for this order. Check the paid-order case trigger and lifecycle integrity immediately.
+                                </div>
+                            )}
                         </div>
                     ) : (
                         <p className="text-sm text-white/75 leading-6">

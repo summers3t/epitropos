@@ -177,11 +177,24 @@ export default async function OfferPage({ params }: PageProps) {
     throw new Error(orderError.message);
   }
 
+  const { data: linkedCase, error: linkedCaseError } = order
+    ? await supabase
+        .from("cases")
+        .select("id")
+        .eq("order_id", order.id)
+        .maybeSingle()
+    : { data: null, error: null as null | Error };
+
+  if (linkedCaseError) {
+    throw new Error(linkedCaseError.message);
+  }
+
   const isSent = offer.status === "sent";
   const isAccepted = offer.status === "accepted";
 
   const paymentPending = order?.payment_status === "pending";
   const paymentPaid = order?.payment_status === "paid";
+  const hasLinkedCase = !!linkedCase;
 
   return (
     <ClientPortalShell
@@ -307,11 +320,17 @@ export default async function OfferPage({ params }: PageProps) {
                 </p>
               ) : isAccepted ? (
                 paymentPaid ? (
-                  <p className="text-[13px] leading-6 text-[#6b7280]">
-                    Your payment has been confirmed. Your case is now available
-                    in the client portal and you can continue from the cases
-                    section.
-                  </p>
+                  hasLinkedCase ? (
+                    <p className="text-[13px] leading-6 text-[#6b7280]">
+                      Your payment has been confirmed. Your case is now
+                      available in the client portal.
+                    </p>
+                  ) : (
+                    <p className="text-[13px] leading-6 text-[#9a6a16]">
+                      Your payment has been confirmed, but your case is not yet
+                      available. Please contact the administrator.
+                    </p>
+                  )
                 ) : (
                   <p className="text-[13px] leading-6 text-[#6b7280]">
                     Your offer has already been accepted. Payment is currently
@@ -377,16 +396,26 @@ export default async function OfferPage({ params }: PageProps) {
 
               {isAccepted && paymentPaid ? (
                 <>
-                  <div className="rounded-xl border border-[#cfe0c8] bg-[#edf6e8] px-6 py-3 text-sm text-[#57714e]">
-                    Payment confirmed
+                  <div
+                    className={
+                      hasLinkedCase
+                        ? "rounded-xl border border-[#cfe0c8] bg-[#edf6e8] px-6 py-3 text-sm text-[#57714e]"
+                        : "rounded-xl border border-[#dcc79e] bg-[#fff8ea] px-6 py-3 text-sm text-[#9a6a16]"
+                    }
+                  >
+                    {hasLinkedCase
+                      ? "Payment confirmed"
+                      : "Payment confirmed, case unavailable"}
                   </div>
 
-                  <Link
-                    href="/dashboard/cases"
-                    className="rounded-xl border border-[#dcc79e]/70 bg-white/70 px-6 py-3 text-sm text-[#6b7280] transition hover:bg-[#fffaf0] hover:text-[#0f1c2e]"
-                  >
-                    Open My Cases
-                  </Link>
+                  {hasLinkedCase ? (
+                    <Link
+                      href={`/dashboard/cases/${linkedCase.id}`}
+                      className="rounded-xl border border-[#dcc79e]/70 bg-white/70 px-6 py-3 text-sm text-[#6b7280] transition hover:bg-[#fffaf0] hover:text-[#0f1c2e]"
+                    >
+                      Open Case
+                    </Link>
+                  ) : null}
                 </>
               ) : null}
 

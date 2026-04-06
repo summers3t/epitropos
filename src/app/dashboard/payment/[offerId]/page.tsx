@@ -97,7 +97,18 @@ export default async function PaymentPlaceholderPage({ params }: PageProps) {
     );
   }
 
+  const { data: linkedCase, error: linkedCaseError } = await supabase
+    .from("cases")
+    .select("id, status")
+    .eq("order_id", order.id)
+    .maybeSingle();
+
+  if (linkedCaseError) {
+    throw new Error(linkedCaseError.message);
+  }
+
   const isPaid = order.payment_status === "paid";
+  const hasLinkedCase = !!linkedCase;
 
   return (
     <ClientPortalShell
@@ -177,10 +188,17 @@ export default async function PaymentPlaceholderPage({ params }: PageProps) {
             </p>
 
             {isPaid ? (
-              <p className="text-[13px] leading-6 text-[#6b7280]">
-                Your payment has been marked as confirmed. Your case has now
-                been created and will appear in your client portal.
-              </p>
+              hasLinkedCase ? (
+                <p className="text-[13px] leading-6 text-[#6b7280]">
+                  Your payment has been marked as confirmed. Your case is now
+                  available in the client portal.
+                </p>
+              ) : (
+                <p className="text-[13px] leading-6 text-[#9a6a16]">
+                  Your payment is marked as confirmed, but your case is not yet
+                  available. Please contact the administrator.
+                </p>
+              )
             ) : (
               <>
                 <p className="text-[13px] leading-6 text-[#6b7280]">
@@ -203,12 +221,12 @@ export default async function PaymentPlaceholderPage({ params }: PageProps) {
               Back to Payments
             </Link>
 
-            {isPaid ? (
+            {isPaid && hasLinkedCase ? (
               <Link
-                href="/dashboard/cases"
+                href={`/dashboard/cases/${linkedCase.id}`}
                 className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
               >
-                Open My Cases
+                Open Case
               </Link>
             ) : null}
 
