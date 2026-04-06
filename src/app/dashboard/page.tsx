@@ -484,6 +484,161 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         cases: caseCount,
         reports: reportCount,
       }}
+      headerContent={
+        <div
+          className={[
+            "grid gap-4 lg:items-stretch",
+            latestScreening
+              ? "lg:grid-cols-[minmax(0,1fr)_1px_minmax(0,1fr)_1px_minmax(0,1fr)]"
+              : "lg:grid-cols-[minmax(0,1fr)]",
+          ].join(" ")}
+        >
+          <div className="space-y-2 min-h-[118px] pr-2">
+            <p className="text-[10px] uppercase tracking-[0.32em] text-[#9a8660]">
+              Dashboard
+            </p>
+
+            <h1
+              className="text-[24px] leading-tight text-[#0f1c2e]"
+              style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+            >
+              Welcome, {welcomeName}
+            </h1>
+
+            <p className="max-w-2xl text-[12.5px] leading-[1.5] text-[#6b7280]">
+              Follow your screening progress, active engagement, and published
+              deliverables from one place.
+            </p>
+          </div>
+
+          {latestScreening ? (
+            <>
+              <div className="hidden bg-[#ccb07a] lg:block lg:opacity-90" />
+
+              <div className="space-y-2 min-h-[118px] px-2">
+                <p className="text-[10px] uppercase tracking-[0.32em] text-[#9a8660]">
+                  Current Stage
+                </p>
+
+                <h2
+                  className="text-[24px] leading-tight text-[#0f1c2e]"
+                  style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+                >
+                  {getCurrentStageTitle({
+                    screeningStatus: latestScreening.status,
+                    caseStatus: latestCaseStatus,
+                    hasReport: hasDeliveredReport,
+                    paymentPending,
+                    paymentPaid,
+                    hasCase,
+                  })}
+                </h2>
+
+                <p className="max-w-2xl text-[12.5px] leading-[1.5] text-[#6b7280]">
+                  {getCurrentStageText({
+                    screeningStatus: latestScreening.status,
+                    caseStatus: latestCaseStatus,
+                    hasReport: hasDeliveredReport,
+                    paymentPending,
+                    paymentPaid,
+                    hasCase,
+                  })}
+                </p>
+              </div>
+
+              <div className="hidden bg-[#ccb07a] lg:block lg:opacity-90" />
+
+              <div className="space-y-2 min-h-[118px] pl-2">
+                <div className="flex items-center gap-2">
+                  <p className="text-[10px] uppercase tracking-[0.32em] text-[#9a8660]">
+                    {getNextActionTitle({
+                      screeningStatus: latestScreening.status,
+                      caseStatus: latestCaseStatus,
+                      hasReport: hasDeliveredReport,
+                      paymentPending,
+                      paymentPaid,
+                      hasActionableOffer,
+                    })}
+                  </p>
+
+                  {!hasDeliveredReport &&
+                  latestCaseStatus !== "closed" &&
+                  !paymentPaid &&
+                  hasActionableOffer ? (
+                    <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
+                      1
+                    </span>
+                  ) : null}
+                </div>
+
+                <h2
+                  className="text-[24px] leading-tight text-[#0f1c2e]"
+                  style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+                >
+                  {getNextActionHeading({
+                    screeningStatus: latestScreening.status,
+                    caseStatus: latestCaseStatus,
+                    hasReport: hasDeliveredReport,
+                    paymentPending,
+                    paymentPaid,
+                    hasActionableOffer,
+                  })}
+                </h2>
+
+                <p className="max-w-2xl text-[12.5px] leading-[1.5] text-[#6b7280]">
+                  {getNextActionText({
+                    screeningStatus: latestScreening.status,
+                    caseStatus: latestCaseStatus,
+                    hasReport: hasDeliveredReport,
+                    paymentPending,
+                    paymentPaid,
+                    hasActionableOffer,
+                  })}
+                </p>
+
+                <div className="flex flex-wrap gap-3 pt-1">
+                  {hasDeliveredReport || latestCaseStatus === "closed" ? (
+                    <Link
+                      href="/screening"
+                      className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
+                    >
+                      Begin Screening
+                    </Link>
+                  ) : latestCaseStatus === "delivered" ? (
+                    <Link
+                      href="/dashboard/reports"
+                      className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
+                    >
+                      Open Reports
+                    </Link>
+                  ) : paymentPaid ? (
+                    <Link
+                      href="/dashboard/cases"
+                      className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
+                    >
+                      Open Cases
+                    </Link>
+                  ) : hasActionableOffer ? (
+                    <Link
+                      href={`/dashboard/offers/${latestOffer?.id}`}
+                      className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
+                    >
+                      {paymentPending ? "Open Offer Status" : "View Offer"}
+                    </Link>
+                  ) : latestScreening.status === "rejected" ? (
+                    <Link
+                      href="/screening"
+                      className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
+                    >
+                      Begin Screening
+                    </Link>
+                  ) : null}
+                </div>
+              </div>
+            </>
+          ) : null}
+        </div>
+      }
     >
       <div className="space-y-10">
         {params.screening_created === "1" ? (
@@ -491,162 +646,6 @@ export default async function DashboardPage({ searchParams }: PageProps) {
             Screening application submitted successfully.
           </div>
         ) : null}
-
-        <section className="rounded-[24px] border border-[#dcc79e]/70 bg-white/35 px-6 py-4 shadow-[0_20px_60px_rgba(148,119,66,0.10)] backdrop-blur-xl">
-          <div
-            className={[
-              "grid gap-4 lg:items-stretch",
-              latestScreening
-                ? "lg:grid-cols-[minmax(0,1fr)_1px_minmax(0,1fr)_1px_minmax(0,1fr)]"
-                : "lg:grid-cols-[minmax(0,1fr)]",
-            ].join(" ")}
-          >
-            <div className="space-y-2 min-h-[118px] pr-2">
-              <p className="text-[10px] uppercase tracking-[0.32em] text-[#9a8660]">
-                Dashboard
-              </p>
-
-              <h2
-                className="text-[24px] leading-tight text-[#0f1c2e]"
-                style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-              >
-                Welcome, {welcomeName}
-              </h2>
-
-              <p className="max-w-2xl text-[12.5px] leading-[1.5] text-[#6b7280]">
-                Follow your screening progress, active engagement, and published
-                deliverables from one place.
-              </p>
-            </div>
-
-            {latestScreening ? (
-              <>
-                <div className="hidden bg-[#ccb07a] lg:block lg:opacity-90" />
-
-                <div className="space-y-2 min-h-[118px] px-2">
-                  <p className="text-[10px] uppercase tracking-[0.32em] text-[#9a8660]">
-                    Current Stage
-                  </p>
-
-                  <h2
-                    className="text-[24px] leading-tight text-[#0f1c2e]"
-                    style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-                  >
-                    {getCurrentStageTitle({
-                      screeningStatus: latestScreening.status,
-                      caseStatus: latestCaseStatus,
-                      hasReport: hasDeliveredReport,
-                      paymentPending,
-                      paymentPaid,
-                      hasCase,
-                    })}
-                  </h2>
-
-                  <p className="max-w-2xl text-[12.5px] leading-[1.5] text-[#6b7280]">
-                    {getCurrentStageText({
-                      screeningStatus: latestScreening.status,
-                      caseStatus: latestCaseStatus,
-                      hasReport: hasDeliveredReport,
-                      paymentPending,
-                      paymentPaid,
-                      hasCase,
-                    })}
-                  </p>
-                </div>
-
-                <div className="hidden bg-[#ccb07a] lg:block lg:opacity-90" />
-
-                <div className="space-y-2 min-h-[118px] pl-2">
-                  <div className="flex items-center gap-2">
-                    <p className="text-[10px] uppercase tracking-[0.32em] text-[#9a8660]">
-                      {getNextActionTitle({
-                        screeningStatus: latestScreening.status,
-                        caseStatus: latestCaseStatus,
-                        hasReport: hasDeliveredReport,
-                        paymentPending,
-                        paymentPaid,
-                        hasActionableOffer,
-                      })}
-                    </p>
-
-                    {!hasDeliveredReport &&
-                    latestCaseStatus !== "closed" &&
-                    !paymentPaid &&
-                    hasActionableOffer ? (
-                      <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
-                        1
-                      </span>
-                    ) : null}
-                  </div>
-
-                  <h2
-                    className="text-[24px] leading-tight text-[#0f1c2e]"
-                    style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-                  >
-                    {getNextActionHeading({
-                      screeningStatus: latestScreening.status,
-                      caseStatus: latestCaseStatus,
-                      hasReport: hasDeliveredReport,
-                      paymentPending,
-                      paymentPaid,
-                      hasActionableOffer,
-                    })}
-                  </h2>
-
-                  <p className="max-w-2xl text-[12.5px] leading-[1.5] text-[#6b7280]">
-                    {getNextActionText({
-                      screeningStatus: latestScreening.status,
-                      caseStatus: latestCaseStatus,
-                      hasReport: hasDeliveredReport,
-                      paymentPending,
-                      paymentPaid,
-                      hasActionableOffer,
-                    })}
-                  </p>
-
-                  <div className="flex flex-wrap gap-3 pt-1">
-                    {hasDeliveredReport || latestCaseStatus === "closed" ? (
-                      <Link
-                        href="/screening"
-                        className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
-                      >
-                        Begin Screening
-                      </Link>
-                    ) : latestCaseStatus === "delivered" ? (
-                      <Link
-                        href="/dashboard/reports"
-                        className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
-                      >
-                        Open Reports
-                      </Link>
-                    ) : paymentPaid ? (
-                      <Link
-                        href="/dashboard/cases"
-                        className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
-                      >
-                        Open Cases
-                      </Link>
-                    ) : hasActionableOffer ? (
-                      <Link
-                        href={`/dashboard/offers/${latestOffer?.id}`}
-                        className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
-                      >
-                        {paymentPending ? "Open Offer Status" : "View Offer"}
-                      </Link>
-                    ) : latestScreening.status === "rejected" ? (
-                      <Link
-                        href="/screening"
-                        className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
-                      >
-                        Begin Screening
-                      </Link>
-                    ) : null}
-                  </div>
-                </div>
-              </>
-            ) : null}
-          </div>
-        </section>
 
         <div className="space-y-10">
           <section className="min-w-0">

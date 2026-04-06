@@ -9,6 +9,7 @@ type ClientPortalShellProps = {
   title: string;
   description?: string;
   counts: ClientPortalCounts;
+  headerContent?: React.ReactNode;
   children: React.ReactNode;
 };
 
@@ -124,6 +125,7 @@ export default function ClientPortalShell({
   title,
   description,
   counts,
+  headerContent,
   children,
 }: ClientPortalShellProps) {
   const pathname = usePathname();
@@ -187,22 +189,28 @@ export default function ClientPortalShell({
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="shrink-0 border-b border-[#dcc79e]/60 bg-white/30 px-10 py-5 backdrop-blur-md">
-          <p className="text-[10px] uppercase tracking-[0.32em] text-[#9a8660]">
-            {eyebrow}
-          </p>
+          {headerContent ? (
+            headerContent
+          ) : (
+            <>
+              <p className="text-[10px] uppercase tracking-[0.32em] text-[#9a8660]">
+                {eyebrow}
+              </p>
 
-          <h1
-            className="mt-1.5 text-[30px] leading-tight text-[#0f1c2e]"
-            style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
-          >
-            {title}
-          </h1>
+              <h1
+                className="mt-1.5 text-[30px] leading-tight text-[#0f1c2e]"
+                style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
+              >
+                {title}
+              </h1>
 
-          {description ? (
-            <p className="mt-1 text-[14px] leading-relaxed text-[#6b7280]">
-              {description}
-            </p>
-          ) : null}
+              {description ? (
+                <p className="mt-1 text-[14px] leading-relaxed text-[#6b7280]">
+                  {description}
+                </p>
+              ) : null}
+            </>
+          )}
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-10 py-7">
