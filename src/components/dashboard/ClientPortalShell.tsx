@@ -146,8 +146,21 @@ export default function ClientPortalShell({
   const pathname = usePathname();
 
   return (
-    <div className="flex h-full w-full overflow-hidden bg-[linear-gradient(180deg,#fbf7ef_0%,#f6efdf_100%)] text-[#1f2937]">
-      <aside className="flex w-[272px] shrink-0 flex-col border-r border-[#d9c9a8]/70 bg-white/45 backdrop-blur-xl shadow-[10px_0_30px_rgba(148,119,66,0.08)]">
+    <div className="relative flex h-full w-full overflow-hidden bg-[linear-gradient(180deg,#fbf7ef_0%,#f6efdf_100%)] text-[#1f2937]">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 opacity-[0.16]"
+        style={{
+          backgroundImage: `
+            radial-gradient(rgba(166,139,74,0.10) 0.6px, transparent 0.6px),
+            linear-gradient(180deg, rgba(255,255,255,0.20), rgba(255,255,255,0.04))
+          `,
+          backgroundSize: "8px 8px, 100% 100%",
+          backgroundPosition: "0 0, 0 0",
+        }}
+      />
+
+      <aside className="relative z-10 flex w-[228px] shrink-0 flex-col border-r border-[#d9c9a8]/70 bg-white/45 backdrop-blur-xl shadow-[10px_0_30px_rgba(148,119,66,0.08)]">
         <nav className="flex-1 px-3 pt-6">
           <div className="space-y-1">
             {navItems.map((item) => {
