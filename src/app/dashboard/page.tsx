@@ -294,7 +294,7 @@ function getNextActionText({
   }
 
   if (paymentPending) {
-    return "Your offer has been accepted and payment is awaiting confirmation.";
+    return "Your offer has already been accepted. Open the payment status page to track confirmation before the case is opened.";
   }
 
   if (paymentPaid) {
@@ -618,12 +618,19 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                     >
                       Open Cases
                     </Link>
+                  ) : paymentPending ? (
+                    <Link
+                      href={`/dashboard/payment/${latestOffer?.id}`}
+                      className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
+                    >
+                      Open Payment Status
+                    </Link>
                   ) : hasActionableOffer ? (
                     <Link
                       href={`/dashboard/offers/${latestOffer?.id}`}
                       className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
                     >
-                      {paymentPending ? "Open Offer Status" : "View Offer"}
+                      View Offer
                     </Link>
                   ) : latestScreening.status === "rejected" ? (
                     <Link

@@ -64,11 +64,11 @@ function getOfferStageText({
   paymentPaid: boolean;
 }) {
   if (isAccepted && paymentPaid) {
-    return "Your payment has been confirmed and your case is now open in the client portal.";
+    return "Your payment has been confirmed. Your case is now open in the client portal and you can continue from the cases section.";
   }
 
   if (isAccepted && paymentPending) {
-    return "Your offer has already been accepted. Payment is currently awaiting confirmation from the admin side.";
+    return "Your offer has already been accepted. Open the payment status page to track confirmation before the case is opened.";
   }
 
   if (isSent) {
@@ -100,7 +100,7 @@ function getOfferActionChecklist({
   if (isAccepted && paymentPending) {
     return [
       "Your offer is already accepted.",
-      "Payment is awaiting confirmation.",
+      "Open the payment status page to review the current payment state.",
       "Your case will appear automatically after payment is confirmed.",
     ];
   }
@@ -361,9 +361,18 @@ export default async function OfferPage({ params }: PageProps) {
               ) : null}
 
               {isAccepted && paymentPending ? (
-                <div className="rounded-xl border border-[#dcc79e] bg-[#fff8ea] px-6 py-3 text-sm text-[#9a6a16]">
-                  Payment confirmation pending
-                </div>
+                <>
+                  <div className="rounded-xl border border-[#dcc79e] bg-[#fff8ea] px-6 py-3 text-sm text-[#9a6a16]">
+                    Payment confirmation pending
+                  </div>
+
+                  <Link
+                    href={`/dashboard/payment/${offer.id}`}
+                    className="rounded-xl border border-[#dcc79e]/70 bg-white/70 px-6 py-3 text-sm text-[#6b7280] transition hover:bg-[#fffaf0] hover:text-[#0f1c2e]"
+                  >
+                    Open Payment Status
+                  </Link>
+                </>
               ) : null}
 
               {isAccepted && paymentPaid ? (
