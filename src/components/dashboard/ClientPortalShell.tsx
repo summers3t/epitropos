@@ -191,7 +191,7 @@ export default function ClientPortalShell({
         </div>
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden">
         <header className="sticky top-0 z-30 border-b border-white/20 bg-[rgba(251,247,239,0.22)] supports-[backdrop-filter]:bg-[rgba(251,247,239,0.12)] backdrop-blur-2xl">
           <div className="px-6 py-2 lg:px-8 lg:py-2.5">
             {headerContent ? (
@@ -219,7 +219,7 @@ export default function ClientPortalShell({
           </div>
         </header>
 
-        <main className="min-h-0 flex-1 overflow-y-auto px-6 py-6 lg:px-8 lg:py-8">
+        <main className="min-h-0 flex-1 px-6 py-6 lg:px-8 lg:py-8">
           {children}
         </main>
       </div>
