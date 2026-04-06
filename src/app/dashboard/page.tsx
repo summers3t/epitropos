@@ -58,6 +58,267 @@ function formatClientReportTitle(title: string | null | undefined) {
   return title;
 }
 
+function getCurrentStageTitle({
+  screeningStatus,
+  caseStatus,
+  hasReport,
+  paymentPending,
+  paymentPaid,
+  hasCase,
+}: {
+  screeningStatus: string | null | undefined;
+  caseStatus: string | null | undefined;
+  hasReport: boolean;
+  paymentPending: boolean;
+  paymentPaid: boolean;
+  hasCase: boolean;
+}) {
+  if (hasReport || caseStatus === "closed") {
+    return "Completed engagement";
+  }
+
+  if (caseStatus === "delivered") {
+    return "Report delivered";
+  }
+
+  if (caseStatus === "analysis") {
+    return "In analysis";
+  }
+
+  if (caseStatus === "active") {
+    return "Case open";
+  }
+
+  if (paymentPending) {
+    return "Payment pending";
+  }
+
+  if (paymentPaid && hasCase) {
+    return "Case open";
+  }
+
+  switch (screeningStatus) {
+    case "new":
+      return "Screening submitted";
+    case "accepted":
+      return "Accepted for offer";
+    case "offer_sent":
+      return "Offer issued";
+    case "rejected":
+      return "Screening closed";
+    default:
+      return "Current stage";
+  }
+}
+
+function getCurrentStageText({
+  screeningStatus,
+  caseStatus,
+  hasReport,
+  paymentPending,
+  paymentPaid,
+  hasCase,
+}: {
+  screeningStatus: string | null | undefined;
+  caseStatus: string | null | undefined;
+  hasReport: boolean;
+  paymentPending: boolean;
+  paymentPaid: boolean;
+  hasCase: boolean;
+}) {
+  if (hasReport || caseStatus === "closed") {
+    return "Your latest screening and case cycle has been completed. The report has already been delivered and no further action is required for this engagement.";
+  }
+
+  if (caseStatus === "delivered") {
+    return "Your report has been delivered and is available in the portal. This engagement is now in its final stage.";
+  }
+
+  if (caseStatus === "analysis") {
+    return "Your case is currently in analysis. The engagement is active and the report is not yet finalized.";
+  }
+
+  if (caseStatus === "active") {
+    return "Your payment has been confirmed and your case is open in the client portal.";
+  }
+
+  if (paymentPending) {
+    return "Your offer has been accepted and payment is awaiting confirmation before the case can be opened.";
+  }
+
+  if (paymentPaid && hasCase) {
+    return "Your payment has been confirmed and your case is already open. You can now follow the analysis through your case workspace.";
+  }
+
+  switch (screeningStatus) {
+    case "new":
+      return "Your screening request has been submitted and is awaiting review.";
+    case "accepted":
+      return "Your screening has been accepted and the commercial offer is being prepared.";
+    case "offer_sent":
+      return "Your offer has already been issued and is awaiting your decision or payment completion.";
+    case "rejected":
+      return "This screening request was reviewed and closed without moving forward to engagement.";
+    default:
+      return "Open the screening record for more detail.";
+  }
+}
+
+function getNextActionTitle({
+  screeningStatus,
+  caseStatus,
+  hasReport,
+  paymentPending,
+  paymentPaid,
+  hasActionableOffer,
+}: {
+  screeningStatus: string | null | undefined;
+  caseStatus: string | null | undefined;
+  hasReport: boolean;
+  paymentPending: boolean;
+  paymentPaid: boolean;
+  hasActionableOffer: boolean;
+}) {
+  if (hasReport || caseStatus === "closed") {
+    return "Next Action";
+  }
+
+  if (caseStatus === "delivered") {
+    return "Next Action";
+  }
+
+  if (caseStatus === "analysis" || caseStatus === "active") {
+    return "Next Action";
+  }
+
+  if (paymentPending) {
+    return "Next Action";
+  }
+
+  if (paymentPaid) {
+    return "Next Action";
+  }
+
+  switch (screeningStatus) {
+    case "new":
+      return "Next Action";
+    case "accepted":
+      return "Next Action";
+    case "offer_sent":
+      return "Next Action";
+    case "rejected":
+      return "Next Action";
+    default:
+      return "Next Action";
+  }
+}
+
+function getNextActionHeading({
+  screeningStatus,
+  caseStatus,
+  hasReport,
+  paymentPending,
+  paymentPaid,
+  hasActionableOffer,
+}: {
+  screeningStatus: string | null | undefined;
+  caseStatus: string | null | undefined;
+  hasReport: boolean;
+  paymentPending: boolean;
+  paymentPaid: boolean;
+  hasActionableOffer: boolean;
+}) {
+  if (hasReport || caseStatus === "closed") {
+    return "Begin new screening";
+  }
+
+  if (caseStatus === "delivered") {
+    return "Review your report";
+  }
+
+  if (caseStatus === "analysis" || caseStatus === "active") {
+    return "Open active case";
+  }
+
+  if (paymentPending) {
+    return "Await payment confirmation";
+  }
+
+  if (paymentPaid) {
+    return "Open active case";
+  }
+
+  if (hasActionableOffer) {
+    return "Offer available for review";
+  }
+
+  switch (screeningStatus) {
+    case "new":
+      return "Await screening review";
+    case "accepted":
+      return "Await issued offer";
+    case "offer_sent":
+      return "Review issued offer";
+    case "rejected":
+      return "Begin new screening";
+    default:
+      return "No action required";
+  }
+}
+
+function getNextActionText({
+  screeningStatus,
+  caseStatus,
+  hasReport,
+  paymentPending,
+  paymentPaid,
+  hasActionableOffer,
+}: {
+  screeningStatus: string | null | undefined;
+  caseStatus: string | null | undefined;
+  hasReport: boolean;
+  paymentPending: boolean;
+  paymentPaid: boolean;
+  hasActionableOffer: boolean;
+}) {
+  if (hasReport || caseStatus === "closed") {
+    return "This engagement is finished. If you want a new property review, begin a new screening request.";
+  }
+
+  if (caseStatus === "delivered") {
+    return "Your report is already available. Review the completed deliverable from the reports section.";
+  }
+
+  if (caseStatus === "analysis" || caseStatus === "active") {
+    return "Your engagement is still active. Continue from the case workspace.";
+  }
+
+  if (paymentPending) {
+    return "Your offer has already been accepted. Open the payment status page to track confirmation before the case is opened.";
+  }
+
+  if (paymentPaid) {
+    return "Your payment has been recorded and your case is now open in the client portal.";
+  }
+
+  if (hasActionableOffer) {
+    return "You have a client offer ready for review.";
+  }
+
+  switch (screeningStatus) {
+    case "new":
+      return "No client action is required while the screening is under review.";
+    case "accepted":
+      return "No client action is required until the offer is issued.";
+    case "offer_sent":
+      return "Open the related offer, review the terms, and proceed if you want to continue.";
+    case "rejected":
+      return "This screening cycle is complete. Start a new screening if you want to submit another property request.";
+    default:
+      return "There is no client action required at this stage.";
+  }
+}
+
 function formatClientDate(value: string | null | undefined) {
   if (!value) return "—";
 
@@ -75,198 +336,14 @@ function formatClientDate(value: string | null | undefined) {
   }).format(date);
 }
 
-type ScreeningRequestRow = {
-  id: string;
-  name: string | null;
-  status: string | null;
-  created_at: string;
-  plan_interest: string | null;
-  budget_range: string | null;
-  goal: string | null;
-};
-
-type OfferRow = {
-  id: string;
-  screening_request_id: string;
-  plan_type: string | null;
-  price_amount: number | null;
-  currency: string | null;
-  status: string | null;
-  created_at: string;
-};
-
-type OrderRow = {
-  offer_id: string;
-  payment_status: string | null;
-};
-
-type CaseRow = {
-  id: string;
-  title: string | null;
-  status: string | null;
-  created_at: string;
-  screening_request_id: string | null;
-};
-
-type ReportRow = {
-  id: string;
-  title: string | null;
-  summary: string | null;
-  file_url: string | null;
-  published: boolean;
-  created_at: string;
-  published_at: string | null;
-  case_id: string;
-  cases: {
-    id: string;
-    title: string | null;
-    client_id: string;
-  };
-};
-
-type NextActionState = {
-  heading: string;
-  text: string;
-  href: string | null;
-  ctaLabel: string | null;
-};
-
-function getNextActionState({
-  screeningRequests,
-  offers,
-  ordersByOfferId,
-  cases,
-  reports,
-}: {
-  screeningRequests: ScreeningRequestRow[];
-  offers: OfferRow[];
-  ordersByOfferId: Map<string, OrderRow>;
-  cases: CaseRow[];
-  reports: ReportRow[];
-}): NextActionState {
-  const newestSentOffer =
-    offers.find((offer) => offer.status === "sent") ?? null;
-
-  const newestAcceptedOfferWithPendingPayment =
-    offers.find((offer) => {
-      if (offer.status !== "accepted") return false;
-
-      const order = ordersByOfferId.get(offer.id);
-      return order?.payment_status === "pending";
-    }) ?? null;
-
-  if (newestSentOffer && newestAcceptedOfferWithPendingPayment) {
-    const sentDate = new Date(newestSentOffer.created_at).getTime();
-    const pendingDate = new Date(
-      newestAcceptedOfferWithPendingPayment.created_at,
-    ).getTime();
-
-    if (sentDate >= pendingDate) {
-      return {
-        heading: "Offer available for review",
-        text: "A newer client offer is waiting for your decision. Review the offer terms and accept it only if you want to proceed.",
-        href: `/dashboard/offers/${newestSentOffer.id}`,
-        ctaLabel: "View Offer",
-      };
-    }
-
-    return {
-      heading: "Open payment status",
-      text: "Your latest accepted offer is now in the payment stage. Open the payment page to track confirmation before the case is opened.",
-      href: `/dashboard/payment/${newestAcceptedOfferWithPendingPayment.id}`,
-      ctaLabel: "Open Payment Status",
-    };
-  }
-
-  if (newestSentOffer) {
-    return {
-      heading: "Offer available for review",
-      text: "A client offer is waiting for your decision. Review the offer terms and accept it only if you want to proceed.",
-      href: `/dashboard/offers/${newestSentOffer.id}`,
-      ctaLabel: "View Offer",
-    };
-  }
-
-  if (newestAcceptedOfferWithPendingPayment) {
-    return {
-      heading: "Open payment status",
-      text: "Your accepted offer is now in the payment stage. Open the payment page to track confirmation before the case is opened.",
-      href: `/dashboard/payment/${newestAcceptedOfferWithPendingPayment.id}`,
-      ctaLabel: "Open Payment Status",
-    };
-  }
-
-  const latestOpenCase =
-    cases.find(
-      (item) => item.status === "active" || item.status === "analysis",
-    ) ?? null;
-
-  if (latestOpenCase) {
-    return {
-      heading: "Open active case",
-      text: "Your engagement is active. Continue from the case workspace.",
-      href: `/dashboard/cases/${latestOpenCase.id}`,
-      ctaLabel: "Open Case",
-    };
-  }
-
-  const latestDeliveredCase =
-    cases.find((item) => item.status === "delivered") ?? null;
-
-  if (latestDeliveredCase || reports.length > 0) {
-    return {
-      heading: "Review your report",
-      text: "Your completed deliverable is already available in the portal.",
-      href: "/dashboard/reports",
-      ctaLabel: "Open Reports",
-    };
-  }
-
-  const latestScreening = screeningRequests[0] ?? null;
-
-  if (latestScreening?.status === "accepted") {
-    return {
-      heading: "Await issued offer",
-      text: "Your screening has been accepted. No client action is required until the offer is issued.",
-      href: null,
-      ctaLabel: null,
-    };
-  }
-
-  if (latestScreening?.status === "new") {
-    return {
-      heading: "Await screening review",
-      text: "Your screening request has been submitted and is awaiting review.",
-      href: null,
-      ctaLabel: null,
-    };
-  }
-
-  if (latestScreening?.status === "rejected") {
-    return {
-      heading: "Begin new screening",
-      text: "This screening cycle is complete. Start a new screening if you want to submit another property request.",
-      href: "/screening",
-      ctaLabel: "Begin Screening",
-    };
-  }
-
-  return {
-    heading: "Begin screening",
-    text: "Screening is the required first step before any offer, payment, or case creation.",
-    href: "/screening",
-    ctaLabel: "Begin Screening",
-  };
-}
-
 type PageProps = {
   searchParams: Promise<{ screening_created?: string }>;
 };
 
 export default async function DashboardPage({ searchParams }: PageProps) {
   const params = await searchParams;
-  const supabase = await createClient();
 
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -303,6 +380,10 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     throw new Error(offersError.message);
   }
 
+  const activeOfferByScreeningId = new Map(
+    (offers ?? []).map((offer) => [offer.screening_request_id, offer]),
+  );
+
   const offerIds = (offers ?? []).map((offer) => offer.id);
 
   const { data: orders, error: ordersLookupError } =
@@ -335,20 +416,20 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     .from("reports")
     .select(
       `
-        id,
-        title,
-        summary,
-        file_url,
-        published,
-        created_at,
-        published_at,
-        case_id,
-        cases!inner (
-          id,
-          title,
-          client_id
-        )
-      `,
+            id,
+            title,
+            summary,
+            file_url,
+            published,
+            created_at,
+            published_at,
+            case_id,
+            cases!inner (
+                id,
+                title,
+                client_id
+            )
+            `,
     )
     .eq("published", true)
     .eq("cases.client_id", user.id)
@@ -358,18 +439,45 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     throw new Error(reportsError.message);
   }
 
-  const screeningRows = (screeningRequests ?? []) as ScreeningRequestRow[];
-  const offerRows = (offers ?? []) as OfferRow[];
-  const caseRows = (cases ?? []) as CaseRow[];
-  const reportRows = (reports ?? []) as ReportRow[];
+  const latestScreening = screeningRequests?.[0] ?? null;
 
-  const screeningCount = screeningRows.length;
-  const caseCount = caseRows.length;
-  const reportCount = reportRows.length;
+  const latestCase = cases?.[0] ?? null;
 
-  const recentScreenings = screeningRows.slice(0, 5);
-  const recentCases = caseRows.slice(0, 4);
-  const latestReport = reportRows[0] ?? null;
+  const latestReport = reports?.[0] ?? null;
+
+  const screeningCount = screeningRequests?.length ?? 0;
+
+  const caseCount = cases?.length ?? 0;
+
+  const reportCount = reports?.length ?? 0;
+
+  const latestCaseStatus = latestCase?.status ?? null;
+
+  const hasDeliveredReport = !!latestReport;
+
+  const prioritizedJourneyScreening =
+    (screeningRequests ?? []).find((request) => {
+      const offer = activeOfferByScreeningId.get(request.id);
+      return offer?.status === "sent" || offer?.status === "accepted";
+    }) ?? latestScreening;
+
+  const latestOffer = prioritizedJourneyScreening
+    ? activeOfferByScreeningId.get(prioritizedJourneyScreening.id)
+    : null;
+
+  const latestOrder = latestOffer ? ordersByOfferId.get(latestOffer.id) : null;
+
+  const hasActionableOffer =
+    latestOffer?.status === "sent" || latestOffer?.status === "accepted";
+
+  const paymentPending = latestOrder?.payment_status === "pending";
+
+  const paymentPaid = latestOrder?.payment_status === "paid";
+
+  const hasCase = !!latestCase;
+
+  const recentScreenings = (screeningRequests ?? []).slice(0, 5);
+  const recentCases = (cases ?? []).slice(0, 4);
 
   const welcomeName =
     typeof user.user_metadata?.full_name === "string" &&
@@ -380,296 +488,388 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         ? user.user_metadata.name
         : "Client";
 
-  const nextAction = getNextActionState({
-    screeningRequests: screeningRows,
-    offers: offerRows,
-    ordersByOfferId,
-    cases: caseRows,
-    reports: reportRows,
-  });
-
   return (
     <ClientPortalShell
       eyebrow="Dashboard"
-      title="Client Portal"
-      description="Follow your screening progress, active engagement, and published deliverables from one place."
+      title={`Welcome, ${welcomeName}`}
       counts={{
         screenings: screeningCount,
         cases: caseCount,
         reports: reportCount,
       }}
       headerContent={
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-          <section className="rounded-2xl border border-white/50 bg-white/35 px-5 py-4 backdrop-blur-md">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-[#9a8660]">
-              Welcome
+        <div
+          className={[
+            "grid gap-4 lg:items-stretch",
+            latestScreening
+              ? "lg:grid-cols-[minmax(0,1fr)_1px_minmax(0,1fr)_1px_minmax(0,1fr)]"
+              : "lg:grid-cols-[minmax(0,1fr)]",
+          ].join(" ")}
+        >
+          <div className="space-y-2 min-h-[118px] pr-2">
+            <p className="text-[10px] uppercase tracking-[0.32em] text-[#9a8660]">
+              Dashboard
             </p>
+
             <h1
-              className="mt-2 text-[30px] leading-none text-[#0f1c2e]"
-              style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
+              className="text-[24px] leading-tight text-[#0f1c2e]"
+              style={{ fontFamily: "Georgia, Times New Roman, serif" }}
             >
               Welcome, {welcomeName}
             </h1>
-            <p className="mt-3 max-w-xl text-[13px] leading-6 text-[#6b7280]">
-              Use the client portal to track screening, payment, cases, and
-              final reports.
+
+            <p className="max-w-2xl text-[12.5px] leading-[1.5] text-[#6b7280]">
+              Follow your screening progress, active engagement, and published
+              deliverables from one place.
             </p>
-          </section>
+          </div>
 
-          <section className="rounded-2xl border border-[#dcc79e]/80 bg-white/45 px-5 py-4 backdrop-blur-md">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-[#9a8660]">
-              Next Action
-            </p>
+          {latestScreening ? (
+            <>
+              <div className="hidden bg-[#ccb07a] lg:block lg:opacity-90" />
 
-            <h2
-              className="mt-2 text-[26px] leading-none text-[#0f1c2e]"
-              style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
-            >
-              {nextAction.heading}
-            </h2>
+              <div className="space-y-2 min-h-[118px] px-2">
+                <p className="text-[10px] uppercase tracking-[0.32em] text-[#9a8660]">
+                  Current Stage
+                </p>
 
-            <p className="mt-3 max-w-xl text-[13px] leading-6 text-[#6b7280]">
-              {nextAction.text}
-            </p>
-
-            {nextAction.href && nextAction.ctaLabel ? (
-              <div className="mt-4">
-                <Link
-                  href={nextAction.href}
-                  className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
+                <h2
+                  className="text-[24px] leading-tight text-[#0f1c2e]"
+                  style={{ fontFamily: "Georgia, Times New Roman, serif" }}
                 >
-                  {nextAction.ctaLabel}
-                </Link>
+                  {getCurrentStageTitle({
+                    screeningStatus: latestScreening.status,
+                    caseStatus: latestCaseStatus,
+                    hasReport: hasDeliveredReport,
+                    paymentPending,
+                    paymentPaid,
+                    hasCase,
+                  })}
+                </h2>
+
+                <p className="max-w-2xl text-[12.5px] leading-[1.5] text-[#6b7280]">
+                  {getCurrentStageText({
+                    screeningStatus: latestScreening.status,
+                    caseStatus: latestCaseStatus,
+                    hasReport: hasDeliveredReport,
+                    paymentPending,
+                    paymentPaid,
+                    hasCase,
+                  })}
+                </p>
               </div>
-            ) : null}
-          </section>
+
+              <div className="hidden bg-[#ccb07a] lg:block lg:opacity-90" />
+
+              <div className="space-y-2 min-h-[118px] pl-2">
+                <div className="flex items-center gap-2">
+                  <p className="text-[10px] uppercase tracking-[0.32em] text-[#9a8660]">
+                    {getNextActionTitle({
+                      screeningStatus: latestScreening.status,
+                      caseStatus: latestCaseStatus,
+                      hasReport: hasDeliveredReport,
+                      paymentPending,
+                      paymentPaid,
+                      hasActionableOffer,
+                    })}
+                  </p>
+
+                  {!hasDeliveredReport &&
+                  latestCaseStatus !== "closed" &&
+                  !paymentPaid &&
+                  hasActionableOffer ? (
+                    <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
+                      1
+                    </span>
+                  ) : null}
+                </div>
+
+                <h2
+                  className="text-[24px] leading-tight text-[#0f1c2e]"
+                  style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+                >
+                  {getNextActionHeading({
+                    screeningStatus: prioritizedJourneyScreening?.status,
+
+                    caseStatus: latestCaseStatus,
+
+                    hasReport: hasDeliveredReport,
+
+                    paymentPending,
+
+                    paymentPaid,
+
+                    hasActionableOffer,
+                  })}
+                </h2>
+
+                <p className="max-w-2xl text-[12.5px] leading-[1.5] text-[#6b7280]">
+                  {getNextActionText({
+                    screeningStatus: prioritizedJourneyScreening?.status,
+
+                    caseStatus: latestCaseStatus,
+
+                    hasReport: hasDeliveredReport,
+
+                    paymentPending,
+
+                    paymentPaid,
+
+                    hasActionableOffer,
+                  })}
+                </p>
+
+                <div className="flex flex-wrap gap-3 pt-1">
+                  {hasDeliveredReport || latestCaseStatus === "closed" ? (
+                    <Link
+                      href="/screening"
+                      className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
+                    >
+                      Begin Screening
+                    </Link>
+                  ) : latestCaseStatus === "delivered" ? (
+                    <Link
+                      href="/dashboard/reports"
+                      className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
+                    >
+                      Open Reports
+                    </Link>
+                  ) : paymentPaid ? (
+                    <Link
+                      href="/dashboard/cases"
+                      className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
+                    >
+                      Open Cases
+                    </Link>
+                  ) : paymentPending ? (
+                    <Link
+                      href={`/dashboard/payment/${latestOffer?.id}`}
+                      className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
+                    >
+                      Open Payment Status
+                    </Link>
+                  ) : hasActionableOffer ? (
+                    <Link
+                      href={`/dashboard/offers/${latestOffer?.id}`}
+                      className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
+                    >
+                      View Offer
+                    </Link>
+                  ) : prioritizedJourneyScreening?.status === "rejected" ? (
+                    <Link
+                      href="/screening"
+                      className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
+                    >
+                      Begin Screening
+                    </Link>
+                  ) : null}
+                </div>
+              </div>
+            </>
+          ) : null}
         </div>
       }
     >
       <div className="space-y-10">
         {params.screening_created === "1" ? (
-          <div className="rounded-2xl border border-[#d6b67a] bg-white/70 px-5 py-4 text-sm text-[#9a6a16] shadow-sm">
+          <div className="border border-emerald-400/30 bg-emerald-500/10 px-5 py-4 text-sm text-emerald-200">
             Screening application submitted successfully.
           </div>
         ) : null}
 
-        {recentScreenings.length > 0 ? (
-          <section className="space-y-4">
-            <div className="flex items-end justify-between gap-4">
-              <div>
-                <p className="text-[11px] uppercase tracking-[0.22em] text-[#9a8660]">
-                  Recent Screenings
-                </p>
-                <h2
-                  className="mt-2 text-[28px] leading-none text-[#0f1c2e]"
-                  style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
-                >
-                  Screening
-                </h2>
-              </div>
+        <div className="space-y-10">
+          <section className="min-w-0">
+            {recentScreenings.length > 0 ? (
+              <div className="min-w-0">
+                <div className="hidden grid-cols-[minmax(0,1fr)_1fr_1fr_1fr] gap-6 px-2 py-3 text-[10px] uppercase tracking-[0.32em] text-[#9a8660] lg:grid">
+                  <div>Screening</div>
+                  <div>Date</div>
+                  <div>Budget</div>
+                  <div className="text-center">Status</div>
+                </div>
 
-              <Link
-                href="/dashboard/screening"
-                className="text-[12px] uppercase tracking-[0.16em] text-[#9a8660] transition hover:text-[#0f1c2e]"
-              >
-                View all
-              </Link>
-            </div>
-
-            <div className="overflow-hidden rounded-2xl border border-[#dcc79e]/70 bg-white/70 shadow-[0_20px_50px_rgba(15,28,46,0.05)]">
-              <div className="hidden grid-cols-[minmax(0,2fr)_120px_140px_160px] gap-4 border-b border-[#eadfc8] px-6 py-4 text-[11px] uppercase tracking-[0.16em] text-[#9a8660] md:grid">
-                <div>Screening</div>
-                <div>Date</div>
-                <div>Budget</div>
-                <div>Status</div>
-              </div>
-
-              <div className="divide-y divide-[#eadfc8]">
-                {recentScreenings.map((request) => (
-                  <Link
-                    key={request.id}
-                    href={`/dashboard/screening/${request.id}`}
-                    className="grid gap-3 px-6 py-5 transition hover:bg-white/70 md:grid-cols-[minmax(0,2fr)_120px_140px_160px] md:items-center"
-                  >
-                    <div>
-                      <div className="text-[15px] font-medium text-[#0f1c2e]">
-                        {request.name || "Screening request"}
-                      </div>
-                    </div>
-
-                    <div className="text-[13px] text-[#6b7280]">
-                      {formatClientDate(request.created_at)}
-                    </div>
-
-                    <div className="text-[13px] text-[#6b7280]">
-                      {request.budget_range || "—"}
-                    </div>
-
-                    <div>
-                      <span className="inline-flex rounded-full border border-[#d6b67a] bg-white/80 px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-[#9a6a16] shadow-sm">
-                        {formatStatusLabel(request.status)}
-                      </span>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </section>
-        ) : (
-          <section className="py-8">
-            <p
-              className="text-[28px] leading-none text-[#0f1c2e]"
-              style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
-            >
-              No screenings yet.
-            </p>
-
-            <p className="mt-3 max-w-xl text-[13px] leading-6 text-[#6b7280]">
-              Screening is the required first step before any offer, payment, or
-              case creation.
-            </p>
-
-            <div className="mt-5">
-              <Link
-                href="/screening"
-                className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
-              >
-                Apply for Screening
-              </Link>
-            </div>
-          </section>
-        )}
-
-        {recentCases.length > 0 ? (
-          <section className="space-y-4">
-            <div className="flex items-end justify-between gap-4">
-              <div>
-                <p className="text-[11px] uppercase tracking-[0.22em] text-[#9a8660]">
-                  Active And Recent Cases
-                </p>
-                <h2
-                  className="mt-2 text-[28px] leading-none text-[#0f1c2e]"
-                  style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
-                >
-                  Cases
-                </h2>
-              </div>
-
-              <Link
-                href="/dashboard/cases"
-                className="text-[12px] uppercase tracking-[0.16em] text-[#9a8660] transition hover:text-[#0f1c2e]"
-              >
-                View all
-              </Link>
-            </div>
-
-            <div className="overflow-hidden rounded-2xl border border-[#dcc79e]/70 bg-white/70 shadow-[0_20px_50px_rgba(15,28,46,0.05)]">
-              <div className="hidden grid-cols-[minmax(0,2fr)_120px_140px_160px] gap-4 border-b border-[#eadfc8] px-6 py-4 text-[11px] uppercase tracking-[0.16em] text-[#9a8660] md:grid">
-                <div>Case</div>
-                <div>Date</div>
-                <div>Plan</div>
-                <div>Status</div>
-              </div>
-
-              <div className="divide-y divide-[#eadfc8]">
-                {recentCases.map((item) => {
-                  const screening = item.screening_request_id
-                    ? (screeningRows.find(
-                        (request) => request.id === item.screening_request_id,
-                      ) ?? null)
-                    : null;
-
-                  return (
-                    <Link
-                      key={item.id}
-                      href={`/dashboard/cases/${item.id}`}
-                      className="grid gap-3 px-6 py-5 transition hover:bg-white/70 md:grid-cols-[minmax(0,2fr)_120px_140px_160px] md:items-center"
+                <div className="space-y-0">
+                  {recentScreenings.map((request) => (
+                    <article
+                      key={request.id}
+                      className="border-b border-[#eadfca] px-2 py-4 transition duration-300 ease-out hover:bg-[#fffaf0] hover:shadow-[0_8px_20px_rgba(148,119,66,0.08)]"
                     >
-                      <div className="text-[15px] font-medium text-[#0f1c2e]">
-                        {formatClientCaseTitle(item.title)}
-                      </div>
+                      <Link
+                        href={`/dashboard/screening/${request.id}`}
+                        className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1fr)_1fr_1fr_1fr] lg:items-center lg:gap-6"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-[14px] font-semibold text-[#0f1c2e]">
+                            {request.name || "Screening request"}
+                          </p>
+                        </div>
 
-                      <div className="text-[13px] text-[#6b7280]">
-                        {formatClientDate(item.created_at)}
-                      </div>
+                        <div className="text-[13px] text-[#6b7280]">
+                          {formatClientDate(request.created_at)}
+                        </div>
 
-                      <div className="text-[13px] text-[#6b7280]">
-                        {screening?.plan_interest
-                          ? formatPlanLabel(screening.plan_interest)
-                          : "—"}
-                      </div>
+                        <div className="text-[13px] text-[#6b7280]">
+                          {request.budget_range || "—"}
+                        </div>
 
-                      <div>
-                        <span className="inline-flex rounded-full border border-[#d6b67a] bg-white/80 px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-[#9a6a16] shadow-sm">
-                          {formatCaseStatusLabel(item.status)}
-                        </span>
-                      </div>
-                    </Link>
-                  );
-                })}
+                        <div className="flex justify-start lg:justify-center">
+                          <div className="flex w-full justify-start lg:justify-center">
+                            <span className="inline-flex min-w-[118px] justify-center rounded-full border border-[#d6b67a] bg-white/75 px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-[#9a6a16] shadow-sm">
+                              {formatStatusLabel(request.status)}
+                            </span>
+                          </div>
+                        </div>
+                      </Link>
+                    </article>
+                  ))}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="py-8">
+                <p
+                  className="text-[28px] leading-none text-[#0f1c2e]"
+                  style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+                >
+                  No screenings yet.
+                </p>
+                <p className="mt-3 max-w-xl text-[13px] leading-6 text-[#6b7280]">
+                  Screening is the required first step before any offer,
+                  payment, or case creation.
+                </p>
+                <div className="mt-5">
+                  <Link
+                    href="/screening"
+                    className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
+                  >
+                    Apply for Screening
+                  </Link>
+                </div>
+              </div>
+            )}
           </section>
-        ) : (
-          <section className="py-2">
-            <p
-              className="text-[28px] leading-none text-[#0f1c2e]"
-              style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
-            >
-              No active cases.
-            </p>
+          <section className="min-w-0">
+            {recentCases.length > 0 ? (
+              <div className="min-w-0">
+                <div className="hidden grid-cols-[minmax(0,1fr)_1fr_1fr_1fr] gap-6 px-2 py-3 text-[10px] uppercase tracking-[0.32em] text-[#9a8660] lg:grid">
+                  <div>Case</div>
+                  <div>Date</div>
+                  <div>Plan</div>
+                  <div className="text-center">Status</div>
+                </div>
 
-            <p className="mt-3 max-w-xl text-[13px] leading-6 text-[#6b7280]">
-              Your case will appear here after payment is confirmed and the
-              engagement is opened.
-            </p>
+                <div className="space-y-0">
+                  {recentCases.map((item) => {
+                    const screening = item.screening_request_id
+                      ? (screeningRequests?.find(
+                          (request) => request.id === item.screening_request_id,
+                        ) ?? null)
+                      : null;
+
+                    return (
+                      <article
+                        key={item.id}
+                        className="border-b border-[#eadfca] px-2 py-4 transition duration-300 ease-out hover:bg-[#fffaf0] hover:shadow-[0_8px_20px_rgba(148,119,66,0.08)]"
+                      >
+                        <Link
+                          href={`/dashboard/cases/${item.id}`}
+                          className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1fr)_1fr_1fr_1fr] lg:items-center lg:gap-6"
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate text-[14px] font-semibold text-[#0f1c2e]">
+                              {formatClientCaseTitle(item.title)}
+                            </p>
+                          </div>
+
+                          <div className="text-[13px] text-[#6b7280]">
+                            {formatClientDate(item.created_at)}
+                          </div>
+
+                          <div className="text-[13px] text-[#6b7280]">
+                            {screening?.plan_interest
+                              ? formatPlanLabel(screening.plan_interest)
+                              : "—"}
+                          </div>
+
+                          <div className="flex justify-start lg:justify-center">
+                            <div className="flex w-full justify-start lg:justify-center">
+                              <span className="inline-flex min-w-[118px] justify-center rounded-full border border-[#d6b67a] bg-white/75 px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-[#9a6a16] shadow-sm">
+                                {formatCaseStatusLabel(item.status)}
+                              </span>
+                            </div>
+                          </div>
+                        </Link>
+                      </article>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className="py-8">
+                <p
+                  className="text-2xl leading-none text-[#f3e7d8]"
+                  style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+                >
+                  No active cases.
+                </p>
+                <p className="mt-3 max-w-xl text-sm leading-7 text-[#8f95a2]">
+                  Your case will appear here after payment is confirmed and the
+                  engagement is opened.
+                </p>
+              </div>
+            )}
           </section>
-        )}
+        </div>
 
         {latestReport ? (
-          <section className="rounded-2xl border border-[#dcc79e]/70 bg-white/70 px-6 py-6 shadow-[0_20px_50px_rgba(15,28,46,0.05)]">
-            <p className="text-[11px] uppercase tracking-[0.22em] text-[#9a8660]">
-              Latest Report
-            </p>
+          <section className="min-w-0">
+            <div className="border-b border-[#eadfca] px-2 py-4 transition duration-300 ease-out hover:bg-[#fffaf0] hover:shadow-[0_8px_20px_rgba(148,119,66,0.08)]">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="space-y-2 pr-2">
+                  <p className="text-[10px] uppercase tracking-[0.32em] text-[#9a8660]">
+                    Latest Report
+                  </p>
 
-            <h2
-              className="mt-2 text-[28px] leading-none text-[#0f1c2e]"
-              style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
-            >
-              {formatClientReportTitle(latestReport.title)}
-            </h2>
+                  <h2
+                    className="text-[20px] leading-tight text-[#0f1c2e]"
+                    style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+                  >
+                    {formatClientReportTitle(latestReport.title)}
+                  </h2>
 
-            <p className="mt-3 text-[13px] leading-6 text-[#6b7280]">
-              Published{" "}
-              {latestReport.published_at
-                ? formatClientDate(latestReport.published_at)
-                : formatClientDate(latestReport.created_at)}
-            </p>
+                  <p className="text-[13px] text-[#6b7280]">
+                    Published{" "}
+                    {latestReport.published_at
+                      ? formatClientDate(latestReport.published_at)
+                      : formatClientDate(latestReport.created_at)}
+                  </p>
 
-            {latestReport.summary ? (
-              <p className="mt-4 max-w-2xl text-[13px] leading-6 text-[#6b7280]">
-                {latestReport.summary}
-              </p>
-            ) : null}
+                  {latestReport.summary ? (
+                    <p className="max-w-2xl text-[13px] leading-6 text-[#6b7280]">
+                      {latestReport.summary}
+                    </p>
+                  ) : null}
+                </div>
 
-            <div className="mt-5 flex flex-wrap gap-3">
-              <Link
-                href="/dashboard/reports"
-                className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
-              >
-                Open Reports
-              </Link>
+                <div className="flex flex-wrap gap-3">
+                  <Link
+                    href="/dashboard/reports"
+                    className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
+                  >
+                    Open Reports
+                  </Link>
 
-              {latestReport.file_url ? (
-                <a
-                  href={latestReport.file_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
-                >
-                  Open Report
-                </a>
-              ) : null}
+                  {latestReport.file_url ? (
+                    <a
+                      href={latestReport.file_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
+                    >
+                      Open Report
+                    </a>
+                  ) : null}
+                </div>
+              </div>
             </div>
           </section>
         ) : null}
