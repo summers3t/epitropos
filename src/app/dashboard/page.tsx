@@ -58,8 +58,6 @@ function formatClientReportTitle(title: string | null | undefined) {
   return title;
 }
 
-
-
 function getNextActionTitle({
   screeningStatus,
   caseStatus,
@@ -392,17 +390,17 @@ export default async function DashboardPage({ searchParams }: PageProps) {
               : "lg:grid-cols-[minmax(0,1fr)]",
           ].join(" ")}
         >
-          <div className="space-y-1 min-h-[56px] pr-3">
+          <div className="space-y-1 min-h-[52px] pr-3">
             <p className="text-[10px] uppercase tracking-[0.32em] text-[#9a8660]">
               Dashboard
             </p>
             <h1
-              className="text-[20px] leading-tight text-[#0f1c2e]"
+              className="text-[22px] leading-tight text-[#0f1c2e]"
               style={{ fontFamily: "Georgia, Times New Roman, serif" }}
             >
               Welcome, {welcomeName}
             </h1>
-            <p className="max-w-2xl text-[11px] leading-[1.35] text-[#6b7280]">
+            <p className="max-w-2xl text-[12px] leading-[1.45] text-[#6b7280]">
               Follow your screening progress, active engagement, and published
               deliverables from one place.
             </p>
@@ -412,7 +410,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
             <>
               <div className="hidden bg-[#ccb07a] lg:block lg:opacity-60" />
 
-              <div className="space-y-1 min-h-[56px] pl-3">
+              <div className="min-h-[52px] pl-3">
                 <div className="flex items-center gap-2">
                   <p className="text-[10px] uppercase tracking-[0.32em] text-[#9a8660]">
                     {getNextActionTitle({
@@ -435,72 +433,76 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                   ) : null}
                 </div>
 
-                <h2
-                  className="text-[20px] leading-tight text-[#0f1c2e]"
-                  style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-                >
-                  {getNextActionHeading({
-                    screeningStatus: prioritizedJourneyScreening?.status,
-                    caseStatus: latestCaseStatus,
-                    hasReport: hasDeliveredReport,
-                    paymentPending,
-                    paymentPaid,
-                    hasActionableOffer,
-                  })}
-                </h2>
+                <div className="mt-1 flex items-start justify-between gap-4">
+                  <div className="min-w-0 space-y-1">
+                    <h2
+                      className="text-[22px] leading-tight text-[#0f1c2e]"
+                      style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+                    >
+                      {getNextActionHeading({
+                        screeningStatus: prioritizedJourneyScreening?.status,
+                        caseStatus: latestCaseStatus,
+                        hasReport: hasDeliveredReport,
+                        paymentPending,
+                        paymentPaid,
+                        hasActionableOffer,
+                      })}
+                    </h2>
 
-                <p className="max-w-2xl text-[11px] leading-[1.35] text-[#6b7280]">
-                  {getNextActionText({
-                    screeningStatus: prioritizedJourneyScreening?.status,
-                    caseStatus: latestCaseStatus,
-                    hasReport: hasDeliveredReport,
-                    paymentPending,
-                    paymentPaid,
-                    hasActionableOffer,
-                  })}
-                </p>
+                    <p className="max-w-2xl text-[12px] leading-[1.45] text-[#6b7280]">
+                      {getNextActionText({
+                        screeningStatus: prioritizedJourneyScreening?.status,
+                        caseStatus: latestCaseStatus,
+                        hasReport: hasDeliveredReport,
+                        paymentPending,
+                        paymentPaid,
+                        hasActionableOffer,
+                      })}
+                    </p>
+                  </div>
 
-                <div className="flex flex-wrap gap-3 pt-0.5">
-                  {paymentPending ? (
-                    <Link
-                      href={`/dashboard/payment/${latestOffer?.id}`}
-                      className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
-                    >
-                      Open Payment Status
-                    </Link>
-                  ) : hasActionableOffer ? (
-                    <Link
-                      href={`/dashboard/offers/${latestOffer?.id}`}
-                      className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
-                    >
-                      View Offer
-                    </Link>
-                  ) : paymentPaid ||
-                    latestCaseStatus === "analysis" ||
-                    latestCaseStatus === "active" ? (
-                    <Link
-                      href="/dashboard/cases"
-                      className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
-                    >
-                      Open Cases
-                    </Link>
-                  ) : latestCaseStatus === "delivered" ? (
-                    <Link
-                      href="/dashboard/reports"
-                      className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
-                    >
-                      Open Reports
-                    </Link>
-                  ) : prioritizedJourneyScreening?.status === "rejected" ||
-                    hasDeliveredReport ||
-                    latestCaseStatus === "closed" ? (
-                    <Link
-                      href="/screening"
-                      className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
-                    >
-                      Begin Screening
-                    </Link>
-                  ) : null}
+                  <div className="shrink-0 self-center">
+                    {paymentPending ? (
+                      <Link
+                        href={`/dashboard/payment/${latestOffer?.id}`}
+                        className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
+                      >
+                        Open Payment Status
+                      </Link>
+                    ) : hasActionableOffer ? (
+                      <Link
+                        href={`/dashboard/offers/${latestOffer?.id}`}
+                        className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
+                      >
+                        View Offer
+                      </Link>
+                    ) : paymentPaid ||
+                      latestCaseStatus === "analysis" ||
+                      latestCaseStatus === "active" ? (
+                      <Link
+                        href="/dashboard/cases"
+                        className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
+                      >
+                        Open Cases
+                      </Link>
+                    ) : latestCaseStatus === "delivered" ? (
+                      <Link
+                        href="/dashboard/reports"
+                        className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
+                      >
+                        Open Reports
+                      </Link>
+                    ) : prioritizedJourneyScreening?.status === "rejected" ||
+                      hasDeliveredReport ||
+                      latestCaseStatus === "closed" ? (
+                      <Link
+                        href="/screening"
+                        className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
+                      >
+                        Begin Screening
+                      </Link>
+                    ) : null}
+                  </div>
                 </div>
               </div>
             </>

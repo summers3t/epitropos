@@ -192,8 +192,8 @@ export default function ClientPortalShell({
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="sticky top-0 z-30 border-b border-[#dcc79e]/45 bg-white/12 backdrop-blur-xl">
-          <div className="px-6 py-2.5 lg:px-8 lg:py-3">
+        <header className="sticky top-0 z-30 border-b border-[#dcc79e]/35 bg-white/[0.04] backdrop-blur-xl">
+          <div className="px-6 py-2 lg:px-8 lg:py-2.5">
             {headerContent ? (
               headerContent
             ) : (
