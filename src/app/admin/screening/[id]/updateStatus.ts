@@ -84,6 +84,14 @@ export async function updateScreeningStatus(
     offer_sent: [],
   };
 
+  if (request.status === status) {
+    redirect(
+      buildAdminScreeningRedirect(requestId, {
+        status_success: `Screening is already ${status}.`,
+      }),
+    );
+  }
+
   if (!allowedTransitions[request.status]?.includes(status)) {
     redirect(
       buildAdminScreeningRedirect(requestId, {

@@ -2,299 +2,342 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { markOrderPaid } from "./markPaid";
+import { recreateCaseFromOrder } from "./recreateCase";
 
 type PageProps = {
-    params: Promise<{
-        id: string;
-    }>;
+  params: Promise<{
+    id: string;
+  }>;
+  searchParams: Promise<{
+    caseNotice?: string;
+    caseError?: string;
+  }>;
 };
 
 function formatPaymentStatusLabel(status: string | null | undefined) {
-    if (!status) return "—";
+  if (!status) return "—";
 
-    const labels: Record<string, string> = {
-        pending: "Pending",
-        paid: "Paid",
-        cancelled: "Cancelled",
-        refunded: "Refunded",
-    };
+  const labels: Record<string, string> = {
+    pending: "Pending",
+    paid: "Paid",
+    cancelled: "Cancelled",
+    refunded: "Refunded",
+  };
 
-    return labels[status] ?? status;
+  return labels[status] ?? status;
 }
 
 function formatPlanLabel(planType: string | null | undefined) {
-    if (!planType) return "—";
-    if (planType === "core") return "Core Analysis";
-    if (planType === "strategic") return "Strategic Analysis";
-    return planType;
+  if (!planType) return "—";
+  if (planType === "core") return "Core Analysis";
+  if (planType === "strategic") return "Strategic Analysis";
+  return planType;
 }
 
-export default async function AdminOrderDetailPage({ params }: PageProps) {
-    const { id } = await params;
+export default async function AdminOrderDetailPage({
+  params,
+  searchParams,
+}: PageProps) {
+  const { id } = await params;
+  const resolvedSearchParams = await searchParams;
 
-    const supabase = await createClient();
+  const supabase = await createClient();
 
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-    if (!user) {
-        redirect(`/auth/login?redirect=/admin/orders/${id}`);
-    }
+  if (!user) {
+    redirect(`/auth/login?redirect=/admin/orders/${id}`);
+  }
 
-    const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .maybeSingle();
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
 
-    if (profileError || !profile || profile.role !== "admin") {
-        redirect("/dashboard");
-    }
+  if (profileError || !profile || profile.role !== "admin") {
+    redirect("/dashboard");
+  }
 
-    const { data: order, error: orderError } = await supabase
-        .from("orders")
-        .select(
-            "id, user_id, offer_id, amount, currency, payment_status, payment_provider, payment_reference, created_at, updated_at"
-        )
-        .eq("id", id)
-        .maybeSingle();
+  const { data: order, error: orderError } = await supabase
+    .from("orders")
+    .select(
+      "id, user_id, offer_id, amount, currency, payment_status, payment_provider, payment_reference, created_at, updated_at",
+    )
+    .eq("id", id)
+    .maybeSingle();
 
-    if (orderError) {
-        throw new Error(orderError.message);
-    }
+  if (orderError) {
+    throw new Error(orderError.message);
+  }
 
-    if (!order) {
-        notFound();
-    }
+  if (!order) {
+    notFound();
+  }
 
-    const { data: offer, error: offerError } = await supabase
-        .from("offers")
-        .select(
-            "id, screening_request_id, plan_type, price_amount, currency, status, created_at"
-        )
-        .eq("id", order.offer_id)
-        .maybeSingle();
+  const { data: offer, error: offerError } = await supabase
+    .from("offers")
+    .select(
+      "id, screening_request_id, plan_type, price_amount, currency, status, created_at",
+    )
+    .eq("id", order.offer_id)
+    .maybeSingle();
 
-    if (offerError) {
-        throw new Error(offerError.message);
-    }
+  if (offerError) {
+    throw new Error(offerError.message);
+  }
 
-    const { data: screening, error: screeningError } = offer
-        ? await supabase
-            .from("screening_requests")
-            .select("id, name, email, status")
-            .eq("id", offer.screening_request_id)
-            .maybeSingle()
-        : { data: null, error: null as null | Error };
+  const { data: screening, error: screeningError } = offer
+    ? await supabase
+        .from("screening_requests")
+        .select("id, name, email, status")
+        .eq("id", offer.screening_request_id)
+        .maybeSingle()
+    : { data: null, error: null as null | Error };
 
-    if (screeningError) {
-        throw new Error(screeningError.message);
-    }
+  if (screeningError) {
+    throw new Error(screeningError.message);
+  }
 
-    const { data: clientProfile, error: clientProfileError } = await supabase
-        .from("profiles")
-        .select("id, email, full_name")
-        .eq("id", order.user_id)
-        .maybeSingle();
+  const { data: clientProfile, error: clientProfileError } = await supabase
+    .from("profiles")
+    .select("id, email, full_name")
+    .eq("id", order.user_id)
+    .maybeSingle();
 
-    if (clientProfileError) {
-        throw new Error(clientProfileError.message);
-    }
+  if (clientProfileError) {
+    throw new Error(clientProfileError.message);
+  }
 
-    const { data: linkedCase, error: linkedCaseError } = await supabase
-        .from("cases")
-        .select("id, status")
-        .eq("order_id", order.id)
-        .maybeSingle();
+  const { data: linkedCase, error: linkedCaseError } = await supabase
+    .from("cases")
+    .select("id, status")
+    .eq("order_id", order.id)
+    .maybeSingle();
 
-    if (linkedCaseError) {
-        throw new Error(linkedCaseError.message);
-    }
+  if (linkedCaseError) {
+    throw new Error(linkedCaseError.message);
+  }
 
-    const isPending = order.payment_status === "pending";
-    const isPaid = order.payment_status === "paid";
+  const isPending = order.payment_status === "pending";
+  const isPaid = order.payment_status === "paid";
 
-    return (
-        <section className="space-y-8">
-            <div className="space-y-3">
-                <Link
-                    href="/admin/orders"
-                    className="inline-flex text-xs uppercase tracking-[0.16em] text-white/55 hover:text-white transition"
-                >
-                    ← Back to orders
-                </Link>
+  const caseNotice =
+    typeof resolvedSearchParams.caseNotice === "string"
+      ? resolvedSearchParams.caseNotice
+      : null;
 
-                <p className="text-xs uppercase tracking-[0.18em] text-white/55">
-                    Admin Console
-                </p>
+  const caseError =
+    typeof resolvedSearchParams.caseError === "string"
+      ? resolvedSearchParams.caseError
+      : null;
 
-                <h1
-                    className="text-4xl font-black tracking-tight"
-                    style={{ fontFamily: "var(--font-montserrat)" }}
-                >
-                    Order Detail
-                </h1>
+  return (
+    <section className="space-y-8">
+      <div className="space-y-3">
+        <Link
+          href="/admin/orders"
+          className="inline-flex text-xs uppercase tracking-[0.16em] text-white/55 hover:text-white transition"
+        >
+          ← Back to orders
+        </Link>
 
-                <p className="max-w-3xl text-sm leading-6 text-white/72">
-                    Manual payment confirmation placeholder. This is not a real gateway
-                    integration.
-                </p>
+        <p className="text-xs uppercase tracking-[0.18em] text-white/55">
+          Admin Console
+        </p>
+
+        <h1
+          className="text-4xl font-black tracking-tight"
+          style={{ fontFamily: "var(--font-montserrat)" }}
+        >
+          Order Detail
+        </h1>
+
+        <p className="max-w-3xl text-sm leading-6 text-white/72">
+          Manual payment confirmation placeholder. This is not a real gateway
+          integration.
+        </p>
+      </div>
+
+      <article className="rounded-3xl border border-white/10 bg-white/5 p-8 backdrop-blur">
+        {caseNotice ? (
+          <div className="mb-6 rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-4 text-sm text-emerald-100/90">
+            {caseNotice}
+          </div>
+        ) : null}
+
+        {caseError ? (
+          <div className="mb-6 rounded-2xl border border-red-400/30 bg-red-500/10 p-4 text-sm text-red-100/90">
+            {caseError}
+          </div>
+        ) : null}
+        <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
+          <div className="space-y-3">
+            <span className="rounded-full border border-white/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white">
+              {formatPaymentStatusLabel(order.payment_status)}
+            </span>
+
+            <div>
+              <p className="text-xl font-semibold text-white">
+                {clientProfile?.full_name || "Unnamed user"}
+              </p>
+              <p className="text-sm text-white/70">
+                {clientProfile?.email || screening?.email || "—"}
+              </p>
+              <p className="mt-2 text-[10px] uppercase tracking-[0.14em] text-white/45">
+                Screening / case label
+              </p>
+              <p className="text-sm text-white/80">{screening?.name || "—"}</p>
             </div>
+          </div>
 
-            <article className="rounded-3xl border border-white/10 bg-white/5 p-8 backdrop-blur">
-                <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
-                    <div className="space-y-3">
-                        <span className="rounded-full border border-white/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white">
-                            {formatPaymentStatusLabel(order.payment_status)}
-                        </span>
+          <div className="text-right">
+            <div className="text-xs uppercase tracking-[0.14em] text-white/45">
+              Amount
+            </div>
+            <div className="mt-2 text-3xl font-bold text-white">
+              {order.amount} {order.currency}
+            </div>
+          </div>
+        </div>
 
-                        <div>
-                            <p className="text-xl font-semibold text-white">
-                                {clientProfile?.full_name || "Unnamed user"}
-                            </p>
-                            <p className="text-sm text-white/70">
-                                {clientProfile?.email || screening?.email || "—"}
-                            </p>
-                            <p className="mt-2 text-[10px] uppercase tracking-[0.14em] text-white/45">
-                                Screening / case label
-                            </p>
-                            <p className="text-sm text-white/80">
-                                {screening?.name || "—"}
-                            </p>
-                        </div>
-                    </div>
+        <div className="mt-8 grid gap-4 md:grid-cols-2">
+          <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+            <dt className="text-xs uppercase tracking-[0.14em] text-white/45">
+              Plan
+            </dt>
+            <dd className="mt-1 text-sm text-white/80">
+              {formatPlanLabel(offer?.plan_type)}
+            </dd>
+          </div>
 
-                    <div className="text-right">
-                        <div className="text-xs uppercase tracking-[0.14em] text-white/45">
-                            Amount
-                        </div>
-                        <div className="mt-2 text-3xl font-bold text-white">
-                            {order.amount} {order.currency}
-                        </div>
-                    </div>
-                </div>
+          <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+            <dt className="text-xs uppercase tracking-[0.14em] text-white/45">
+              Offer status
+            </dt>
+            <dd className="mt-1 text-sm text-white/80">
+              {offer?.status || "—"}
+            </dd>
+          </div>
 
-                <div className="mt-8 grid gap-4 md:grid-cols-2">
-                    <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
-                        <dt className="text-xs uppercase tracking-[0.14em] text-white/45">
-                            Plan
-                        </dt>
-                        <dd className="mt-1 text-sm text-white/80">
-                            {formatPlanLabel(offer?.plan_type)}
-                        </dd>
-                    </div>
+          <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+            <dt className="text-xs uppercase tracking-[0.14em] text-white/45">
+              Screening status
+            </dt>
+            <dd className="mt-1 text-sm text-white/80">
+              {screening?.status || "—"}
+            </dd>
+          </div>
 
-                    <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
-                        <dt className="text-xs uppercase tracking-[0.14em] text-white/45">
-                            Offer status
-                        </dt>
-                        <dd className="mt-1 text-sm text-white/80">
-                            {offer?.status || "—"}
-                        </dd>
-                    </div>
+          <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+            <dt className="text-xs uppercase tracking-[0.14em] text-white/45">
+              Payment reference
+            </dt>
+            <dd className="mt-1 text-sm text-white/80">
+              {order.payment_reference || "—"}
+            </dd>
+          </div>
 
-                    <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
-                        <dt className="text-xs uppercase tracking-[0.14em] text-white/45">
-                            Screening status
-                        </dt>
-                        <dd className="mt-1 text-sm text-white/80">
-                            {screening?.status || "—"}
-                        </dd>
-                    </div>
+          <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+            <dt className="text-xs uppercase tracking-[0.14em] text-white/45">
+              Linked case
+            </dt>
+            <dd className="mt-1 text-sm text-white/80">
+              {linkedCase ? linkedCase.id : "—"}
+            </dd>
+          </div>
 
-                    <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
-                        <dt className="text-xs uppercase tracking-[0.14em] text-white/45">
-                            Payment reference
-                        </dt>
-                        <dd className="mt-1 text-sm text-white/80">
-                            {order.payment_reference || "—"}
-                        </dd>
-                    </div>
+          <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+            <dt className="text-xs uppercase tracking-[0.14em] text-white/45">
+              Case status
+            </dt>
+            <dd className="mt-1 text-sm text-white/80">
+              {linkedCase?.status || "—"}
+            </dd>
+          </div>
 
-                    <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
-                        <dt className="text-xs uppercase tracking-[0.14em] text-white/45">
-                            Linked case
-                        </dt>
-                        <dd className="mt-1 text-sm text-white/80">
-                            {linkedCase ? linkedCase.id : "—"}
-                        </dd>
-                    </div>
+          <div className="rounded-2xl border border-white/10 bg-black/10 p-4 md:col-span-2">
+            <dt className="text-xs uppercase tracking-[0.14em] text-white/45">
+              Order ID
+            </dt>
+            <dd className="mt-1 break-all text-sm text-white/80">{order.id}</dd>
+          </div>
+        </div>
 
-                    <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
-                        <dt className="text-xs uppercase tracking-[0.14em] text-white/45">
-                            Case status
-                        </dt>
-                        <dd className="mt-1 text-sm text-white/80">
-                            {linkedCase?.status || "—"}
-                        </dd>
-                    </div>
+        <div className="mt-8 rounded-2xl border border-white/10 bg-black/10 p-6">
+          {isPending ? (
+            <form
+              action={markOrderPaid.bind(null, order.id)}
+              className="space-y-4"
+            >
+              <div className="space-y-2">
+                <label
+                  htmlFor="payment_reference"
+                  className="block text-xs uppercase tracking-[0.14em] text-white/45"
+                >
+                  Payment reference
+                </label>
+                <input
+                  id="payment_reference"
+                  name="payment_reference"
+                  type="text"
+                  placeholder="Optional bank reference / manual note"
+                  className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white placeholder:text-white/30 outline-none"
+                />
+              </div>
 
-                    <div className="rounded-2xl border border-white/10 bg-black/10 p-4 md:col-span-2">
-                        <dt className="text-xs uppercase tracking-[0.14em] text-white/45">
-                            Order ID
-                        </dt>
-                        <dd className="mt-1 break-all text-sm text-white/80">
-                            {order.id}
-                        </dd>
-                    </div>
-                </div>
+              <button
+                type="submit"
+                className="rounded-xl bg-blue-900 px-6 py-3 text-sm font-semibold text-white shadow-glass hover:bg-blue-600 transition"
+              >
+                Mark as Paid
+              </button>
+            </form>
+          ) : isPaid ? (
+            <div className="space-y-3">
+              {linkedCase ? (
+                <>
+                  <p className="text-sm text-white/75 leading-6">
+                    Payment has been confirmed for this order. The engagement
+                    case has already been created.
+                  </p>
 
-                <div className="mt-8 rounded-2xl border border-white/10 bg-black/10 p-6">
-                    {isPending ? (
-                        <form action={markOrderPaid.bind(null, order.id)} className="space-y-4">
-                            <div className="space-y-2">
-                                <label
-                                    htmlFor="payment_reference"
-                                    className="block text-xs uppercase tracking-[0.14em] text-white/45"
-                                >
-                                    Payment reference
-                                </label>
-                                <input
-                                    id="payment_reference"
-                                    name="payment_reference"
-                                    type="text"
-                                    placeholder="Optional bank reference / manual note"
-                                    className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white placeholder:text-white/30 outline-none"
-                                />
-                            </div>
+                  <Link
+                    href={`/admin/cases/${linkedCase.id}`}
+                    className="inline-flex rounded-xl border border-white/15 px-4 py-2 text-xs hover:bg-white/5 transition"
+                  >
+                    Open Case
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <div className="rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                    Payment is marked as confirmed, but no linked case exists
+                    for this order. You can recreate a replacement case without
+                    changing the screening, offer, or payment chain.
+                  </div>
 
-                            <button
-                                type="submit"
-                                className="rounded-xl bg-blue-900 px-6 py-3 text-sm font-semibold text-white shadow-glass hover:bg-blue-600 transition"
-                            >
-                                Mark as Paid
-                            </button>
-                        </form>
-                    ) : isPaid ? (
-                        <div className="space-y-3">
-                            {linkedCase ? (
-                                <>
-                                    <p className="text-sm text-white/75 leading-6">
-                                        Payment has been confirmed for this order. The engagement case has already been created.
-                                    </p>
-
-                                    <Link
-                                        href={`/admin/cases/${linkedCase.id}`}
-                                        className="inline-flex rounded-xl border border-white/15 px-4 py-2 text-xs hover:bg-white/5 transition"
-                                    >
-                                        Open Case
-                                    </Link>
-                                </>
-                            ) : (
-                                <div className="rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-                                    Payment is marked as confirmed, but no linked case exists for this order. Check the paid-order case trigger and lifecycle integrity immediately.
-                                </div>
-                            )}
-                        </div>
-                    ) : (
-                        <p className="text-sm text-white/75 leading-6">
-                            This order is no longer in a pending state. No further action is
-                            available in this step.
-                        </p>
-                    )}
-                </div>
-            </article>
-        </section>
-    );
+                  <form action={recreateCaseFromOrder.bind(null, order.id)}>
+                    <button
+                      type="submit"
+                      className="rounded-xl border border-white/15 px-4 py-2 text-xs hover:bg-white/5 transition"
+                    >
+                      Recreate Case
+                    </button>
+                  </form>
+                </>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-white/75 leading-6">
+              This order is no longer in a pending state. No further action is
+              available in this step.
+            </p>
+          )}
+        </div>
+      </article>
+    </section>
+  );
 }

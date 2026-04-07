@@ -186,7 +186,7 @@ export default function Header({
             <div className="flex items-center gap-3">
               <div className="relative overflow-hidden rounded-md">
                 <Image
-                  src="/logo.png"
+                  src="/logo_no_backgr.png"
                   alt="Epitropos"
                   width={120}
                   height={40}

@@ -14,6 +14,13 @@ function formatStatusLabel(status: string | null | undefined) {
     .join(" ");
 }
 
+function formatPlanLabel(planType: string | null | undefined) {
+  if (!planType) return "—";
+  if (planType === "core") return "Core Analysis";
+  if (planType === "strategic") return "Strategic Analysis";
+  return planType;
+}
+
 type PageProps = {
   params: Promise<{
     id: string;
@@ -363,7 +370,7 @@ export default async function AdminScreeningDetailPage({
               Plan interest
             </dt>
             <dd className="mt-1 text-sm text-white/80">
-              {request.plan_interest || "—"}
+              {formatPlanLabel(request.plan_interest)}
             </dd>
           </div>
 
