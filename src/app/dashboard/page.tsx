@@ -58,6 +58,10 @@ function formatClientReportTitle(title: string | null | undefined) {
   return title;
 }
 
+function getLatestReportActionLabel(reportCount: number) {
+  return reportCount > 1 ? "Open Reports" : "Open Report";
+}
+
 function getNextActionTitle({
   screeningStatus,
   caseStatus,
@@ -128,23 +132,23 @@ function getNextActionHeading({
     return "Open payment status";
   }
 
-  if (hasActionableOffer) {
-    return "Offer available for review";
+  if (hasLinkedCase || caseStatus === "analysis" || caseStatus === "active") {
+    return "Open active case";
+  }
+
+  if (caseStatus === "delivered" || hasReport) {
+    return "Review your report";
   }
 
   if (paymentPaid && !hasLinkedCase) {
     return "Case availability issue";
   }
 
-  if (hasLinkedCase || caseStatus === "analysis" || caseStatus === "active") {
-    return "Open active case";
+  if (hasActionableOffer) {
+    return "Offer available for review";
   }
 
-  if (caseStatus === "delivered") {
-    return "Review your report";
-  }
-
-  if (hasReport || caseStatus === "closed") {
+  if (caseStatus === "closed") {
     return "Begin new screening";
   }
 
@@ -183,23 +187,23 @@ function getNextActionText({
     return "Your offer has already been accepted. Open the payment status page to track confirmation before the case is opened.";
   }
 
-  if (hasActionableOffer) {
-    return "You have a client offer ready for review.";
+  if (hasLinkedCase || caseStatus === "analysis" || caseStatus === "active") {
+    return "Your engagement is still active. Continue from the case workspace.";
+  }
+
+  if (caseStatus === "delivered" || hasReport) {
+    return "Your report is already available. Review the completed deliverable from the reports section.";
   }
 
   if (paymentPaid && !hasLinkedCase) {
     return "Your payment has been confirmed, but the linked case is not yet available. Please contact the administrator.";
   }
 
-  if (hasLinkedCase || caseStatus === "analysis" || caseStatus === "active") {
-    return "Your engagement is still active. Continue from the case workspace.";
+  if (hasActionableOffer) {
+    return "You have a client offer ready for review.";
   }
 
-  if (caseStatus === "delivered") {
-    return "Your report is already available. Review the completed deliverable from the reports section.";
-  }
-
-  if (hasReport || caseStatus === "closed") {
+  if (caseStatus === "closed") {
     return "This engagement is finished. If you want a new property review, begin a new screening request.";
   }
 
@@ -487,13 +491,6 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                     >
                       Open Payment Status
                     </Link>
-                  ) : hasActionableOffer ? (
-                    <Link
-                      href={`/dashboard/offers/${latestOffer?.id}`}
-                      className="inline-flex items-center whitespace-nowrap border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
-                    >
-                      View Offer
-                    </Link>
                   ) : hasLinkedCase ? (
                     <Link
                       href={`/dashboard/cases/${linkedCaseForLatestOrder?.id}`}
@@ -501,10 +498,24 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                     >
                       Open Case
                     </Link>
+                  ) : latestCaseStatus === "delivered" || hasDeliveredReport ? (
+                    <Link
+                      href="/dashboard/reports"
+                      className="inline-flex items-center whitespace-nowrap border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
+                    >
+                      Open Reports
+                    </Link>
                   ) : paymentPaid ? (
                     <span className="inline-flex items-center whitespace-nowrap border border-[#dcc79e] bg-[#fff8ea] px-5 py-2.5 text-sm text-[#9a6a16]">
                       Case unavailable
                     </span>
+                  ) : hasActionableOffer ? (
+                    <Link
+                      href={`/dashboard/offers/${latestOffer?.id}`}
+                      className="inline-flex items-center whitespace-nowrap border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
+                    >
+                      View Offer
+                    </Link>
                   ) : latestCaseStatus === "analysis" ||
                     latestCaseStatus === "active" ? (
                     <Link
@@ -513,15 +524,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                     >
                       Open Cases
                     </Link>
-                  ) : latestCaseStatus === "delivered" ? (
-                    <Link
-                      href="/dashboard/reports"
-                      className="inline-flex items-center whitespace-nowrap border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
-                    >
-                      Open Reports
-                    </Link>
                   ) : prioritizedJourneyScreening?.status === "rejected" ||
-                    hasDeliveredReport ||
                     latestCaseStatus === "closed" ? (
                     <Link
                       href="/screening"
@@ -718,22 +721,24 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                 </div>
 
                 <div className="flex flex-wrap items-center justify-start gap-3 lg:h-full lg:justify-center">
-                  <Link
-                    href="/dashboard/reports"
-                    className="inline-flex items-center whitespace-nowrap border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
-                  >
-                    Open Reports
-                  </Link>
-
                   {latestReport.storage_path ? (
-                    <a
-                      href={`/api/reports/${latestReport.id}/download`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center whitespace-nowrap border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
-                    >
-                      Open Report
-                    </a>
+                    reportCount > 1 ? (
+                      <Link
+                        href="/dashboard/reports"
+                        className="inline-flex items-center whitespace-nowrap border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
+                      >
+                        {getLatestReportActionLabel(reportCount)}
+                      </Link>
+                    ) : (
+                      <a
+                        href={`/api/reports/${latestReport.id}/download`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center whitespace-nowrap border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
+                      >
+                        {getLatestReportActionLabel(reportCount)}
+                      </a>
+                    )
                   ) : (
                     <span className="inline-flex items-center whitespace-nowrap border border-[#dcc79e] bg-[#fff8ea] px-5 py-2.5 text-sm text-[#9a6a16]">
                       Report file unavailable
