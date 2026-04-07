@@ -114,6 +114,7 @@ function getNextActionHeading({
   paymentPending,
   paymentPaid,
   hasActionableOffer,
+  hasLinkedCase,
 }: {
   screeningStatus: string | null | undefined;
   caseStatus: string | null | undefined;
@@ -121,6 +122,7 @@ function getNextActionHeading({
   paymentPending: boolean;
   paymentPaid: boolean;
   hasActionableOffer: boolean;
+  hasLinkedCase: boolean;
 }) {
   if (paymentPending) {
     return "Open payment status";
@@ -130,7 +132,11 @@ function getNextActionHeading({
     return "Offer available for review";
   }
 
-  if (paymentPaid || caseStatus === "analysis" || caseStatus === "active") {
+  if (paymentPaid && !hasLinkedCase) {
+    return "Case availability issue";
+  }
+
+  if (hasLinkedCase || caseStatus === "analysis" || caseStatus === "active") {
     return "Open active case";
   }
 
@@ -163,6 +169,7 @@ function getNextActionText({
   paymentPending,
   paymentPaid,
   hasActionableOffer,
+  hasLinkedCase,
 }: {
   screeningStatus: string | null | undefined;
   caseStatus: string | null | undefined;
@@ -170,6 +177,7 @@ function getNextActionText({
   paymentPending: boolean;
   paymentPaid: boolean;
   hasActionableOffer: boolean;
+  hasLinkedCase: boolean;
 }) {
   if (paymentPending) {
     return "Your offer has already been accepted. Open the payment status page to track confirmation before the case is opened.";
@@ -179,7 +187,11 @@ function getNextActionText({
     return "You have a client offer ready for review.";
   }
 
-  if (paymentPaid || caseStatus === "analysis" || caseStatus === "active") {
+  if (paymentPaid && !hasLinkedCase) {
+    return "Your payment has been confirmed, but the linked case is not yet available. Please contact the administrator.";
+  }
+
+  if (hasLinkedCase || caseStatus === "analysis" || caseStatus === "active") {
     return "Your engagement is still active. Continue from the case workspace.";
   }
 
@@ -276,7 +288,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     offerIds.length > 0
       ? await supabase
           .from("orders")
-          .select("offer_id, payment_status")
+          .select("id, offer_id, payment_status")
           .in("offer_id", offerIds)
       : { data: [], error: null as null | Error };
 
@@ -290,7 +302,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
   const { data: cases, error: casesError } = await supabase
     .from("cases")
-    .select("id, title, status, created_at, screening_request_id")
+    .select("id, title, status, created_at, screening_request_id, order_id")
     .eq("client_id", user.id)
     .order("created_at", { ascending: false });
 
@@ -305,7 +317,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
             id,
             title,
             summary,
-            file_url,
+            storage_path,
             published,
             created_at,
             published_at,
@@ -353,12 +365,19 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
   const latestOrder = latestOffer ? ordersByOfferId.get(latestOffer.id) : null;
 
+  const linkedCaseForLatestOrder =
+    latestOrder && cases
+      ? (cases.find((item) => item.order_id === latestOrder.id) ?? null)
+      : null;
+
   const hasActionableOffer =
     latestOffer?.status === "sent" || latestOffer?.status === "accepted";
 
   const paymentPending = latestOrder?.payment_status === "pending";
 
   const paymentPaid = latestOrder?.payment_status === "paid";
+
+  const hasLinkedCase = !!linkedCaseForLatestOrder;
 
   const recentScreenings = (screeningRequests ?? []).slice(0, 5);
   const recentCases = (cases ?? []).slice(0, 4);
@@ -443,6 +462,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                       paymentPending,
                       paymentPaid,
                       hasActionableOffer,
+                      hasLinkedCase,
                     })}
                   </h2>
 
@@ -454,6 +474,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                       paymentPending,
                       paymentPaid,
                       hasActionableOffer,
+                      hasLinkedCase,
                     })}
                   </p>
                 </div>
@@ -473,8 +494,18 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                     >
                       View Offer
                     </Link>
-                  ) : paymentPaid ||
-                    latestCaseStatus === "analysis" ||
+                  ) : hasLinkedCase ? (
+                    <Link
+                      href={`/dashboard/cases/${linkedCaseForLatestOrder?.id}`}
+                      className="inline-flex items-center whitespace-nowrap border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
+                    >
+                      Open Case
+                    </Link>
+                  ) : paymentPaid ? (
+                    <span className="inline-flex items-center whitespace-nowrap border border-[#dcc79e] bg-[#fff8ea] px-5 py-2.5 text-sm text-[#9a6a16]">
+                      Case unavailable
+                    </span>
+                  ) : latestCaseStatus === "analysis" ||
                     latestCaseStatus === "active" ? (
                     <Link
                       href="/dashboard/cases"
@@ -694,16 +725,20 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                     Open Reports
                   </Link>
 
-                  {latestReport.file_url ? (
+                  {latestReport.storage_path ? (
                     <a
-                      href={latestReport.file_url}
+                      href={`/api/reports/${latestReport.id}/download`}
                       target="_blank"
                       rel="noreferrer"
                       className="inline-flex items-center whitespace-nowrap border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
                     >
                       Open Report
                     </a>
-                  ) : null}
+                  ) : (
+                    <span className="inline-flex items-center whitespace-nowrap border border-[#dcc79e] bg-[#fff8ea] px-5 py-2.5 text-sm text-[#9a6a16]">
+                      Report file unavailable
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
