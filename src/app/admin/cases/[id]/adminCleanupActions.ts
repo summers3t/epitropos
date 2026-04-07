@@ -91,7 +91,7 @@ export async function deleteCaseAdmin(caseId: string) {
 
   const { data: caseRow, error: caseError } = await supabase
     .from("cases")
-    .select("id, order_id")
+    .select("id, order_id, status")
     .eq("id", caseId)
     .maybeSingle();
 
@@ -101,6 +101,33 @@ export async function deleteCaseAdmin(caseId: string) {
 
   if (!caseRow) {
     redirect("/admin/cases");
+  }
+
+  const { data: reports, error: reportsError } = await supabase
+    .from("reports")
+    .select("id, published")
+    .eq("case_id", caseId);
+
+  if (reportsError) {
+    throw new Error(reportsError.message);
+  }
+
+  const hasPublishedReports = (reports ?? []).some((report) => report.published);
+
+  if (caseRow.status === "delivered" || caseRow.status === "closed") {
+    redirect(
+      `/admin/orders/${caseRow.order_id}?caseError=${encodeURIComponent(
+        "Delivered or closed cases cannot be deleted from the standard cleanup action.",
+      )}`,
+    );
+  }
+
+  if (hasPublishedReports) {
+    redirect(
+      `/admin/orders/${caseRow.order_id}?caseError=${encodeURIComponent(
+        "Cases with published reports cannot be deleted from the standard cleanup action. Unpublish the reports first.",
+      )}`,
+    );
   }
 
   await deleteReportFilesByCaseId(supabase, caseId);

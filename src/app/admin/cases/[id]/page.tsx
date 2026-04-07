@@ -688,10 +688,10 @@ export default async function AdminCaseDetailPage({
 
             <form action={deleteCaseAdmin.bind(null, caseItem.id)}>
               <ConfirmSubmitButton
-                confirmMessage="Delete this case? This will remove the case, all linked property evaluations, and all reports. If the case already has a paid order or published report, use this only for controlled cleanup/testing."
+                confirmMessage="Delete this case workspace? This removes the delivery layer only: case, property evaluations, reports, and report files. The order and payment chain will remain intact. Delivered/closed cases or cases with published reports are not allowed through this standard cleanup action."
                 className="rounded-md border border-red-400/30 px-3 py-1 text-xs text-red-200 hover:bg-red-500/10"
               >
-                Delete Case
+                Delete Case Workspace
               </ConfirmSubmitButton>
             </form>
           </div>
