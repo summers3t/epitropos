@@ -37,6 +37,13 @@ function formatDecisionStatusLabel(status: string | null | undefined) {
   return labels[status] ?? null;
 }
 
+function formatPlanLabel(planType: string | null | undefined) {
+  if (!planType) return "—";
+  if (planType === "core") return "Core Analysis";
+  if (planType === "strategic") return "Strategic Analysis";
+  return planType;
+}
+
 function getCaseStageSummary(status: string | null | undefined) {
   switch (status) {
     case "active":
@@ -52,16 +59,40 @@ function getCaseStageSummary(status: string | null | undefined) {
   }
 }
 
-function getCaseNextStep(status: string | null | undefined) {
+function getCaseNextStep({
+  status,
+  hasPublishedReport,
+  hasDownloadableReport,
+}: {
+  status: string | null | undefined;
+  hasPublishedReport: boolean;
+  hasDownloadableReport: boolean;
+}) {
   switch (status) {
     case "active":
       return "No action is required from you at this stage. We are preparing the review scope and materials.";
     case "analysis":
       return "We are completing the analysis. Please monitor this page for the final report and case conclusion.";
     case "delivered":
-      return "Open the published report below and review the final conclusion for this case.";
+      if (hasDownloadableReport) {
+        return "Open the published report below and review the final conclusion for this case.";
+      }
+
+      if (hasPublishedReport) {
+        return "A report has been published for this case, but the attached file is currently unavailable. Please contact the administrator.";
+      }
+
+      return "This case is marked as delivered, but no published report is currently available. Please contact the administrator.";
     case "closed":
-      return "This case is complete. Refer to your report and case conclusion if you need to revisit the outcome.";
+      if (hasDownloadableReport) {
+        return "This case is complete. Refer to the published report and case conclusion if you need to revisit the outcome.";
+      }
+
+      if (hasPublishedReport) {
+        return "This case is complete, but the attached report file is currently unavailable. Please contact the administrator.";
+      }
+
+      return "This case is complete. Refer to the recorded conclusion if you need to revisit the outcome.";
     default:
       return "Please monitor this page for updates.";
   }
@@ -210,6 +241,13 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
     throw new Error(reportsError.message);
   }
 
+  const hasPublishedReport = (reports?.length ?? 0) > 0;
+  const hasDownloadableReport = (reports ?? []).some(
+    (report) =>
+      typeof report.storage_path === "string" &&
+      report.storage_path.trim().length > 0,
+  );
+
   return (
     <ClientPortalShell
       eyebrow="Client Portal"
@@ -326,7 +364,7 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                 {getSelectedServiceLabel()}
               </dt>
               <dd className="mt-1 text-[13px] leading-6 text-[#6b7280]">
-                {screening?.plan_interest || "—"}
+                {formatPlanLabel(screening?.plan_interest)}
               </dd>
             </div>
 
@@ -362,7 +400,11 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                 Next step
               </dt>
               <dd className="mt-1 text-[13px] leading-6 text-[#6b7280]">
-                {getCaseNextStep(caseItem.status)}
+                {getCaseNextStep({
+                  status: caseItem.status,
+                  hasPublishedReport,
+                  hasDownloadableReport,
+                })}
               </dd>
               <div className="mt-2 text-[11px] leading-5 text-[#9a8660]">
                 This guidance reflects the current stage of the case and will
@@ -416,8 +458,8 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
                         Open Report
                       </a>
                     ) : (
-                      <span className="rounded-xl border border-[#dcc79e]/70 px-4 py-2 text-xs text-[#9a8660]">
-                        Report pending
+                      <span className="rounded-xl border border-[#dcc79e] bg-[#fff8ea] px-4 py-2 text-xs text-[#9a6a16]">
+                        Report file unavailable
                       </span>
                     )}
                   </div>
@@ -425,9 +467,9 @@ export default async function DashboardCaseDetailPage({ params }: PageProps) {
               ))
             ) : (
               <div className="rounded-2xl border border-[#eadfca] bg-white/70 p-4 text-[13px] leading-6 text-[#6b7280]">
-                No published report is available yet. This usually means the
-                analysis is still in progress or the final report has not been
-                delivered to the client portal yet.
+                {caseItem.status === "delivered" || caseItem.status === "closed"
+                  ? "No published report is currently available for this case. Please contact the administrator if you expected a delivered report."
+                  : "No published report is available yet. This usually means the analysis is still in progress or the final report has not been delivered to the client portal yet."}
               </div>
             )}
           </div>
