@@ -91,7 +91,20 @@ export async function deleteCaseAdmin(caseId: string) {
 
   const { data: caseRow, error: caseError } = await supabase
     .from("cases")
-    .select("id, order_id, status")
+    .select(
+      `
+      id,
+      order_id,
+      client_id,
+      screening_request_id,
+      title,
+      status,
+      decision_status,
+      recommended_property_id,
+      decision_summary,
+      decision_updated_at
+      `,
+    )
     .eq("id", caseId)
     .maybeSingle();
 
@@ -130,6 +143,31 @@ export async function deleteCaseAdmin(caseId: string) {
     );
   }
 
+  const deletedCaseSnapshot = {
+    id: caseRow.id,
+    client_id: caseRow.client_id,
+    screening_request_id: caseRow.screening_request_id,
+    title: caseRow.title,
+    status: caseRow.status,
+    decision_status: caseRow.decision_status,
+    recommended_property_id: caseRow.recommended_property_id,
+    decision_summary: caseRow.decision_summary,
+    decision_updated_at: caseRow.decision_updated_at,
+  };
+
+  const { error: snapshotError } = await supabase
+    .from("orders")
+    .update({
+      deleted_case_snapshot: deletedCaseSnapshot,
+      deleted_case_deleted_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", caseRow.order_id);
+
+  if (snapshotError) {
+    throw new Error(snapshotError.message);
+  }
+
   await deleteReportFilesByCaseId(supabase, caseId);
 
   const { error: deleteReportsError } = await supabase
@@ -161,7 +199,7 @@ export async function deleteCaseAdmin(caseId: string) {
 
   redirect(
     `/admin/orders/${caseRow.order_id}?caseNotice=${encodeURIComponent(
-      "Case workspace deleted. The paid order remains intact and you can recreate a replacement case from this order.",
+      "Case workspace deleted. The paid order remains intact and you can recreate the case with its last saved state from this order.",
     )}`,
   );
 }

@@ -26,7 +26,9 @@ export async function recreateCaseFromOrder(orderId: string) {
 
   const { data: order, error: orderError } = await supabase
     .from("orders")
-    .select("id, user_id, offer_id, payment_status")
+    .select(
+      "id, user_id, offer_id, payment_status, deleted_case_snapshot, deleted_case_deleted_at",
+    )
     .eq("id", orderId)
     .maybeSingle();
 
@@ -94,10 +96,50 @@ export async function recreateCaseFromOrder(orderId: string) {
     throw new Error(screeningError.message);
   }
 
-  const caseTitle =
+  const deletedCaseSnapshot =
+    order.deleted_case_snapshot &&
+    typeof order.deleted_case_snapshot === "object"
+      ? order.deleted_case_snapshot
+      : null;
+
+  const fallbackCaseTitle =
     screening?.name && screening.name.trim().length > 0
       ? `Case for ${screening.name.trim()}`
       : `Case for client ${order.user_id}`;
+
+  const restoredTitle =
+    typeof deletedCaseSnapshot?.title === "string" &&
+    deletedCaseSnapshot.title.trim().length > 0
+      ? deletedCaseSnapshot.title.trim()
+      : fallbackCaseTitle;
+
+  const restoredStatus =
+    deletedCaseSnapshot?.status === "active" ||
+    deletedCaseSnapshot?.status === "analysis" ||
+    deletedCaseSnapshot?.status === "delivered" ||
+    deletedCaseSnapshot?.status === "closed"
+      ? deletedCaseSnapshot.status
+      : "active";
+
+  const restoredDecisionStatus =
+    deletedCaseSnapshot?.decision_status === "pending" ||
+    deletedCaseSnapshot?.decision_status === "watchlist" ||
+    deletedCaseSnapshot?.decision_status === "recommended" ||
+    deletedCaseSnapshot?.decision_status === "rejected_all"
+      ? deletedCaseSnapshot.decision_status
+      : null;
+
+  const restoredDecisionSummary =
+    typeof deletedCaseSnapshot?.decision_summary === "string" &&
+    deletedCaseSnapshot.decision_summary.trim().length > 0
+      ? deletedCaseSnapshot.decision_summary
+      : null;
+
+  const restoredDecisionUpdatedAt =
+    typeof deletedCaseSnapshot?.decision_updated_at === "string" &&
+    deletedCaseSnapshot.decision_updated_at.trim().length > 0
+      ? deletedCaseSnapshot.decision_updated_at
+      : null;
 
   const { data: insertedCase, error: insertCaseError } = await supabase
     .from("cases")
@@ -105,8 +147,12 @@ export async function recreateCaseFromOrder(orderId: string) {
       client_id: order.user_id,
       order_id: order.id,
       screening_request_id: offer.screening_request_id,
-      title: caseTitle,
-      status: "active",
+      title: restoredTitle,
+      status: restoredStatus,
+      decision_status: restoredDecisionStatus,
+      decision_summary: restoredDecisionSummary,
+      decision_updated_at: restoredDecisionUpdatedAt,
+      recommended_property_id: null,
     })
     .select("id")
     .maybeSingle();
@@ -119,9 +165,24 @@ export async function recreateCaseFromOrder(orderId: string) {
     throw new Error("Replacement case could not be created.");
   }
 
+  const { error: clearSnapshotError } = await supabase
+    .from("orders")
+    .update({
+      deleted_case_snapshot: null,
+      deleted_case_deleted_at: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", order.id);
+
+  if (clearSnapshotError) {
+    throw new Error(clearSnapshotError.message);
+  }
+
   redirect(
     `/admin/orders/${orderId}?caseNotice=${encodeURIComponent(
-      "Replacement case created successfully.",
+      deletedCaseSnapshot
+        ? "Replacement case restored with its last saved state."
+        : "Replacement case created successfully.",
     )}`,
   );
 }

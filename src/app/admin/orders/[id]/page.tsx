@@ -316,7 +316,9 @@ export default async function AdminOrderDetailPage({
                   <div className="rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
                     Payment is marked as confirmed, but no linked case exists
                     for this order. You can recreate a replacement case without
-                    changing the screening, offer, or payment chain.
+                    changing the screening, offer, or payment chain. If a
+                    deleted case snapshot exists, the last saved case status and
+                    conclusion will be restored.
                   </div>
 
                   <form action={recreateCaseFromOrder.bind(null, order.id)}>
