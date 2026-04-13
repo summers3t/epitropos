@@ -158,40 +158,70 @@ export default async function DashboardAnalysisDetailPage({
                         Journey Overview
                     </p>
 
-                    <div className="mt-6 overflow-x-auto pb-2">
-                        <div className="flex min-w-max items-center gap-3">
+                    <div className="mt-6 rounded-[24px] border border-white/8 bg-black/10 p-5 backdrop-blur-xl">
+                        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-8">
                             {roadmap.map((step, index) => {
                                 const isCurrent = step.state === "current";
                                 const isComplete = step.state === "complete";
+                                const isUpcoming = step.state === "upcoming";
 
                                 return (
                                     <div
                                         key={`${step.label}-${index}`}
-                                        className="flex items-center gap-3"
+                                        className={`group relative rounded-[20px] border px-4 py-4 transition duration-500 ${isCurrent
+                                            ? "border-[#a68b4a]/40 bg-[rgba(166,139,74,0.12)] shadow-[0_18px_40px_rgba(0,0,0,0.22)]"
+                                            : isComplete
+                                                ? "border-white/12 bg-white/[0.06] hover:bg-white/[0.08]"
+                                                : "border-white/8 bg-white/[0.03] hover:bg-white/[0.05]"
+                                            }`}
                                     >
-                                        <div
-                                            className={`relative flex h-[96px] w-[168px] shrink-0 flex-col justify-center rounded-[22px] border px-4 transition duration-300 ${isCurrent
-                                                ? "border-[#a68b4a]/45 bg-[rgba(166,139,74,0.14)] shadow-[0_18px_40px_rgba(0,0,0,0.24)] backdrop-blur-xl"
-                                                : isComplete
-                                                    ? "border-white/12 bg-white/[0.07] shadow-[0_10px_24px_rgba(0,0,0,0.14)]"
-                                                    : "border-white/8 bg-black/10"
-                                                }`}
-                                        >
-                                            <span className="text-[10px] uppercase tracking-[0.18em] text-white/35">
+                                        <div className="flex items-center gap-3">
+                                            <span
+                                                className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-[11px] font-medium tracking-[0.08em] transition duration-500 ${isCurrent
+                                                    ? "animate-roadmapPulse border-[#a68b4a]/60 bg-[#a68b4a]/18 text-[#e7d4a8]"
+                                                    : isComplete
+                                                        ? "border-white/18 bg-white/[0.08] text-white/88"
+                                                        : "border-white/10 bg-black/20 text-white/55"
+                                                    }`}
+                                            >
                                                 {index + 1}
                                             </span>
 
-                                            <span className="mt-2 text-sm leading-6 text-white/82">
-                                                {step.label}
-                                            </span>
+                                            <div className="min-w-0">
+                                                <div className="text-[10px] uppercase tracking-[0.16em] text-white/38">
+                                                    {isCurrent
+                                                        ? "Current stage"
+                                                        : isComplete
+                                                            ? "Completed"
+                                                            : "Upcoming"}
+                                                </div>
 
-                                            {isCurrent ? (
-                                                <span className="absolute right-3 top-3 h-2.5 w-2.5 rounded-full bg-[#a68b4a] shadow-[0_0_14px_rgba(166,139,74,0.55)]" />
-                                            ) : null}
+                                                <div
+                                                    className={`mt-1 text-sm leading-6 transition duration-500 ${isCurrent
+                                                        ? "text-white"
+                                                        : isUpcoming
+                                                            ? "text-white/62"
+                                                            : "text-white/78"
+                                                        }`}
+                                                >
+                                                    {step.label}
+                                                </div>
+                                            </div>
                                         </div>
 
-                                        {index < roadmap.length - 1 ? (
-                                            <div className="h-px w-10 shrink-0 bg-white/12" />
+                                        <div className="mt-4 h-[2px] overflow-hidden rounded-full bg-white/8">
+                                            <div
+                                                className={`h-full rounded-full transition-all duration-700 ${isCurrent
+                                                    ? "w-[72%] bg-[#a68b4a]"
+                                                    : isComplete
+                                                        ? "w-full bg-white/55"
+                                                        : "w-[26%] bg-white/12"
+                                                    }`}
+                                            />
+                                        </div>
+
+                                        {isCurrent ? (
+                                            <div className="pointer-events-none absolute inset-0 rounded-[20px] ring-1 ring-[#a68b4a]/28" />
                                         ) : null}
                                     </div>
                                 );

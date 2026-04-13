@@ -1,10 +1,11 @@
 @import "tailwindcss";
 
-@theme {
+:root {
   --color-navy: #0f1c2e;
   --color-charcoal: #2b2f33;
   --color-stone: #d6cfc4;
   --color-gold: #a68b4a;
+  --header-h: 61px;
 }
 
 /* Base page styling (your current file sets white/black and overrides look) */
@@ -62,6 +63,18 @@ h4 {
   }
 }
 
+@keyframes roadmapPulse {
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(166, 139, 74, 0.0);
+  }
+
+  50% {
+    box-shadow: 0 0 0 10px rgba(166, 139, 74, 0.08);
+  }
+}
+
 .animate-fadeIn {
   animation: fadeIn 1s ease-out forwards;
 }
@@ -76,6 +89,10 @@ h4 {
 
 .delay-300 {
   animation-delay: 0.3s;
+}
+
+.animate-roadmapPulse {
+  animation: roadmapPulse 2.8s ease-in-out infinite;
 }
 
 /* Subtle scrollbar */
@@ -97,15 +114,11 @@ h4 {
 }
 
 /* Dashboard app frame */
-:root {
-  --header-h: 61px;
-}
-
 .dashboard-frame {
   position: relative;
   min-height: calc(100dvh - var(--header-h));
   overflow: visible;
-  z-index: 50;
+  z-index: 0;
 }
 
 body:has(.dashboard-frame) footer {
