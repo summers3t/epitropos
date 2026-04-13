@@ -158,23 +158,45 @@ export default async function DashboardAnalysisDetailPage({
                         Journey Overview
                     </p>
 
-                    <div className="mt-6 grid gap-4 md:grid-cols-4 xl:grid-cols-8">
-                        {roadmap.map((step, index) => (
-                            <div
-                                key={`${step.label}-${index}`}
-                                className={`rounded-[20px] border p-4 transition duration-300 ${step.state === "complete"
-                                        ? "border-white/12 bg-white/[0.06]"
-                                        : step.state === "current"
-                                            ? "border-[#a68b4a]/35 bg-[#a68b4a]/10 shadow-[0_10px_30px_rgba(0,0,0,0.18)]"
-                                            : "border-white/8 bg-black/10"
-                                    }`}
-                            >
-                                <div className="text-[10px] uppercase tracking-[0.18em] text-white/38">
-                                    {index + 1}
-                                </div>
-                                <div className="mt-3 text-sm text-white/82">{step.label}</div>
-                            </div>
-                        ))}
+                    <div className="mt-6 overflow-x-auto pb-2">
+                        <div className="flex min-w-max items-center gap-3">
+                            {roadmap.map((step, index) => {
+                                const isCurrent = step.state === "current";
+                                const isComplete = step.state === "complete";
+
+                                return (
+                                    <div
+                                        key={`${step.label}-${index}`}
+                                        className="flex items-center gap-3"
+                                    >
+                                        <div
+                                            className={`relative flex h-[96px] w-[168px] shrink-0 flex-col justify-center rounded-[22px] border px-4 transition duration-300 ${isCurrent
+                                                ? "border-[#a68b4a]/45 bg-[rgba(166,139,74,0.14)] shadow-[0_18px_40px_rgba(0,0,0,0.24)] backdrop-blur-xl"
+                                                : isComplete
+                                                    ? "border-white/12 bg-white/[0.07] shadow-[0_10px_24px_rgba(0,0,0,0.14)]"
+                                                    : "border-white/8 bg-black/10"
+                                                }`}
+                                        >
+                                            <span className="text-[10px] uppercase tracking-[0.18em] text-white/35">
+                                                {index + 1}
+                                            </span>
+
+                                            <span className="mt-2 text-sm leading-6 text-white/82">
+                                                {step.label}
+                                            </span>
+
+                                            {isCurrent ? (
+                                                <span className="absolute right-3 top-3 h-2.5 w-2.5 rounded-full bg-[#a68b4a] shadow-[0_0_14px_rgba(166,139,74,0.55)]" />
+                                            ) : null}
+                                        </div>
+
+                                        {index < roadmap.length - 1 ? (
+                                            <div className="h-px w-10 shrink-0 bg-white/12" />
+                                        ) : null}
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
                 </section>
 

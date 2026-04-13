@@ -387,7 +387,8 @@ export async function getClientAnalyses(
             return new Date(b.sortDate).getTime() - new Date(a.sortDate).getTime();
         })
         .map((item) => {
-            const { _priority, ...rest } = item;
+            const rest = { ...item };
+            delete (rest as typeof item)._priority;
             return rest;
         });
 }

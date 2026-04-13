@@ -102,12 +102,9 @@ h4 {
 }
 
 .dashboard-frame {
-  position: fixed;
-  top: var(--header-h);
-  left: 0;
-  right: 0;
-  bottom: 0;
-  overflow: hidden;
+  position: relative;
+  min-height: calc(100dvh - var(--header-h));
+  overflow: visible;
   z-index: 50;
 }
 
