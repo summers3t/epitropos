@@ -4,6 +4,7 @@ type ServerSupabaseClient = Awaited<ReturnType<typeof createClient>>;
 
 export type ClientPortalCounts = {
   screenings: number;
+  analyses: number;
   cases: number;
   reports: number;
 };
@@ -36,6 +37,7 @@ export async function getClientPortalCounts(
   if (caseIds.length === 0) {
     return {
       screenings: screeningsCount ?? 0,
+      analyses: screeningsCount ?? 0,
       cases: 0,
       reports: 0,
     };
@@ -53,6 +55,7 @@ export async function getClientPortalCounts(
 
   return {
     screenings: screeningsCount ?? 0,
+    analyses: screeningsCount ?? 0,
     cases: caseRows?.length ?? 0,
     reports: reportsCount ?? 0,
   };
