@@ -386,5 +386,8 @@ export async function getClientAnalyses(
 
             return new Date(b.sortDate).getTime() - new Date(a.sortDate).getTime();
         })
-        .map(({ _priority, ...item }) => item);
+        .map((item) => {
+            const { _priority, ...rest } = item;
+            return rest;
+        });
 }

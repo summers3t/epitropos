@@ -52,7 +52,7 @@ export default function ClientPortalShell({
   return (
     <div className="min-h-screen bg-[#08111d] text-[#e8ecef]">
       <div className="mx-auto w-full max-w-[1440px] px-4 py-6 md:px-6 md:py-8">
-        <div className="overflow-hidden rounded-[32px] border border-white/10 bg-[rgba(10,18,30,0.58)] shadow-[0_25px_80px_rgba(0,0,0,0.35)] backdrop-blur-2xl">
+        <div className="rounded-[32px] border border-white/10 bg-[rgba(10,18,30,0.58)] shadow-[0_25px_80px_rgba(0,0,0,0.35)] backdrop-blur-2xl">
           <div className="border-b border-white/10 px-5 py-4 md:px-8 md:py-5">
             <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
               <div className="space-y-2">
