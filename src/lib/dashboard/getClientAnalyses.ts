@@ -33,6 +33,10 @@ export type ClientAnalysisSummary = {
     sortDate: string;
 };
 
+type SortableClientAnalysisSummary = ClientAnalysisSummary & {
+    priority: number;
+};
+
 function formatPlanLabel(planType: string | null | undefined) {
     if (planType === "core") return "Core Analysis";
     if (planType === "strategic") return "Strategic Analysis";
@@ -205,6 +209,30 @@ function getAnalysisStage(input: {
     };
 }
 
+function toClientAnalysisSummary(
+    item: SortableClientAnalysisSummary,
+): ClientAnalysisSummary {
+    return {
+        id: item.id,
+        title: item.title,
+        href: item.href,
+        planLabel: item.planLabel,
+        stage: item.stage,
+        stageLabel: item.stageLabel,
+        progressLine: item.progressLine,
+        contextLine: item.contextLine,
+        attentionLine: item.attentionLine,
+        nextLine: item.nextLine,
+        hasAction: item.hasAction,
+        reportId: item.reportId,
+        reportTitle: item.reportTitle,
+        reportSummary: item.reportSummary,
+        decisionLabel: item.decisionLabel,
+        decisionSummary: item.decisionSummary,
+        sortDate: item.sortDate,
+    };
+}
+
 export async function getClientAnalyses(
     supabase: ServerSupabaseClient,
     userId: string,
@@ -323,71 +351,72 @@ export async function getClientAnalyses(
         }
     }
 
-    const analyses = (screenings ?? []).map((screening) => {
-        const offer = latestOfferByScreening.get(screening.id) ?? null;
-        const order = offer ? orderByOfferId.get(offer.id) ?? null : null;
-        const caseRow =
-            caseByScreeningId.get(screening.id) ??
-            (order ? caseByOrderId.get(order.id) ?? null : null);
-        const report = caseRow ? latestReportByCaseId.get(caseRow.id) ?? null : null;
+    const analyses: SortableClientAnalysisSummary[] = (screenings ?? []).map(
+        (screening) => {
+            const offer = latestOfferByScreening.get(screening.id) ?? null;
+            const order = offer ? orderByOfferId.get(offer.id) ?? null : null;
+            const caseRow =
+                caseByScreeningId.get(screening.id) ??
+                (order ? caseByOrderId.get(order.id) ?? null : null);
+            const report = caseRow
+                ? latestReportByCaseId.get(caseRow.id) ?? null
+                : null;
 
-        const stageInfo = getAnalysisStage({
-            screeningStatus: screening.status,
-            offerStatus: offer?.status,
-            paymentStatus: order?.payment_status,
-            caseStatus: caseRow?.status,
-            hasPublishedReport: !!report,
-        });
+            const stageInfo = getAnalysisStage({
+                screeningStatus: screening.status,
+                offerStatus: offer?.status,
+                paymentStatus: order?.payment_status,
+                caseStatus: caseRow?.status,
+                hasPublishedReport: !!report,
+            });
 
-        const title = getAnalysisTitle({
-            screeningName: screening.name,
-            caseTitle: caseRow?.title,
-        });
+            const title = getAnalysisTitle({
+                screeningName: screening.name,
+                caseTitle: caseRow?.title,
+            });
 
-        const planLabel = formatPlanLabel(
-            offer?.plan_type ?? screening.plan_interest,
-        );
+            const planLabel = formatPlanLabel(
+                offer?.plan_type ?? screening.plan_interest,
+            );
 
-        const sortDate =
-            report?.published_at ||
-            caseRow?.updated_at ||
-            order?.updated_at ||
-            offer?.created_at ||
-            screening.updated_at ||
-            screening.created_at;
+            const sortDate =
+                report?.published_at ||
+                caseRow?.updated_at ||
+                order?.updated_at ||
+                offer?.created_at ||
+                screening.updated_at ||
+                screening.created_at;
 
-        return {
-            id: screening.id,
-            title,
-            href: `/dashboard/analyses/${screening.id}`,
-            planLabel,
-            stage: stageInfo.stage,
-            stageLabel: stageInfo.stageLabel,
-            progressLine: stageInfo.progressLine,
-            contextLine: stageInfo.contextLine,
-            attentionLine: stageInfo.attentionLine,
-            nextLine: stageInfo.nextLine,
-            hasAction: stageInfo.hasAction,
-            reportId: report?.id ?? null,
-            reportTitle: report?.title ?? null,
-            reportSummary: report?.summary ?? null,
-            decisionLabel: getDecisionLabel(caseRow?.decision_status),
-            decisionSummary: caseRow?.decision_summary ?? null,
-            sortDate,
-            _priority: stageInfo.priority,
-        };
-    });
+            return {
+                id: screening.id,
+                title,
+                href: `/dashboard/analyses/${screening.id}`,
+                planLabel,
+                stage: stageInfo.stage,
+                stageLabel: stageInfo.stageLabel,
+                progressLine: stageInfo.progressLine,
+                contextLine: stageInfo.contextLine,
+                attentionLine: stageInfo.attentionLine,
+                nextLine: stageInfo.nextLine,
+                hasAction: stageInfo.hasAction,
+                reportId: report?.id ?? null,
+                reportTitle: report?.title ?? null,
+                reportSummary: report?.summary ?? null,
+                decisionLabel: getDecisionLabel(caseRow?.decision_status),
+                decisionSummary: caseRow?.decision_summary ?? null,
+                sortDate,
+                priority: stageInfo.priority,
+            };
+        },
+    );
 
     return analyses
         .sort((a, b) => {
-            if (a._priority !== b._priority) {
-                return a._priority - b._priority;
+            if (a.priority !== b.priority) {
+                return a.priority - b.priority;
             }
 
             return new Date(b.sortDate).getTime() - new Date(a.sortDate).getTime();
         })
-        .map((item) => {
-            const { _priority: __unused, ...rest } = item;
-            return rest;
-        });
+        .map(toClientAnalysisSummary);
 }
