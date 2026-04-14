@@ -62,7 +62,7 @@ export default async function DashboardPage({
 
                 <Link
                   href={primaryAnalysis.href}
-                  className="client-interactive client-focus-ring group block rounded-[30px] border border-[#d7bc86]/70 bg-[rgba(255,255,255,0.88)] p-7 shadow-[0_22px_48px_rgba(166,139,74,0.18)] backdrop-blur-xl transition-all duration-500 hover:-translate-y-2 hover:border-[#081426]/18 hover:bg-[rgba(255,255,255,0.96)] hover:shadow-[0_32px_62px_rgba(15,28,46,0.16)] active:translate-y-0 active:bg-[rgba(248,242,233,0.97)]"
+                  className="client-interactive client-focus-ring group block rounded-[30px] border border-[#d7bc86]/70 bg-[rgba(255,255,255,0.88)] p-7 shadow-[0_22px_48px_rgba(166,139,74,0.18)] backdrop-blur-xl transition-all duration-500 hover:-translate-y-[4px] hover:border-[#081426]/18 hover:bg-[rgba(255,255,255,0.96)] hover:shadow-[0_28px_54px_rgba(15,28,46,0.13)] active:translate-y-0 active:bg-[rgba(248,242,233,0.97)]"
                 >
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="rounded-full border border-[#d1bc96] bg-[#f3e7d0] px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[#8d6f3f]">
@@ -86,7 +86,7 @@ export default async function DashboardPage({
                 </Link>
               </div>
 
-              <div className="space-y-4 xl:pt-1">
+              <div className="space-y-4 xl:pt-[46px]">
                 <div className="flex justify-end">
                   <div className="inline-flex flex-wrap items-center gap-2 rounded-full border border-[#d7c6ab]/72 bg-[rgba(255,255,255,0.52)] p-1.5 shadow-[0_18px_36px_rgba(79,57,24,0.08)] backdrop-blur-xl">
                     <Link
@@ -110,9 +110,10 @@ export default async function DashboardPage({
                   </div>
                 </div>
 
-                <div className="relative xl:pt-7">
-                  <div className="absolute left-[5%] right-[5%] top-[54px] hidden h-[6px] rounded-full bg-[linear-gradient(90deg,rgba(201,177,139,0.95),rgba(226,214,190,0.76),rgba(201,177,139,0.95))] shadow-[0_0_18px_rgba(201,177,139,0.24)] xl:block" />
-                  <div className="absolute left-[5%] right-[5%] top-[54px] hidden h-[2px] bg-white/58 xl:block" />
+                <div className="relative xl:pt-2">
+                  <div className="absolute left-[6%] right-[6%] top-[66px] hidden h-[10px] rounded-full bg-[linear-gradient(90deg,rgba(201,177,139,0.26),rgba(226,214,190,0.18),rgba(201,177,139,0.26))] blur-[1px] xl:block" />
+                  <div className="absolute left-[6%] right-[6%] top-[66px] hidden h-[4px] rounded-full bg-[linear-gradient(90deg,rgba(201,177,139,0.98),rgba(231,220,198,0.82),rgba(201,177,139,0.98))] shadow-[0_0_18px_rgba(201,177,139,0.22)] xl:block" />
+                  <div className="absolute left-[6%] right-[6%] top-[67px] hidden h-[1px] bg-white/64 xl:block" />
 
                   <div className="grid gap-4 xl:grid-cols-3 xl:gap-5">
                     {[
@@ -130,9 +131,9 @@ export default async function DashboardPage({
                       },
                     ].map((pod) => (
                       <div key={pod.label} className="relative flex flex-col items-center">
-                        <div className="absolute top-[42px] z-[3] hidden h-7 w-7 rounded-full border border-[#d7bc86] bg-[linear-gradient(180deg,#e2cb97,#caa561)] shadow-[0_0_22px_rgba(201,177,139,0.42)] xl:block" />
+                        <div className="absolute top-[54px] z-[3] hidden h-6 w-6 rounded-full border border-[#d7bc86] bg-[linear-gradient(180deg,#e2cb97,#caa561)] shadow-[0_0_20px_rgba(201,177,139,0.38)] xl:block" />
 
-                        <div className="client-interactive group relative w-full rounded-[24px] border border-white/78 bg-white/66 p-5 shadow-[0_14px_34px_rgba(79,57,24,0.05)] backdrop-blur-xl transition-all duration-500 hover:-translate-y-2.5 hover:border-[#d7bc86]/74 hover:bg-white/84 hover:shadow-[0_30px_58px_rgba(79,57,24,0.16)] xl:pt-12">
+                        <div className="client-interactive group relative w-full rounded-[24px] border border-white/78 bg-white/66 p-5 shadow-[0_14px_34px_rgba(79,57,24,0.05)] backdrop-blur-xl transition-all duration-500 hover:-translate-y-[4px] hover:border-[#d7bc86]/74 hover:bg-white/80 hover:shadow-[0_22px_42px_rgba(79,57,24,0.11)] xl:pt-12">
                           <div className="absolute inset-0 rounded-[24px] bg-gradient-to-tr from-white/0 via-white/20 to-white/0 opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
                           <p className="relative text-[10px] uppercase tracking-[0.22em] text-[#8f7443]">
                             {pod.label}
@@ -170,7 +171,7 @@ export default async function DashboardPage({
                   {secondaryAnalyses.map((analysis) => (
                     <article
                       key={analysis.id}
-                      className="client-interactive group rounded-[24px] border border-white/72 bg-white/52 p-5 shadow-[0_14px_30px_rgba(79,57,24,0.05)] backdrop-blur-lg transition-all duration-500 hover:-translate-y-2.5 hover:border-[#d0bea3] hover:bg-white/78 hover:shadow-[0_34px_62px_rgba(79,57,24,0.18)]"
+                      className="client-interactive group rounded-[24px] border border-white/72 bg-white/52 p-5 shadow-[0_14px_30px_rgba(79,57,24,0.05)] backdrop-blur-lg transition-all duration-500 hover:-translate-y-[4px] hover:border-[#d0bea3] hover:bg-white/76 hover:shadow-[0_24px_44px_rgba(79,57,24,0.12)]"
                     >
                       <div className="flex items-start justify-between gap-5">
                         <div className="space-y-2">
