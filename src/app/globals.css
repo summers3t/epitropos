@@ -201,6 +201,16 @@ h4 {
   box-shadow: 0 20px 40px rgba(166, 139, 74, 0.15);
 }
 
+.client-glass-card-active {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(18px) saturate(130%);
+  border: 1px solid rgba(212, 176, 107, 0.62);
+  box-shadow:
+    0 0 28px rgba(201, 177, 139, 0.18),
+    0 18px 42px rgba(79, 57, 24, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
 .roadmap-section-bg {
   position: absolute;
   inset: 0;
