@@ -124,7 +124,7 @@ h4 {
   background-repeat: no-repeat;
   opacity: 0.54;
   filter: blur(3px) saturate(0.95);
-  transform: scale(1.02);
+  transform: scale(1);
 }
 
 .client-glass-panel {
