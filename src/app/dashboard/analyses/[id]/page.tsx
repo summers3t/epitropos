@@ -160,78 +160,78 @@ export default async function DashboardAnalysisDetailPage({
             headerContent={
                 <Link
                     href="/dashboard/analyses"
-                    className="inline-flex items-center rounded-full border border-white/12 bg-white/5 px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-white/72 transition hover:bg-white/10 hover:text-white"
+                    className="inline-flex items-center rounded-full border border-[#d2bea1] bg-[#fbf4e8] px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-[#5f584d] transition hover:border-[#0f1c2e]/20 hover:bg-[#f3eadc] hover:text-[#0f1c2e]"
                 >
                     Back to My Analyses
                 </Link>
             }
         >
             <div className="space-y-6">
-                <section className="rounded-[30px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.025))] p-6 shadow-[0_24px_70px_rgba(0,0,0,0.24)] backdrop-blur-xl md:p-8 xl:p-10">
+                <section className="rounded-[30px] border border-[#dccdb5] bg-[linear-gradient(180deg,rgba(255,250,244,0.96),rgba(244,235,222,0.92))] p-6 shadow-[0_20px_60px_rgba(79,57,24,0.10)] md:p-8 xl:p-10">
                     <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded-full border border-[#a68b4a]/30 bg-[#a68b4a]/12 px-3 py-1.5 text-[10px] uppercase tracking-[0.16em] text-[#dcc796]">
+                        <span className="rounded-full border border-[#d1bc96] bg-[#f3e7d0] px-3 py-1.5 text-[10px] uppercase tracking-[0.16em] text-[#8d6f3f]">
                             {analysis.planLabel}
                         </span>
-                        <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[10px] uppercase tracking-[0.16em] text-white/68">
+                        <span className="rounded-full border border-[#ddd1be] bg-[#fbf6ee] px-3 py-1.5 text-[10px] uppercase tracking-[0.16em] text-[#676054]">
                             {analysis.stageLabel}
                         </span>
                     </div>
 
                     <div className="mt-5 max-w-[980px] space-y-4">
                         <h2
-                            className="text-4xl leading-[1.04] text-white md:text-[46px] xl:text-[54px]"
-                            style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
+                            className="text-4xl leading-[1.04] text-[#1d2834] md:text-[46px] xl:text-[54px]"
+                            style={{ fontFamily: 'Georgia, \"Times New Roman\", serif' }}
                         >
                             {analysis.title}
                         </h2>
 
-                        <p className="max-w-[840px] text-[15px] leading-8 text-white/60 md:text-base">
+                        <p className="max-w-[840px] text-[15px] leading-8 text-[#5f5a51] md:text-base">
                             {analysis.contextLine}
                         </p>
                     </div>
                 </section>
 
-                <section className="rounded-[30px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.025))] p-6 shadow-[0_24px_70px_rgba(0,0,0,0.22)] backdrop-blur-xl md:p-8 xl:p-10">
+                <section className="rounded-[30px] border border-[#dccdb5] bg-[linear-gradient(180deg,rgba(252,247,241,0.96),rgba(243,233,219,0.92))] p-6 shadow-[0_20px_60px_rgba(79,57,24,0.10)] md:p-8 xl:p-10">
                     <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-                        <div className="rounded-[24px] border border-[#a68b4a]/18 bg-[rgba(166,139,74,0.08)] p-5 md:p-6">
-                            <p className="text-[11px] uppercase tracking-[0.24em] text-[#c8af74]">
+                        <div className="rounded-[24px] border border-[#d8c5a5] bg-[linear-gradient(180deg,#fbf5ea,#f1e3cc)] p-5 md:p-6">
+                            <p className="text-[11px] uppercase tracking-[0.24em] text-[#9a7b48]">
                                 Current Guidance
                             </p>
 
                             <div className="mt-5 space-y-4">
                                 <div>
-                                    <div className="text-[10px] uppercase tracking-[0.18em] text-white/38">
+                                    <div className="text-[10px] uppercase tracking-[0.18em] text-[#766f63]">
                                         Current stage
                                     </div>
                                     <div
-                                        className="mt-2 text-[28px] leading-tight text-white md:text-[34px]"
-                                        style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
+                                        className="mt-2 text-[28px] leading-tight text-[#0f1c2e] md:text-[34px]"
+                                        style={{ fontFamily: 'Georgia, \"Times New Roman\", serif' }}
                                     >
                                         {analysis.stageLabel}
                                     </div>
                                 </div>
 
-                                <p className="max-w-[760px] text-[15px] leading-8 text-white/72 md:text-base">
+                                <p className="max-w-[760px] text-[15px] leading-8 text-[#4e4a43] md:text-base">
                                     {analysis.progressLine}
                                 </p>
                             </div>
                         </div>
 
                         <div className="grid gap-4">
-                            <div className="rounded-[22px] border border-white/10 bg-black/10 p-5">
-                                <div className="text-[10px] uppercase tracking-[0.18em] text-white/38">
+                            <div className="rounded-[22px] border border-[#ddd0bc] bg-[#fbf5eb] p-5 shadow-[0_10px_30px_rgba(79,57,24,0.05)]">
+                                <div className="text-[10px] uppercase tracking-[0.18em] text-[#766f63]">
                                     What requires attention now
                                 </div>
-                                <p className="mt-3 text-[15px] leading-8 text-white/74">
+                                <p className="mt-3 text-[15px] leading-8 text-[#4e4a43]">
                                     {analysis.attentionLine}
                                 </p>
                             </div>
 
-                            <div className="rounded-[22px] border border-white/10 bg-black/10 p-5">
-                                <div className="text-[10px] uppercase tracking-[0.18em] text-white/38">
+                            <div className="rounded-[22px] border border-[#ddd0bc] bg-[#fbf5eb] p-5 shadow-[0_10px_30px_rgba(79,57,24,0.05)]">
+                                <div className="text-[10px] uppercase tracking-[0.18em] text-[#766f63]">
                                     What comes next
                                 </div>
-                                <p className="mt-3 text-[15px] leading-8 text-white/74">
+                                <p className="mt-3 text-[15px] leading-8 text-[#4e4a43]">
                                     {analysis.nextLine}
                                 </p>
                             </div>
@@ -239,19 +239,19 @@ export default async function DashboardAnalysisDetailPage({
                     </div>
                 </section>
 
-                <section className="overflow-hidden rounded-[30px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] p-6 shadow-[0_24px_70px_rgba(0,0,0,0.2)] backdrop-blur-xl md:p-8 xl:p-10">
+                <section className="overflow-hidden rounded-[30px] border border-[#dccdb5] bg-[linear-gradient(180deg,rgba(252,247,241,0.96),rgba(243,233,219,0.92))] p-6 shadow-[0_20px_60px_rgba(79,57,24,0.10)] md:p-8 xl:p-10">
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                        <p className="text-[11px] uppercase tracking-[0.24em] text-[#c8af74]">
+                        <p className="text-[11px] uppercase tracking-[0.24em] text-[#9a7b48]">
                             {getRoadmapSectionLabel(analysis.stage)}
                         </p>
 
-                        <span className="rounded-full border border-white/8 bg-white/[0.04] px-3 py-1 text-[10px] uppercase tracking-[0.16em] text-white/44">
+                        <span className="rounded-full border border-[#ddd0bc] bg-[#fbf5eb] px-3 py-1 text-[10px] uppercase tracking-[0.16em] text-[#766f63]">
                             {roadmap.length} stages
                         </span>
                     </div>
 
-                    <div className="mt-8 relative">
-                        <div className="absolute bottom-0 left-[19px] top-0 w-px bg-[linear-gradient(180deg,rgba(255,255,255,0.22),rgba(255,255,255,0.05))]" />
+                    <div className="relative mt-8">
+                        <div className="absolute bottom-0 left-[19px] top-0 w-px bg-[linear-gradient(180deg,rgba(15,28,46,0.18),rgba(15,28,46,0.04))]" />
 
                         <div className="space-y-6">
                             {roadmap.map((step, index) => {
@@ -267,10 +267,10 @@ export default async function DashboardAnalysisDetailPage({
                                         <div className="relative z-[1] pt-1">
                                             <span
                                                 className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-[11px] font-medium tracking-[0.08em] transition duration-500 ${isCurrent
-                                                        ? "animate-roadmapPulse border-[#d6c08e]/55 bg-[rgba(166,139,74,0.18)] text-[#eeddb5] shadow-[0_0_0_8px_rgba(166,139,74,0.06)]"
+                                                        ? "animate-roadmapPulse border-[#0f1c2e]/18 bg-[#0f1c2e] text-[#f6ecdb] shadow-[0_0_0_8px_rgba(15,28,46,0.05)]"
                                                         : isComplete
-                                                            ? "border-white/18 bg-white/[0.08] text-white/84"
-                                                            : "border-white/10 bg-black/20 text-white/50"
+                                                            ? "border-[#d2c1a6] bg-[#f3e7d1] text-[#6f5b37]"
+                                                            : "border-[#ddd0bc] bg-[#fbf5eb] text-[#8a8172]"
                                                     }`}
                                             >
                                                 {index + 1}
@@ -280,16 +280,16 @@ export default async function DashboardAnalysisDetailPage({
                                         <div
                                             className={`min-w-0 flex-1 border-b pb-6 ${index === roadmap.length - 1
                                                     ? "border-transparent pb-0"
-                                                    : "border-white/6"
+                                                    : "border-[#e4d7c4]"
                                                 }`}
                                         >
                                             <div className="flex flex-wrap items-center gap-2">
                                                 <span
                                                     className={`rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] ${isCurrent
-                                                            ? "border-[#d6c08e]/28 bg-[rgba(166,139,74,0.12)] text-[#eeddb5]"
+                                                            ? "border-[#0f1c2e]/12 bg-[#eef2f7] text-[#0f1c2e]"
                                                             : isComplete
-                                                                ? "border-white/10 bg-white/[0.05] text-white/66"
-                                                                : "border-white/8 bg-transparent text-white/38"
+                                                                ? "border-[#d2c1a6] bg-[#f3e7d1] text-[#7c6540]"
+                                                                : "border-[#ddd0bc] bg-[#fbf5eb] text-[#8a8172]"
                                                         }`}
                                                 >
                                                     {stateLabel}
@@ -298,22 +298,22 @@ export default async function DashboardAnalysisDetailPage({
 
                                             <h3
                                                 className={`mt-3 text-[22px] leading-[1.2] ${isCurrent
-                                                        ? "text-white"
+                                                        ? "text-[#0f1c2e]"
                                                         : isComplete
-                                                            ? "text-white/82"
-                                                            : "text-white/56"
+                                                            ? "text-[#473e33]"
+                                                            : "text-[#7d7468]"
                                                     }`}
-                                                style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
+                                                style={{ fontFamily: 'Georgia, \"Times New Roman\", serif' }}
                                             >
                                                 {step.label}
                                             </h3>
 
                                             <p
                                                 className={`mt-3 max-w-[760px] text-[15px] leading-8 ${isCurrent
-                                                        ? "text-white/74"
+                                                        ? "text-[#4e4a43]"
                                                         : isComplete
-                                                            ? "text-white/58"
-                                                            : "text-white/42"
+                                                            ? "text-[#655f56]"
+                                                            : "text-[#8a8172]"
                                                     }`}
                                             >
                                                 {step.note}
@@ -326,26 +326,26 @@ export default async function DashboardAnalysisDetailPage({
                     </div>
                 </section>
 
-                {analysis.decisionLabel || analysis.reportId ? (
-                    <section className="rounded-[28px] border border-white/10 bg-white/[0.06] p-6 md:p-8">
-                        <p className="text-[11px] uppercase tracking-[0.24em] text-[#a68b4a]">
+                                {analysis.decisionLabel || analysis.reportId ? (
+                    <section className="rounded-[30px] border border-[#dccdb5] bg-[linear-gradient(180deg,rgba(252,247,241,0.96),rgba(243,233,219,0.92))] p-6 shadow-[0_20px_60px_rgba(79,57,24,0.10)] md:p-8">
+                        <p className="text-[11px] uppercase tracking-[0.24em] text-[#9a7b48]">
                             Final Result
                         </p>
 
                         {analysis.decisionLabel ? (
-                            <div className="mt-4 rounded-[20px] border border-white/10 bg-black/10 p-5">
-                                <div className="text-[10px] uppercase tracking-[0.18em] text-white/40">
+                            <div className="mt-4 rounded-[22px] border border-[#ddd0bc] bg-[#fbf5eb] p-5 shadow-[0_10px_30px_rgba(79,57,24,0.05)]">
+                                <div className="text-[10px] uppercase tracking-[0.18em] text-[#766f63]">
                                     Conclusion
                                 </div>
                                 <div
-                                    className="mt-2 text-3xl text-white"
-                                    style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
+                                    className="mt-2 text-3xl text-[#0f1c2e]"
+                                    style={{ fontFamily: 'Georgia, \"Times New Roman\", serif' }}
                                 >
                                     {analysis.decisionLabel}
                                 </div>
 
                                 {analysis.decisionSummary ? (
-                                    <p className="mt-4 max-w-[900px] text-sm leading-7 text-white/68">
+                                    <p className="mt-4 max-w-[900px] text-sm leading-7 text-[#4e4a43]">
                                         {analysis.decisionSummary}
                                     </p>
                                 ) : null}
@@ -358,7 +358,7 @@ export default async function DashboardAnalysisDetailPage({
                                     href={`/api/reports/${analysis.reportId}/download`}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="inline-flex items-center rounded-full border border-white/14 bg-white/5 px-5 py-3 text-[11px] uppercase tracking-[0.18em] text-white/78 transition hover:bg-white/10 hover:text-white"
+                                    className="inline-flex items-center rounded-full border border-[#cfb894] bg-[#0f1c2e] px-5 py-3 text-[11px] uppercase tracking-[0.18em] text-[#f6ecdb] transition hover:bg-[#16283f] hover:text-white"
                                 >
                                     Download Report
                                 </a>
