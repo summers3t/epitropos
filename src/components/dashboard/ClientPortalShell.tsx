@@ -55,16 +55,20 @@ export default function ClientPortalShell({
       <div className="pointer-events-none fixed inset-0">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(166,139,74,0.10),transparent_26%),radial-gradient(circle_at_top_right,rgba(15,28,46,0.12),transparent_24%),linear-gradient(180deg,#f6f0e6_0%,#eee4d2_48%,#e9deca_100%)]" />
         <div className="client-portal-bg-image" />
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.28),rgba(255,248,239,0.14)_18%,rgba(239,231,216,0.58)_100%)]" />
-        <div className="absolute inset-x-0 top-0 h-[360px] bg-[linear-gradient(180deg,rgba(255,255,255,0.22),transparent)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.22),rgba(255,248,239,0.10)_18%,rgba(239,231,216,0.46)_100%)]" />
       </div>
 
-      <div className="relative mx-auto w-full max-w-[1920px] px-2 py-4 md:px-4 md:py-5 xl:px-4">
-        <div className="client-glass-panel overflow-hidden rounded-[34px]">
-          <div className={`${isDashboardHome ? "border-b-0" : "border-b border-[#d7c5ac]/30"} bg-[linear-gradient(180deg,rgba(8,20,38,0.97),rgba(14,31,54,0.94))] px-5 py-3 md:px-7 md:py-4 xl:px-8`}>
-            {isDashboardHome ? (
+      <div className="relative mx-auto w-full max-w-[1920px]">
+        {isDashboardHome ? (
+          <>
+            <div className="bg-[linear-gradient(180deg,rgba(8,20,38,0.98),rgba(14,31,54,0.95))] px-5 py-3 md:px-7 md:py-4 xl:px-8">
               <div className="h-[22px]" />
-            ) : (
+            </div>
+            <div className="px-4 py-4 md:px-5 md:py-5 xl:px-5 xl:py-5">{children}</div>
+          </>
+        ) : (
+          <div className="client-glass-panel overflow-hidden rounded-[34px] mx-2 my-4 md:mx-4 md:my-5 xl:mx-4">
+            <div className="border-b border-[#d7c5ac]/30 bg-[linear-gradient(180deg,rgba(8,20,38,0.97),rgba(14,31,54,0.94))] px-5 py-3 md:px-7 md:py-4 xl:px-8">
               <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
                 <div className="space-y-2.5">
                   <p className="text-[10px] uppercase tracking-[0.34em] text-[#d3bb8a]">
@@ -111,11 +115,11 @@ export default function ClientPortalShell({
                   ) : null}
                 </div>
               </div>
-            )}
-          </div>
+            </div>
 
-          <div className="px-4 py-4 md:px-5 md:py-5 xl:px-5 xl:py-5">{children}</div>
-        </div>
+            <div className="px-4 py-4 md:px-5 md:py-5 xl:px-5 xl:py-5">{children}</div>
+          </div>
+        )}
       </div>
     </div>
   );
