@@ -111,11 +111,11 @@ export default async function DashboardPage({
                 </div>
 
                 <div className="relative xl:pt-2">
-                  <div className="absolute left-[6%] right-[6%] top-[66px] hidden h-[10px] rounded-full bg-[linear-gradient(90deg,rgba(201,177,139,0.26),rgba(226,214,190,0.18),rgba(201,177,139,0.26))] blur-[1px] xl:block" />
-                  <div className="absolute left-[6%] right-[6%] top-[66px] hidden h-[4px] rounded-full bg-[linear-gradient(90deg,rgba(201,177,139,0.98),rgba(231,220,198,0.82),rgba(201,177,139,0.98))] shadow-[0_0_18px_rgba(201,177,139,0.22)] xl:block" />
-                  <div className="absolute left-[6%] right-[6%] top-[67px] hidden h-[1px] bg-white/64 xl:block" />
+                  <div className="absolute left-[4%] right-[4%] top-[78px] hidden h-[12px] rounded-full bg-[linear-gradient(90deg,rgba(201,177,139,0.22),rgba(226,214,190,0.16),rgba(201,177,139,0.22))] blur-[2px] xl:block" />
+                  <div className="absolute left-[4%] right-[4%] top-[78px] hidden h-[5px] rounded-full bg-[linear-gradient(90deg,rgba(201,177,139,1),rgba(231,220,198,0.86),rgba(201,177,139,1))] shadow-[0_0_20px_rgba(201,177,139,0.24)] xl:block" />
+                  <div className="absolute left-[4%] right-[4%] top-[80px] hidden h-[1px] bg-white/68 xl:block" />
 
-                  <div className="grid gap-4 xl:grid-cols-3 xl:gap-5">
+                  <div className="grid gap-4 xl:grid-cols-3 xl:gap-5 xl:auto-rows-fr">
                     {[
                       {
                         label: "Current Stage",
@@ -130,10 +130,9 @@ export default async function DashboardPage({
                         value: primaryAnalysis.nextLine,
                       },
                     ].map((pod) => (
-                      <div key={pod.label} className="relative flex flex-col items-center">
-                        <div className="absolute top-[54px] z-[3] hidden h-6 w-6 rounded-full border border-[#d7bc86] bg-[linear-gradient(180deg,#e2cb97,#caa561)] shadow-[0_0_20px_rgba(201,177,139,0.38)] xl:block" />
+                      <div key={pod.label} className="relative flex h-full flex-col items-center">
 
-                        <div className="client-interactive group relative w-full rounded-[24px] border border-white/78 bg-white/66 p-5 shadow-[0_14px_34px_rgba(79,57,24,0.05)] backdrop-blur-xl transition-all duration-500 hover:-translate-y-[4px] hover:border-[#d7bc86]/74 hover:bg-white/80 hover:shadow-[0_22px_42px_rgba(79,57,24,0.11)] xl:pt-12">
+                        <div className="client-interactive group relative flex h-full w-full flex-col rounded-[24px] border border-white/78 bg-white/66 p-5 shadow-[0_14px_34px_rgba(79,57,24,0.05)] backdrop-blur-xl transition-all duration-500 hover:-translate-y-[3px] hover:border-[#d7bc86]/74 hover:bg-white/80 hover:shadow-[0_20px_38px_rgba(79,57,24,0.10)] xl:min-h-[286px] xl:pt-12">
                           <div className="absolute inset-0 rounded-[24px] bg-gradient-to-tr from-white/0 via-white/20 to-white/0 opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
                           <p className="relative text-[10px] uppercase tracking-[0.22em] text-[#8f7443]">
                             {pod.label}
@@ -151,27 +150,20 @@ export default async function DashboardPage({
 
             {secondaryAnalyses.length > 0 ? (
               <div className="pt-6">
-                <div className="mb-5 flex items-center justify-between gap-4">
+                <div className="mb-5">
                   <h3
                     className="text-[22px] text-[#081426]"
                     style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
                   >
                     Other Analyses
                   </h3>
-
-                  <Link
-                    href="/dashboard/analyses"
-                    className="client-interactive client-focus-ring text-[11px] uppercase tracking-[0.22em] text-[#5f584d] hover:text-[#8f7443]"
-                  >
-                    View All
-                  </Link>
                 </div>
 
                 <div className="grid gap-4 xl:grid-cols-2">
                   {secondaryAnalyses.map((analysis) => (
                     <article
                       key={analysis.id}
-                      className="client-interactive group rounded-[24px] border border-white/72 bg-white/52 p-5 shadow-[0_14px_30px_rgba(79,57,24,0.05)] backdrop-blur-lg transition-all duration-500 hover:-translate-y-[4px] hover:border-[#d0bea3] hover:bg-white/76 hover:shadow-[0_24px_44px_rgba(79,57,24,0.12)]"
+                      className="client-interactive group rounded-[24px] border border-white/72 bg-white/52 p-5 shadow-[0_14px_30px_rgba(79,57,24,0.05)] backdrop-blur-lg transition-all duration-500 hover:-translate-y-[3px] hover:border-[#d0bea3] hover:bg-white/74 hover:shadow-[0_20px_38px_rgba(79,57,24,0.10)]"
                     >
                       <div className="flex items-start justify-between gap-5">
                         <div className="space-y-2">
