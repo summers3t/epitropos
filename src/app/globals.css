@@ -7,6 +7,7 @@
   --color-gold: #a68b4a;
   --header-h: 61px;
   --client-portal-bg-image: url("/images/client-portal-bg.jpg");
+  --roadmap-section-bg-image: url("/images/roadmap-section-bg.jpg");
 }
 
 /* Base page styling (your current file sets white/black and overrides look) */
@@ -127,11 +128,9 @@ h4 {
 }
 
 .client-glass-panel {
-  background: linear-gradient(
-    180deg,
-    rgba(255, 251, 246, 0.66),
-    rgba(243, 233, 219, 0.56)
-  );
+  background: linear-gradient(180deg,
+      rgba(255, 251, 246, 0.66),
+      rgba(243, 233, 219, 0.56));
   backdrop-filter: blur(30px) saturate(155%);
   border: 1px solid rgba(215, 198, 171, 0.78);
   box-shadow:
@@ -164,6 +163,7 @@ h4 {
 }
 
 @keyframes roadmapGlow {
+
   0%,
   100% {
     box-shadow:
@@ -201,7 +201,28 @@ h4 {
   box-shadow: 0 20px 40px rgba(166, 139, 74, 0.15);
 }
 
+.roadmap-section-bg {
+  position: absolute;
+  inset: 0;
+  background-image: var(--roadmap-section-bg-image);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0.22;
+  filter: blur(10px) saturate(0.82);
+  transform: scale(1.04);
+}
+
+.roadmap-scroll-shell {
+  scrollbar-width: none;
+}
+
+.roadmap-scroll-shell::-webkit-scrollbar {
+  display: none;
+}
+
 @keyframes roadmapCardFloat {
+
   0%,
   100% {
     transform: translateY(-10px);
