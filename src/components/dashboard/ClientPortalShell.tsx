@@ -53,11 +53,13 @@ export default function ClientPortalShell({
     <div className="min-h-screen overflow-hidden bg-[#efe7d8] text-[#2f3130]">
       <div className="pointer-events-none fixed inset-0">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(166,139,74,0.12),transparent_26%),radial-gradient(circle_at_top_right,rgba(15,28,46,0.08),transparent_24%),linear-gradient(180deg,#f6f0e6_0%,#eee4d2_48%,#e9deca_100%)]" />
+        <div className="client-portal-bg-image" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.46),rgba(255,248,239,0.34)_22%,rgba(239,231,216,0.76)_100%)]" />
         <div className="absolute inset-x-0 top-0 h-[360px] bg-[linear-gradient(180deg,rgba(255,255,255,0.42),transparent)]" />
       </div>
 
       <div className="relative mx-auto w-full max-w-[1520px] px-4 py-8 md:px-8 md:py-10 xl:px-10">
-        <div className="rounded-[36px] border border-[#d7c6ab] bg-[linear-gradient(180deg,rgba(250,246,239,0.92),rgba(241,232,217,0.88))] shadow-[0_30px_90px_rgba(79,57,24,0.16)] backdrop-blur-[18px]">
+        <div className="client-glass-panel rounded-[36px]">
           <div className="border-b border-[#ddcfb7] px-5 py-5 md:px-8 md:py-6 xl:px-10">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
               <div className="space-y-3">
@@ -92,10 +94,11 @@ export default function ClientPortalShell({
                     <Link
                       key={item.href}
                       href={item.href}
-                      className={`inline-flex items-center gap-2 rounded-full border px-4 py-2.5 text-[11px] uppercase tracking-[0.18em] transition duration-300 ${active
-                          ? "border-[#c9b18b] bg-[#0f1c2e] text-[#f6efdf] shadow-[0_10px_28px_rgba(15,28,46,0.18)]"
-                          : "border-transparent bg-transparent text-[#6a6458] hover:border-[#d1c0a5] hover:bg-[#f8f1e5] hover:text-[#0f1c2e]"
-                        }`}
+                                            className={`client-interactive client-focus-ring inline-flex items-center gap-2 rounded-full border px-4 py-2.5 text-[11px] uppercase tracking-[0.18em] ${
+                        active
+                          ? "border-[#c9b18b] bg-[#0f1c2e] text-[#f6efdf] shadow-[0_12px_32px_rgba(15,28,46,0.18)]"
+                          : "border-transparent bg-transparent text-[#6a6458] hover:border-[#d1c0a5] hover:bg-[rgba(255,248,239,0.78)] hover:text-[#0f1c2e] hover:shadow-[0_10px_24px_rgba(79,57,24,0.08)]"
+                      }`}
                     >
                       <span>{item.label}</span>
                       {count ? <CountBadge count={count} /> : null}

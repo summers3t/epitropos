@@ -6,6 +6,7 @@
   --color-stone: #d6cfc4;
   --color-gold: #a68b4a;
   --header-h: 61px;
+  --client-portal-bg-image: url("/images/client-portal-bg.jpg");
 }
 
 /* Base page styling (your current file sets white/black and overrides look) */
@@ -21,13 +22,13 @@ html {
 body {
   background:
     radial-gradient(1200px 700px at 20% 10%,
-      rgba(166, 139, 74, 0.14),
+      rgba(166, 139, 74, 0.12),
       transparent 60%),
     radial-gradient(1000px 600px at 80% 0%,
-      rgba(214, 207, 196, 0.1),
+      rgba(15, 28, 46, 0.05),
       transparent 55%),
-    linear-gradient(180deg, rgba(15, 28, 46, 1) 0%, rgba(15, 28, 46, 0.98) 100%);
-  color: var(--color-stone);
+    linear-gradient(180deg, #f6f0e6 0%, #eee4d2 50%, #e9deca 100%);
+  color: #2f3130;
   font-family:
     var(--font-inter),
     ui-sans-serif,
@@ -67,11 +68,11 @@ h4 {
 
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(166, 139, 74, 0.0);
+    box-shadow: 0 0 0 0 rgba(15, 28, 46, 0);
   }
 
   50% {
-    box-shadow: 0 0 0 10px rgba(166, 139, 74, 0.08);
+    box-shadow: 0 0 0 12px rgba(15, 28, 46, 0.08);
   }
 }
 
@@ -111,6 +112,49 @@ h4 {
 
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.28);
+}
+
+.client-portal-bg-image {
+  position: absolute;
+  inset: 0;
+  background-image: var(--client-portal-bg-image);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0.18;
+  filter: blur(10px) saturate(0.8);
+  transform: scale(1.04);
+}
+
+.client-glass-panel {
+  background: rgba(255, 248, 239, 0.68);
+  backdrop-filter: blur(22px) saturate(135%);
+  border: 1px solid rgba(215, 198, 171, 0.8);
+  box-shadow: 0 24px 70px rgba(79, 57, 24, 0.12);
+}
+
+.client-interactive {
+  transition:
+    transform 180ms ease,
+    box-shadow 220ms ease,
+    border-color 220ms ease,
+    background-color 220ms ease,
+    color 220ms ease;
+}
+
+.client-interactive:hover {
+  transform: translateY(-1px);
+}
+
+.client-interactive:active {
+  transform: translateY(0);
+}
+
+.client-focus-ring:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px rgba(15, 28, 46, 0.12),
+    0 10px 30px rgba(15, 28, 46, 0.08);
 }
 
 /* Dashboard app frame */

@@ -160,14 +160,14 @@ export default async function DashboardAnalysisDetailPage({
             headerContent={
                 <Link
                     href="/dashboard/analyses"
-                    className="inline-flex items-center rounded-full border border-[#d2bea1] bg-[#fbf4e8] px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-[#5f584d] transition hover:border-[#0f1c2e]/20 hover:bg-[#f3eadc] hover:text-[#0f1c2e]"
+                    className="client-interactive client-focus-ring inline-flex items-center rounded-full border border-[#d2bea1] bg-[#fbf4e8] px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-[#5f584d] hover:border-[#0f1c2e]/20 hover:bg-[#f3eadc] hover:text-[#0f1c2e] hover:shadow-[0_10px_24px_rgba(79,57,24,0.08)] active:bg-[#efe3d2]"
                 >
                     Back to My Analyses
                 </Link>
             }
         >
             <div className="space-y-6">
-                <section className="rounded-[30px] border border-[#dccdb5] bg-[linear-gradient(180deg,rgba(255,250,244,0.96),rgba(244,235,222,0.92))] p-6 shadow-[0_20px_60px_rgba(79,57,24,0.10)] md:p-8 xl:p-10">
+                <section className="client-glass-panel rounded-[30px] p-6 md:p-8 xl:p-10">
                     <div className="flex flex-wrap items-center gap-2">
                         <span className="rounded-full border border-[#d1bc96] bg-[#f3e7d0] px-3 py-1.5 text-[10px] uppercase tracking-[0.16em] text-[#8d6f3f]">
                             {analysis.planLabel}
@@ -191,7 +191,7 @@ export default async function DashboardAnalysisDetailPage({
                     </div>
                 </section>
 
-                <section className="rounded-[30px] border border-[#dccdb5] bg-[linear-gradient(180deg,rgba(252,247,241,0.96),rgba(243,233,219,0.92))] p-6 shadow-[0_20px_60px_rgba(79,57,24,0.10)] md:p-8 xl:p-10">
+                <section className="client-glass-panel rounded-[30px] p-6 md:p-8 xl:p-10">
                     <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
                         <div className="rounded-[24px] border border-[#d8c5a5] bg-[linear-gradient(180deg,#fbf5ea,#f1e3cc)] p-5 md:p-6">
                             <p className="text-[11px] uppercase tracking-[0.24em] text-[#9a7b48]">
@@ -239,7 +239,7 @@ export default async function DashboardAnalysisDetailPage({
                     </div>
                 </section>
 
-                <section className="overflow-hidden rounded-[30px] border border-[#dccdb5] bg-[linear-gradient(180deg,rgba(252,247,241,0.96),rgba(243,233,219,0.92))] p-6 shadow-[0_20px_60px_rgba(79,57,24,0.10)] md:p-8 xl:p-10">
+                <section className="client-glass-panel overflow-hidden rounded-[30px] p-6 md:p-8 xl:p-10">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <p className="text-[11px] uppercase tracking-[0.24em] text-[#9a7b48]">
                             {getRoadmapSectionLabel(analysis.stage)}
@@ -262,15 +262,15 @@ export default async function DashboardAnalysisDetailPage({
                                 return (
                                     <div
                                         key={`${step.label}-${index}`}
-                                        className="relative flex gap-5"
+                                        className="client-interactive relative flex gap-5 rounded-[18px] px-2 py-1 hover:bg-[rgba(255,248,239,0.36)]"
                                     >
                                         <div className="relative z-[1] pt-1">
                                             <span
                                                 className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-[11px] font-medium tracking-[0.08em] transition duration-500 ${isCurrent
-                                                        ? "animate-roadmapPulse border-[#0f1c2e]/18 bg-[#0f1c2e] text-[#f6ecdb] shadow-[0_0_0_8px_rgba(15,28,46,0.05)]"
-                                                        : isComplete
-                                                            ? "border-[#d2c1a6] bg-[#f3e7d1] text-[#6f5b37]"
-                                                            : "border-[#ddd0bc] bg-[#fbf5eb] text-[#8a8172]"
+                                                    ? "animate-roadmapPulse border-[#0f1c2e]/18 bg-[#0f1c2e] text-[#f6ecdb] shadow-[0_0_0_8px_rgba(15,28,46,0.05)]"
+                                                    : isComplete
+                                                        ? "border-[#d2c1a6] bg-[#f3e7d1] text-[#6f5b37]"
+                                                        : "border-[#ddd0bc] bg-[#fbf5eb] text-[#8a8172]"
                                                     }`}
                                             >
                                                 {index + 1}
@@ -279,17 +279,17 @@ export default async function DashboardAnalysisDetailPage({
 
                                         <div
                                             className={`min-w-0 flex-1 border-b pb-6 ${index === roadmap.length - 1
-                                                    ? "border-transparent pb-0"
-                                                    : "border-[#e4d7c4]"
+                                                ? "border-transparent pb-0"
+                                                : "border-[#e4d7c4]"
                                                 }`}
                                         >
                                             <div className="flex flex-wrap items-center gap-2">
                                                 <span
                                                     className={`rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] ${isCurrent
-                                                            ? "border-[#0f1c2e]/12 bg-[#eef2f7] text-[#0f1c2e]"
-                                                            : isComplete
-                                                                ? "border-[#d2c1a6] bg-[#f3e7d1] text-[#7c6540]"
-                                                                : "border-[#ddd0bc] bg-[#fbf5eb] text-[#8a8172]"
+                                                        ? "border-[#0f1c2e]/12 bg-[#eef2f7] text-[#0f1c2e]"
+                                                        : isComplete
+                                                            ? "border-[#d2c1a6] bg-[#f3e7d1] text-[#7c6540]"
+                                                            : "border-[#ddd0bc] bg-[#fbf5eb] text-[#8a8172]"
                                                         }`}
                                                 >
                                                     {stateLabel}
@@ -298,10 +298,10 @@ export default async function DashboardAnalysisDetailPage({
 
                                             <h3
                                                 className={`mt-3 text-[22px] leading-[1.2] ${isCurrent
-                                                        ? "text-[#0f1c2e]"
-                                                        : isComplete
-                                                            ? "text-[#473e33]"
-                                                            : "text-[#7d7468]"
+                                                    ? "text-[#0f1c2e]"
+                                                    : isComplete
+                                                        ? "text-[#473e33]"
+                                                        : "text-[#7d7468]"
                                                     }`}
                                                 style={{ fontFamily: 'Georgia, \"Times New Roman\", serif' }}
                                             >
@@ -310,10 +310,10 @@ export default async function DashboardAnalysisDetailPage({
 
                                             <p
                                                 className={`mt-3 max-w-[760px] text-[15px] leading-8 ${isCurrent
-                                                        ? "text-[#4e4a43]"
-                                                        : isComplete
-                                                            ? "text-[#655f56]"
-                                                            : "text-[#8a8172]"
+                                                    ? "text-[#4e4a43]"
+                                                    : isComplete
+                                                        ? "text-[#655f56]"
+                                                        : "text-[#8a8172]"
                                                     }`}
                                             >
                                                 {step.note}
@@ -326,7 +326,7 @@ export default async function DashboardAnalysisDetailPage({
                     </div>
                 </section>
 
-                                {analysis.decisionLabel || analysis.reportId ? (
+                {analysis.decisionLabel || analysis.reportId ? (
                     <section className="rounded-[30px] border border-[#dccdb5] bg-[linear-gradient(180deg,rgba(252,247,241,0.96),rgba(243,233,219,0.92))] p-6 shadow-[0_20px_60px_rgba(79,57,24,0.10)] md:p-8">
                         <p className="text-[11px] uppercase tracking-[0.24em] text-[#9a7b48]">
                             Final Result
@@ -358,7 +358,7 @@ export default async function DashboardAnalysisDetailPage({
                                     href={`/api/reports/${analysis.reportId}/download`}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="inline-flex items-center rounded-full border border-[#cfb894] bg-[#0f1c2e] px-5 py-3 text-[11px] uppercase tracking-[0.18em] text-[#f6ecdb] transition hover:bg-[#16283f] hover:text-white"
+                                    className="client-interactive client-focus-ring inline-flex items-center rounded-full border border-[#cfb894] bg-[#0f1c2e] px-5 py-3 text-[11px] uppercase tracking-[0.18em] text-[#f6ecdb] hover:bg-[#16283f] hover:text-white hover:shadow-[0_14px_32px_rgba(15,28,46,0.18)] active:bg-[#0c1727]"
                                 >
                                     Download Report
                                 </a>
