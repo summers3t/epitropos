@@ -41,8 +41,8 @@ export default async function DashboardPage({
       counts={counts}
     >
       <div className="space-y-6">
-        <section className="rounded-[28px] border border-white/10 bg-white/[0.05] p-6 md:p-8">
-          <p className="text-base leading-8 text-white/68">
+        <section className="client-glass-panel rounded-[28px] p-6 md:p-8">
+          <p className="text-base leading-8 text-[#4f4a42]">
             Progress is steady and everything is on track. The current stage,
             the next point of attention, and the final outcome all remain visible
             in one place.
@@ -50,49 +50,49 @@ export default async function DashboardPage({
         </section>
 
         {primaryAnalysis ? (
-          <section className="rounded-[30px] border border-white/10 bg-white/[0.06] p-6 shadow-[0_24px_70px_rgba(0,0,0,0.26)] md:p-8">
+          <section className="client-glass-panel rounded-[30px] p-6 md:p-8">
             <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
               <div className="space-y-4">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full border border-[#a68b4a]/30 bg-[#a68b4a]/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-[#d8c494]">
+                  <span className="rounded-full border border-[#d1bc96] bg-[#f3e7d0] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-[#8d6f3f]">
                     {primaryAnalysis.planLabel}
                   </span>
-                  <span className="rounded-full border border-white/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-white/70">
+                  <span className="rounded-full border border-[#ddd1be] bg-[#fbf6ee] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-[#676054]">
                     {primaryAnalysis.stageLabel}
                   </span>
                 </div>
 
                 <h2
-                  className="text-4xl leading-tight text-white md:text-5xl"
-                  style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
+                  className="text-4xl leading-tight text-[#1d2834] md:text-5xl"
+                  style={{ fontFamily: 'Georgia, \"Times New Roman\", serif' }}
                 >
                   {primaryAnalysis.title}
                 </h2>
 
                 <div className="grid gap-4 md:grid-cols-3">
-                  <div className="rounded-[20px] border border-white/10 bg-black/10 p-4">
-                    <div className="text-[10px] uppercase tracking-[0.18em] text-white/40">
+                  <div className="rounded-[20px] border border-[#ddd0bc] bg-[#fbf5eb] p-4 shadow-[0_10px_26px_rgba(79,57,24,0.04)]">
+                    <div className="text-[10px] uppercase tracking-[0.18em] text-[#766f63]">
                       Current stage
                     </div>
-                    <p className="mt-2 text-sm leading-7 text-white/72">
+                    <p className="mt-2 text-sm leading-7 text-[#4e4a43]">
                       {primaryAnalysis.progressLine}
                     </p>
                   </div>
 
-                  <div className="rounded-[20px] border border-white/10 bg-black/10 p-4">
-                    <div className="text-[10px] uppercase tracking-[0.18em] text-white/40">
+                  <div className="rounded-[20px] border border-[#ddd0bc] bg-[#fbf5eb] p-4 shadow-[0_10px_26px_rgba(79,57,24,0.04)]">
+                    <div className="text-[10px] uppercase tracking-[0.18em] text-[#766f63]">
                       What requires attention now
                     </div>
-                    <p className="mt-2 text-sm leading-7 text-white/72">
+                    <p className="mt-2 text-sm leading-7 text-[#4e4a43]">
                       {primaryAnalysis.attentionLine}
                     </p>
                   </div>
 
-                  <div className="rounded-[20px] border border-white/10 bg-black/10 p-4">
-                    <div className="text-[10px] uppercase tracking-[0.18em] text-white/40">
+                  <div className="rounded-[20px] border border-[#ddd0bc] bg-[#fbf5eb] p-4 shadow-[0_10px_26px_rgba(79,57,24,0.04)]">
+                    <div className="text-[10px] uppercase tracking-[0.18em] text-[#766f63]">
                       What comes next
                     </div>
-                    <p className="mt-2 text-sm leading-7 text-white/72">
+                    <p className="mt-2 text-sm leading-7 text-[#4e4a43]">
                       {primaryAnalysis.nextLine}
                     </p>
                   </div>
@@ -102,7 +102,7 @@ export default async function DashboardPage({
               <div className="shrink-0">
                 <Link
                   href={primaryAnalysis.href}
-                  className="inline-flex items-center rounded-full border border-white/14 bg-white/5 px-5 py-3 text-[11px] uppercase tracking-[0.18em] text-white/78 transition duration-300 hover:bg-white/10 hover:text-white"
+                  className="client-interactive client-focus-ring inline-flex items-center rounded-full border border-[#cfb894] bg-[#0f1c2e] px-5 py-3 text-[11px] uppercase tracking-[0.18em] text-[#f6ecdb] hover:bg-[#16283f] hover:text-white hover:shadow-[0_14px_32px_rgba(15,28,46,0.18)] active:bg-[#0c1727]"
                 >
                   Open Analysis
                 </Link>
@@ -134,20 +134,20 @@ export default async function DashboardPage({
         )}
 
         {secondaryAnalyses.length > 0 ? (
-          <section className="rounded-[28px] border border-white/10 bg-white/[0.04] p-6 md:p-8">
+          <section className="client-glass-panel rounded-[28px] p-6 md:p-8">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-[11px] uppercase tracking-[0.24em] text-[#a68b4a]">
+                <p className="text-[11px] uppercase tracking-[0.24em] text-[#9a7b48]">
                   Other Analyses
                 </p>
-                <p className="mt-2 text-sm leading-7 text-white/60">
+                <p className="mt-2 text-sm leading-7 text-[#5f5a51]">
                   Additional analyses remain available below. Selecting one shifts the focus of the dashboard without losing visibility over the rest.
                 </p>
               </div>
 
               <Link
                 href="/dashboard/analyses"
-                className="hidden rounded-full border border-white/12 bg-white/5 px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-white/72 transition hover:bg-white/10 hover:text-white md:inline-flex"
+                className="client-interactive client-focus-ring hidden rounded-full border border-[#d2bea1] bg-[#fbf4e8] px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-[#5f584d] hover:border-[#0f1c2e]/20 hover:bg-[#f3eadc] hover:text-[#0f1c2e] hover:shadow-[0_10px_24px_rgba(79,57,24,0.08)] md:inline-flex"
               >
                 View All
               </Link>
@@ -157,29 +157,29 @@ export default async function DashboardPage({
               {secondaryAnalyses.map((analysis) => (
                 <article
                   key={analysis.id}
-                  className="rounded-[22px] border border-white/10 bg-black/10 p-5 transition duration-300 hover:border-white/18 hover:bg-white/[0.05] hover:shadow-[0_16px_40px_rgba(0,0,0,0.2)]"
+                  className="client-interactive rounded-[22px] border border-[#ddd0bc] bg-[#fbf5eb] p-5 shadow-[0_10px_30px_rgba(79,57,24,0.05)] hover:border-[#d0bea3] hover:bg-[#fcf7ef] hover:shadow-[0_18px_40px_rgba(79,57,24,0.08)]"
                 >
                   <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div className="space-y-2">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded-full border border-white/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-white/70">
+                        <span className="rounded-full border border-[#ddd1be] bg-[#fbf6ee] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-[#676054]">
                           {analysis.stageLabel}
                         </span>
                       </div>
 
                       <h3
-                        className="text-2xl text-white"
-                        style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
+                        className="text-2xl text-[#1d2834]"
+                        style={{ fontFamily: 'Georgia, \"Times New Roman\", serif' }}
                       >
                         {analysis.title}
                       </h3>
 
-                      <p className="text-sm leading-7 text-white/62">
+                      <p className="text-sm leading-7 text-[#5f5a51]">
                         {analysis.progressLine}
                       </p>
 
-                      <p className="text-sm text-white/55">
-                        <span className="text-white/38">What requires attention now:</span>{" "}
+                      <p className="text-sm text-[#6a655b]">
+                        <span className="text-[#8a8172]">What requires attention now:</span>{" "}
                         {analysis.attentionLine}
                       </p>
                     </div>
@@ -187,14 +187,14 @@ export default async function DashboardPage({
                     <div className="flex flex-col gap-2">
                       <Link
                         href={`/dashboard?analysis=${analysis.id}`}
-                        className="inline-flex items-center rounded-full border border-white/12 bg-white/5 px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-white/72 transition hover:bg-white/10 hover:text-white"
+                        className="client-interactive client-focus-ring inline-flex items-center rounded-full border border-[#d2bea1] bg-[#fbf4e8] px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-[#5f584d] hover:border-[#0f1c2e]/20 hover:bg-[#f3eadc] hover:text-[#0f1c2e] hover:shadow-[0_10px_24px_rgba(79,57,24,0.08)]"
                       >
                         Set as Focus
                       </Link>
 
                       <Link
                         href={analysis.href}
-                        className="inline-flex items-center rounded-full border border-white/12 bg-white/5 px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-white/72 transition hover:bg-white/10 hover:text-white"
+                        className="client-interactive client-focus-ring inline-flex items-center rounded-full border border-[#cfb894] bg-[#0f1c2e] px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-[#f6ecdb] hover:bg-[#16283f] hover:text-white hover:shadow-[0_14px_32px_rgba(15,28,46,0.18)]"
                       >
                         Open
                       </Link>

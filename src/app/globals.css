@@ -121,16 +121,22 @@ h4 {
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  opacity: 0.18;
-  filter: blur(10px) saturate(0.8);
-  transform: scale(1.04);
+  opacity: 0.16;
+  filter: blur(8px) saturate(0.82);
+  transform: scale(1.03);
 }
 
 .client-glass-panel {
-  background: rgba(255, 248, 239, 0.68);
-  backdrop-filter: blur(22px) saturate(135%);
-  border: 1px solid rgba(215, 198, 171, 0.8);
-  box-shadow: 0 24px 70px rgba(79, 57, 24, 0.12);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 250, 244, 0.74),
+    rgba(244, 235, 222, 0.66)
+  );
+  backdrop-filter: blur(24px) saturate(145%);
+  border: 1px solid rgba(215, 198, 171, 0.82);
+  box-shadow:
+    0 26px 72px rgba(79, 57, 24, 0.13),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 
 .client-interactive {
