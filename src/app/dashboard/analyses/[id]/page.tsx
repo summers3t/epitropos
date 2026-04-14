@@ -122,6 +122,35 @@ function getRoadmapStateLabel(state: RoadmapStepState) {
     }
 }
 
+function getRoadmapNodeClasses(state: RoadmapStepState) {
+    switch (state) {
+        case "current":
+            return {
+                node: "animate-roadmapGlow border-[#c9b18b] bg-[#f8edd9] text-[#8f6f36] shadow-[0_0_0_1px_rgba(201,177,139,0.28)]",
+                line: "bg-[linear-gradient(90deg,#c9b18b,#d8c39e)]",
+                card: "border-[#d9c19b] bg-[linear-gradient(180deg,rgba(255,250,244,0.96),rgba(245,233,211,0.92))] shadow-[0_18px_40px_rgba(201,177,139,0.16)]",
+                title: "text-[#9a7638]",
+                text: "text-[#5b554b]",
+            };
+        case "complete":
+            return {
+                node: "border-[#d0bb96] bg-[#ebd5a6] text-[#8f6f36]",
+                line: "bg-[linear-gradient(90deg,#cfb27a,#d7c09a)]",
+                card: "border-[#dfd4c2] bg-[rgba(255,248,239,0.72)] shadow-[0_10px_24px_rgba(79,57,24,0.05)]",
+                title: "text-[#4b4034]",
+                text: "text-[#6a645a]",
+            };
+        case "upcoming":
+            return {
+                node: "border-[#d9d2c7] bg-[rgba(255,255,255,0.45)] text-[#aca294]",
+                line: "bg-[linear-gradient(90deg,#d7d0c5,#dfd9cf)]",
+                card: "border-[#ded8ce] bg-[rgba(255,255,255,0.34)] shadow-none",
+                title: "text-[#7d7468]",
+                text: "text-[#91887a]",
+            };
+    }
+}
+
 export default async function DashboardAnalysisDetailPage({
     params,
 }: {
@@ -250,13 +279,72 @@ export default async function DashboardAnalysisDetailPage({
                         </span>
                     </div>
 
-                    <div className="relative mt-8">
+                    <div className="mt-8 hidden xl:block">
+                        <div className="relative">
+                            <div className="absolute left-[64px] right-[64px] top-[18px] h-[2px] bg-[linear-gradient(90deg,rgba(207,178,122,0.9),rgba(223,217,207,0.75))]" />
+
+                            <div
+                                className="absolute left-[64px] top-[18px] h-[2px] bg-[linear-gradient(90deg,#c9b18b,#d8c39e)] transition-all duration-700"
+                                style={{
+                                    width: `${roadmap.length > 1 ? ((roadmap.findIndex((step) => step.state === "current") === -1
+                                        ? roadmap.length - 1
+                                        : roadmap.findIndex((step) => step.state === "current")) / (roadmap.length - 1)) * 100 : 0}%`,
+                                }}
+                            />
+
+                            <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(${roadmap.length}, minmax(0, 1fr))` }}>
+                                {roadmap.map((step, index) => {
+                                    const stateLabel = getRoadmapStateLabel(step.state);
+                                    const styles = getRoadmapNodeClasses(step.state);
+
+                                    return (
+                                        <div key={`${step.label}-${index}`} className="relative pt-10">
+                                            <div className="absolute left-1/2 top-0 z-[1] -translate-x-1/2">
+                                                <span
+                                                    className={`flex h-9 w-9 items-center justify-center rounded-full border text-[11px] font-medium tracking-[0.08em] transition duration-500 ${styles.node}`}
+                                                >
+                                                    {index + 1}
+                                                </span>
+                                            </div>
+
+                                            <div className={`client-interactive rounded-[22px] border p-5 ${styles.card}`}>
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <span
+                                                        className={`rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] ${step.state === "current"
+                                                                ? "border-[#d9c19b] bg-[#f6ead2] text-[#8f6f36]"
+                                                                : step.state === "complete"
+                                                                    ? "border-[#d2c1a6] bg-[#f3e7d1] text-[#7c6540]"
+                                                                    : "border-[#ddd0bc] bg-[#fbf5eb] text-[#8a8172]"
+                                                            }`}
+                                                    >
+                                                        {stateLabel}
+                                                    </span>
+                                                </div>
+
+                                                <h3
+                                                    className={`mt-4 text-[20px] leading-[1.2] ${styles.title}`}
+                                                    style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
+                                                >
+                                                    {step.label}
+                                                </h3>
+
+                                                <p className={`mt-3 text-[14px] leading-7 ${styles.text}`}>
+                                                    {step.note}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="relative mt-8 xl:hidden">
                         <div className="absolute bottom-0 left-[19px] top-0 w-px bg-[linear-gradient(180deg,rgba(15,28,46,0.18),rgba(15,28,46,0.04))]" />
 
                         <div className="space-y-6">
                             {roadmap.map((step, index) => {
-                                const isCurrent = step.state === "current";
-                                const isComplete = step.state === "complete";
+                                const styles = getRoadmapNodeClasses(step.state);
                                 const stateLabel = getRoadmapStateLabel(step.state);
 
                                 return (
@@ -266,12 +354,7 @@ export default async function DashboardAnalysisDetailPage({
                                     >
                                         <div className="relative z-[1] pt-1">
                                             <span
-                                                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-[11px] font-medium tracking-[0.08em] transition duration-500 ${isCurrent
-                                                    ? "animate-roadmapPulse border-[#0f1c2e]/18 bg-[#0f1c2e] text-[#f6ecdb] shadow-[0_0_0_8px_rgba(15,28,46,0.05)]"
-                                                    : isComplete
-                                                        ? "border-[#d2c1a6] bg-[#f3e7d1] text-[#6f5b37]"
-                                                        : "border-[#ddd0bc] bg-[#fbf5eb] text-[#8a8172]"
-                                                    }`}
+                                                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-[11px] font-medium tracking-[0.08em] transition duration-500 ${styles.node}`}
                                             >
                                                 {index + 1}
                                             </span>
@@ -279,17 +362,17 @@ export default async function DashboardAnalysisDetailPage({
 
                                         <div
                                             className={`min-w-0 flex-1 border-b pb-6 ${index === roadmap.length - 1
-                                                ? "border-transparent pb-0"
-                                                : "border-[#e4d7c4]"
+                                                    ? "border-transparent pb-0"
+                                                    : "border-[#e4d7c4]"
                                                 }`}
                                         >
                                             <div className="flex flex-wrap items-center gap-2">
                                                 <span
-                                                    className={`rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] ${isCurrent
-                                                        ? "border-[#0f1c2e]/12 bg-[#eef2f7] text-[#0f1c2e]"
-                                                        : isComplete
-                                                            ? "border-[#d2c1a6] bg-[#f3e7d1] text-[#7c6540]"
-                                                            : "border-[#ddd0bc] bg-[#fbf5eb] text-[#8a8172]"
+                                                    className={`rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] ${step.state === "current"
+                                                            ? "border-[#d9c19b] bg-[#f6ead2] text-[#8f6f36]"
+                                                            : step.state === "complete"
+                                                                ? "border-[#d2c1a6] bg-[#f3e7d1] text-[#7c6540]"
+                                                                : "border-[#ddd0bc] bg-[#fbf5eb] text-[#8a8172]"
                                                         }`}
                                                 >
                                                     {stateLabel}
@@ -297,25 +380,13 @@ export default async function DashboardAnalysisDetailPage({
                                             </div>
 
                                             <h3
-                                                className={`mt-3 text-[22px] leading-[1.2] ${isCurrent
-                                                    ? "text-[#0f1c2e]"
-                                                    : isComplete
-                                                        ? "text-[#473e33]"
-                                                        : "text-[#7d7468]"
-                                                    }`}
-                                                style={{ fontFamily: 'Georgia, \"Times New Roman\", serif' }}
+                                                className={`mt-3 text-[22px] leading-[1.2] ${styles.title}`}
+                                                style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
                                             >
                                                 {step.label}
                                             </h3>
 
-                                            <p
-                                                className={`mt-3 max-w-[760px] text-[15px] leading-8 ${isCurrent
-                                                    ? "text-[#4e4a43]"
-                                                    : isComplete
-                                                        ? "text-[#655f56]"
-                                                        : "text-[#8a8172]"
-                                                    }`}
-                                            >
+                                            <p className={`mt-3 max-w-[760px] text-[15px] leading-8 ${styles.text}`}>
                                                 {step.note}
                                             </p>
                                         </div>

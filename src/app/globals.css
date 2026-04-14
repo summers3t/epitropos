@@ -121,22 +121,22 @@ h4 {
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  opacity: 0.16;
-  filter: blur(8px) saturate(0.82);
-  transform: scale(1.03);
+  opacity: 0.54;
+  filter: blur(3px) saturate(0.95);
+  transform: scale(1.02);
 }
 
 .client-glass-panel {
   background: linear-gradient(
     180deg,
-    rgba(255, 250, 244, 0.74),
-    rgba(244, 235, 222, 0.66)
+    rgba(255, 251, 246, 0.66),
+    rgba(243, 233, 219, 0.56)
   );
-  backdrop-filter: blur(24px) saturate(145%);
-  border: 1px solid rgba(215, 198, 171, 0.82);
+  backdrop-filter: blur(30px) saturate(155%);
+  border: 1px solid rgba(215, 198, 171, 0.78);
   box-shadow:
-    0 26px 72px rgba(79, 57, 24, 0.13),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+    0 28px 78px rgba(79, 57, 24, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.52);
 }
 
 .client-interactive {
@@ -161,6 +161,25 @@ h4 {
   box-shadow:
     0 0 0 3px rgba(15, 28, 46, 0.12),
     0 10px 30px rgba(15, 28, 46, 0.08);
+}
+
+@keyframes roadmapGlow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 0 rgba(201, 177, 139, 0),
+      0 0 0 0 rgba(201, 177, 139, 0);
+  }
+
+  50% {
+    box-shadow:
+      0 0 0 8px rgba(201, 177, 139, 0.12),
+      0 0 24px rgba(201, 177, 139, 0.28);
+  }
+}
+
+.animate-roadmapGlow {
+  animation: roadmapGlow 2.6s ease-in-out infinite;
 }
 
 /* Dashboard app frame */
