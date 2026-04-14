@@ -214,11 +214,27 @@ h4 {
 }
 
 .roadmap-scroll-shell {
-  scrollbar-width: none;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(166, 139, 74, 0.55) rgba(255, 255, 255, 0.14);
 }
 
 .roadmap-scroll-shell::-webkit-scrollbar {
-  display: none;
+  height: 10px;
+}
+
+.roadmap-scroll-shell::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+}
+
+.roadmap-scroll-shell::-webkit-scrollbar-thumb {
+  background: linear-gradient(90deg, rgba(166, 139, 74, 0.72), rgba(212, 176, 107, 0.92));
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.roadmap-scroll-shell::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(90deg, rgba(166, 139, 74, 0.88), rgba(212, 176, 107, 1));
 }
 
 @keyframes roadmapCardFloat {

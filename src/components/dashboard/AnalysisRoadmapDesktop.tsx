@@ -12,20 +12,50 @@ type RoadmapStep = {
 
 type AnalysisRoadmapDesktopProps = {
   roadmap: RoadmapStep[];
-  getRoadmapStateLabel: (state: RoadmapStepState) => string;
-  getRoadmapNodeClasses: (state: RoadmapStepState) => {
-    node: string;
-    line: string;
-    card: string;
-    title: string;
-    text: string;
-  };
 };
+
+function getRoadmapStateLabel(state: RoadmapStepState) {
+  switch (state) {
+    case "complete":
+      return "Completed";
+    case "current":
+      return "Current stage";
+    case "upcoming":
+      return "Upcoming";
+  }
+}
+
+function getRoadmapNodeClasses(state: RoadmapStepState) {
+  switch (state) {
+    case "current":
+      return {
+        node: "animate-roadmapGlow border-[#d4b06b] bg-gradient-to-b from-[#d4b06b] to-[#c39a49] text-white shadow-[0_0_20px_rgba(212,176,107,0.4)] ring-4 ring-[#d4b06b]/10",
+        line: "roadmap-line-glow",
+        card: "client-glass-active ring-1 ring-[#c9b18b]/20 border-white/60 bg-white/40 backdrop-blur-2xl shadow-[0_30px_60px_-12px_rgba(79,57,24,0.12),inset_0_1px_1px_rgba(255,255,255,0.7)]",
+        title: "text-[#8d6f3f] font-semibold",
+        text: "text-[#5b554b]",
+      };
+    case "complete":
+      return {
+        node: "border-[#d1bc96] bg-[#f3e7d0] text-[#8d6f3f]",
+        line: "bg-[#d0bb96]/30",
+        card: "client-glass-nested border-white/40 bg-white/20 opacity-90",
+        title: "text-[#4b4034]",
+        text: "text-[#6a645a]",
+      };
+    default:
+      return {
+        node: "border-[#e5e0d8] bg-white/10 text-[#aca294]",
+        line: "bg-[#d9d2c7]/20",
+        card: "border-white/10 bg-white/5 backdrop-blur-sm opacity-50 grayscale-[0.5]",
+        title: "text-[#91887a]",
+        text: "text-[#91887a]",
+      };
+  }
+}
 
 export default function AnalysisRoadmapDesktop({
   roadmap,
-  getRoadmapStateLabel,
-  getRoadmapNodeClasses,
 }: AnalysisRoadmapDesktopProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
 

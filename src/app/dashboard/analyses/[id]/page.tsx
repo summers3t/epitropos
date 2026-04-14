@@ -281,11 +281,7 @@ export default async function DashboardAnalysisDetailPage({
                     </div>
 
                     <div className="mt-8 hidden xl:block">
-                        <AnalysisRoadmapDesktop
-                            roadmap={roadmap}
-                            getRoadmapStateLabel={getRoadmapStateLabel}
-                            getRoadmapNodeClasses={getRoadmapNodeClasses}
-                        />
+                        <AnalysisRoadmapDesktop roadmap={roadmap} />
                     </div>
 
                     <div className="relative mt-8 xl:hidden">
