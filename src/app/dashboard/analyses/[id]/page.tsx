@@ -126,26 +126,26 @@ function getRoadmapNodeClasses(state: RoadmapStepState) {
     switch (state) {
         case "current":
             return {
-                node: "animate-roadmapGlow border-[#c9b18b] bg-[#f8edd9] text-[#8f6f36] shadow-[0_0_0_1px_rgba(201,177,139,0.28)]",
-                line: "bg-[linear-gradient(90deg,#c9b18b,#d8c39e)]",
-                card: "border-[#d9c19b] bg-[linear-gradient(180deg,rgba(255,250,244,0.96),rgba(245,233,211,0.92))] shadow-[0_18px_40px_rgba(201,177,139,0.16)]",
-                title: "text-[#9a7638]",
+                node: "animate-roadmapGlow border-[#d4b06b] bg-gradient-to-b from-[#d4b06b] to-[#c39a49] text-white shadow-[0_0_20px_rgba(212,176,107,0.4)] ring-4 ring-[#d4b06b]/10",
+                line: "roadmap-line-glow",
+                card: "client-glass-active ring-1 ring-[#c9b18b]/20 border-white/60 bg-white/40 backdrop-blur-2xl shadow-[0_30px_60px_-12px_rgba(79,57,24,0.12),inset_0_1px_1px_rgba(255,255,255,0.7)]",
+                title: "text-[#8d6f3f] font-semibold",
                 text: "text-[#5b554b]",
             };
         case "complete":
             return {
-                node: "border-[#d0bb96] bg-[#ebd5a6] text-[#8f6f36]",
-                line: "bg-[linear-gradient(90deg,#cfb27a,#d7c09a)]",
-                card: "border-[#dfd4c2] bg-[rgba(255,248,239,0.72)] shadow-[0_10px_24px_rgba(79,57,24,0.05)]",
+                node: "border-[#d1bc96] bg-[#f3e7d0] text-[#8d6f3f]",
+                line: "bg-[#d0bb96]/30",
+                card: "client-glass-nested border-white/40 bg-white/20 opacity-90",
                 title: "text-[#4b4034]",
                 text: "text-[#6a645a]",
             };
-        case "upcoming":
+        default:
             return {
-                node: "border-[#d9d2c7] bg-[rgba(255,255,255,0.45)] text-[#aca294]",
-                line: "bg-[linear-gradient(90deg,#d7d0c5,#dfd9cf)]",
-                card: "border-[#ded8ce] bg-[rgba(255,255,255,0.34)] shadow-none",
-                title: "text-[#7d7468]",
+                node: "border-[#e5e0d8] bg-white/10 text-[#aca294]",
+                line: "bg-[#d9d2c7]/20",
+                card: "border-white/10 bg-white/5 backdrop-blur-sm opacity-50 grayscale-[0.5]",
+                title: "text-[#91887a]",
                 text: "text-[#91887a]",
             };
     }
@@ -280,61 +280,66 @@ export default async function DashboardAnalysisDetailPage({
                     </div>
 
                     <div className="mt-8 hidden xl:block">
-                        <div className="relative">
-                            <div className="absolute left-[64px] right-[64px] top-[18px] h-[2px] bg-[linear-gradient(90deg,rgba(207,178,122,0.9),rgba(223,217,207,0.75))]" />
+                        <div className="relative overflow-x-auto overflow-y-visible pb-10 pt-2">
+                            <div className="min-w-max px-2">
+                                <div className="relative" style={{ width: `${roadmap.length * 220}px` }}>
+                                    <div className="absolute left-[90px] right-[90px] top-[24px] roadmap-line-glow" />
 
-                            <div
-                                className="absolute left-[64px] top-[18px] h-[2px] bg-[linear-gradient(90deg,#c9b18b,#d8c39e)] transition-all duration-700"
-                                style={{
-                                    width: `${roadmap.length > 1 ? ((roadmap.findIndex((step) => step.state === "current") === -1
-                                        ? roadmap.length - 1
-                                        : roadmap.findIndex((step) => step.state === "current")) / (roadmap.length - 1)) * 100 : 0}%`,
-                                }}
-                            />
+                                    <div
+                                        className="absolute left-[90px] top-[24px] h-[2px] rounded-full bg-gradient-to-r from-[#d4b06b] to-[#f3e7d0] shadow-[0_0_10px_#d4b06b] transition-all duration-1000"
+                                        style={{
+                                            width: `${roadmap.length > 1 ? ((roadmap.findIndex((step) => step.state === "current") === -1
+                                                ? roadmap.length - 1
+                                                : roadmap.findIndex((step) => step.state === "current")) / (roadmap.length - 1)) * (roadmap.length * 220 - 180) : 0}px`,
+                                        }}
+                                    />
 
-                            <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(${roadmap.length}, minmax(0, 1fr))` }}>
-                                {roadmap.map((step, index) => {
-                                    const stateLabel = getRoadmapStateLabel(step.state);
-                                    const styles = getRoadmapNodeClasses(step.state);
+                                    <div
+                                        className="grid gap-6"
+                                        style={{ gridTemplateColumns: `repeat(${roadmap.length}, minmax(180px, 1fr))` }}
+                                    >
+                                        {roadmap.map((step, index) => {
+                                            const stateLabel = getRoadmapStateLabel(step.state);
+                                            const styles = getRoadmapNodeClasses(step.state);
+                                            const isCurrent = step.state === "current";
 
-                                    return (
-                                        <div key={`${step.label}-${index}`} className="relative pt-10">
-                                            <div className="absolute left-1/2 top-0 z-[1] -translate-x-1/2">
-                                                <span
-                                                    className={`flex h-9 w-9 items-center justify-center rounded-full border text-[11px] font-medium tracking-[0.08em] transition duration-500 ${styles.node}`}
+                                            return (
+                                                <div
+                                                    key={`${step.label}-${index}`}
+                                                    className={`flex flex-col items-center ${isCurrent ? "z-[2]" : "z-[1]"}`}
                                                 >
-                                                    {index + 1}
-                                                </span>
-                                            </div>
+                                                    <div
+                                                        className={`z-10 mb-8 flex h-10 w-10 items-center justify-center rounded-full border text-[12px] font-semibold tracking-[0.08em] transition-all duration-500 ${styles.node}`}
+                                                    >
+                                                        {index + 1}
+                                                    </div>
 
-                                            <div className={`client-interactive rounded-[22px] border p-5 ${styles.card}`}>
-                                                <div className="flex flex-wrap items-center gap-2">
-                                                    <span
-                                                        className={`rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] ${step.state === "current"
-                                                                ? "border-[#d9c19b] bg-[#f6ead2] text-[#8f6f36]"
-                                                                : step.state === "complete"
-                                                                    ? "border-[#d2c1a6] bg-[#f3e7d1] text-[#7c6540]"
-                                                                    : "border-[#ddd0bc] bg-[#fbf5eb] text-[#8a8172]"
+                                                    <div
+                                                        className={`client-interactive group relative w-full rounded-[24px] border p-5 transition-all duration-700 ${styles.card} ${isCurrent ? "translate-y-[-12px] scale-[1.03]" : "hover:grayscale-0 hover:opacity-80"
                                                             }`}
                                                     >
-                                                        {stateLabel}
-                                                    </span>
+                                                        <div className="absolute inset-0 rounded-[24px] bg-gradient-to-tr from-white/0 via-white/20 to-white/0 opacity-0 transition-opacity group-hover:opacity-100" />
+
+                                                        <span className="relative text-[9px] font-bold uppercase tracking-[0.22em] opacity-50">
+                                                            {stateLabel}
+                                                        </span>
+
+                                                        <h3
+                                                            className={`relative mt-3 text-lg ${styles.title}`}
+                                                            style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
+                                                        >
+                                                            {step.label}
+                                                        </h3>
+
+                                                        <p className={`relative mt-3 text-[12px] leading-relaxed ${styles.text}`}>
+                                                            {step.note}
+                                                        </p>
+                                                    </div>
                                                 </div>
-
-                                                <h3
-                                                    className={`mt-4 text-[20px] leading-[1.2] ${styles.title}`}
-                                                    style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
-                                                >
-                                                    {step.label}
-                                                </h3>
-
-                                                <p className={`mt-3 text-[14px] leading-7 ${styles.text}`}>
-                                                    {step.note}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
+                                            );
+                                        })}
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -350,29 +355,29 @@ export default async function DashboardAnalysisDetailPage({
                                 return (
                                     <div
                                         key={`${step.label}-${index}`}
-                                        className="client-interactive relative flex gap-5 rounded-[18px] px-2 py-1 hover:bg-[rgba(255,248,239,0.36)]"
+                                        className="client-interactive relative flex gap-5 rounded-[18px] px-2 py-1 hover:bg-[rgba(255,248,239,0.26)]"
                                     >
                                         <div className="relative z-[1] pt-1">
                                             <span
-                                                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-[11px] font-medium tracking-[0.08em] transition duration-500 ${styles.node}`}
+                                                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-[11px] font-semibold tracking-[0.08em] transition duration-500 ${styles.node}`}
                                             >
                                                 {index + 1}
                                             </span>
                                         </div>
 
                                         <div
-                                            className={`min-w-0 flex-1 border-b pb-6 ${index === roadmap.length - 1
-                                                    ? "border-transparent pb-0"
-                                                    : "border-[#e4d7c4]"
+                                            className={`client-interactive min-w-0 flex-1 rounded-[22px] border p-5 ${styles.card} ${index === roadmap.length - 1
+                                                ? "border-transparent"
+                                                : "border-white/0"
                                                 }`}
                                         >
                                             <div className="flex flex-wrap items-center gap-2">
                                                 <span
                                                     className={`rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] ${step.state === "current"
-                                                            ? "border-[#d9c19b] bg-[#f6ead2] text-[#8f6f36]"
-                                                            : step.state === "complete"
-                                                                ? "border-[#d2c1a6] bg-[#f3e7d1] text-[#7c6540]"
-                                                                : "border-[#ddd0bc] bg-[#fbf5eb] text-[#8a8172]"
+                                                        ? "border-[#d9c19b] bg-[#f6ead2] text-[#8f6f36]"
+                                                        : step.state === "complete"
+                                                            ? "border-[#d2c1a6] bg-[#f3e7d1] text-[#7c6540]"
+                                                            : "border-[#ddd0bc] bg-[#fbf5eb] text-[#8a8172]"
                                                         }`}
                                                 >
                                                     {stateLabel}
