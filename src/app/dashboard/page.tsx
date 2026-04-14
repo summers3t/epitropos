@@ -40,29 +40,32 @@ export default async function DashboardPage({
       description="The client portal focuses on the current stage, the next expected step, and the strongest point of attention right now."
       counts={counts}
     >
-      <div className="space-y-5">
+      <div className="space-y-4">
         {primaryAnalysis ? (
-          <section className="client-glass-panel relative overflow-hidden rounded-[30px] p-5 md:p-6 xl:p-7">
-            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.16),rgba(255,248,239,0.08)_24%,rgba(239,231,216,0.18)_100%)]" />
-            <div className="relative space-y-6">
-              <div className="grid gap-5 xl:grid-cols-[1.2fr_0.95fr] xl:items-start">
+          <section className="client-glass-panel relative overflow-hidden rounded-[30px] p-4 md:p-5 xl:p-5">
+            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.14),rgba(255,248,239,0.06)_24%,rgba(239,231,216,0.14)_100%)]" />
+            <div className="relative space-y-5">
+              <div className="grid gap-5 xl:grid-cols-[1.08fr_1.22fr] xl:items-start">
                 <div className="space-y-4">
-                  <div className="space-y-2">
-                    <p className="text-[11px] uppercase tracking-[0.28em] text-[#8f7443]">
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] uppercase tracking-[0.3em] text-[#8f7443]">
                       Dashboard
                     </p>
                     <h2
-                      className="text-[56px] leading-[0.98] text-[#081426] md:text-[64px]"
+                      className="text-[46px] leading-[0.98] text-[#081426] md:text-[58px]"
                       style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
                     >
                       Welcome.
                     </h2>
-                    <p className="max-w-[620px] text-[16px] leading-8 text-[#4f4a42]">
+                    <p className="text-[15px] leading-7 text-[#4f4a42] xl:whitespace-nowrap">
                       Follow the current stage, the next expected step, and all published deliverables from one place.
                     </p>
                   </div>
 
-                  <div className="client-glass-card-active relative rounded-[30px] border border-white/70 p-7 shadow-[0_18px_44px_rgba(166,139,74,0.18)]">
+                  <Link
+                    href={primaryAnalysis.href}
+                    className="client-interactive client-focus-ring group block rounded-[30px] border border-[#d7bc86]/70 bg-[rgba(255,255,255,0.86)] p-7 shadow-[0_18px_44px_rgba(166,139,74,0.18)] transition-all duration-300 hover:-translate-y-1 hover:border-[#081426]/18 hover:bg-[rgba(255,255,255,0.94)] hover:shadow-[0_26px_56px_rgba(15,28,46,0.14)] active:translate-y-0 active:bg-[rgba(248,242,233,0.96)]"
+                  >
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="rounded-full border border-[#d1bc96] bg-[#f3e7d0] px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[#8d6f3f]">
                         {primaryAnalysis.planLabel}
@@ -73,41 +76,44 @@ export default async function DashboardPage({
                     </div>
 
                     <h3
-                      className="mt-5 text-[34px] leading-[1.06] text-[#081426] md:text-[42px]"
+                      className="mt-5 text-[34px] leading-[1.04] text-[#081426] md:text-[42px] transition-colors duration-300 group-hover:text-[#13243a]"
                       style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
                     >
                       {primaryAnalysis.title}
                     </h3>
 
-                    <p className="mt-3 max-w-[540px] text-[16px] leading-8 text-[#5c564e]">
+                    <p className="mt-3 max-w-[680px] text-[16px] leading-8 text-[#5c564e] transition-colors duration-300 group-hover:text-[#474138]">
                       {primaryAnalysis.contextLine}
                     </p>
-                  </div>
+                  </Link>
                 </div>
 
-                <div className="space-y-5 xl:pt-2">
-                  <div className="rounded-[26px] border border-white/70 bg-white/55 px-6 py-5 shadow-[0_12px_30px_rgba(79,57,24,0.05)] backdrop-blur-xl">
-                    <div className="flex items-center justify-between gap-4">
-                      <p className="text-[14px] leading-7 text-[#3f3b34]">
-                        Progress is steady and everything is on track.
-                      </p>
-                      <span className="text-[13px] uppercase tracking-[0.18em] text-[#8f7443]">
-                        Learn place.
-                      </span>
+                <div className="space-y-4 xl:pt-1">
+                  <div className="flex justify-end">
+                    <div className="inline-flex flex-wrap items-center gap-2 rounded-full border border-[#d7c6ab]/70 bg-[rgba(255,255,255,0.48)] p-1.5 shadow-[0_16px_34px_rgba(79,57,24,0.08)] backdrop-blur-xl">
+                      <Link
+                        href="/dashboard"
+                        className="client-interactive client-focus-ring inline-flex items-center rounded-full border border-[#d1bb8c] bg-[#f4ead8] px-6 py-2.5 text-[11px] uppercase tracking-[0.2em] text-[#0f1c2e] shadow-[0_8px_20px_rgba(201,177,139,0.16),inset_0_1px_0_rgba(255,255,255,0.55)]"
+                      >
+                        Dashboard
+                      </Link>
+
+                      <Link
+                        href="/dashboard/analyses"
+                        className="client-interactive client-focus-ring inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/22 px-6 py-2.5 text-[11px] uppercase tracking-[0.2em] text-[#3b3a36] hover:border-[#d1bb8c] hover:bg-white/55 hover:text-[#081426] hover:shadow-[0_10px_24px_rgba(79,57,24,0.08)]"
+                      >
+                        <span>My Analyses</span>
+                        {counts.analyses ? (
+                          <span className="inline-flex min-w-[22px] items-center justify-center rounded-full border border-[#d5c2a5] bg-[#f8efe2] px-2 py-0.5 text-[10px] tracking-[0.14em] text-[#6b5633]">
+                            {counts.analyses}
+                          </span>
+                        ) : null}
+                      </Link>
                     </div>
                   </div>
 
-                  <div className="flex justify-end">
-                    <Link
-                      href={primaryAnalysis.href}
-                      className="client-interactive client-focus-ring inline-flex items-center rounded-full border border-[#cfb894] bg-[#081426] px-6 py-3 text-[11px] uppercase tracking-[0.2em] text-[#f6ecdb] hover:bg-[#13243a] hover:text-white hover:shadow-[0_16px_32px_rgba(15,28,46,0.18)]"
-                    >
-                      Open Analysis
-                    </Link>
-                  </div>
-
-                  <div className="relative grid gap-4 md:grid-cols-3 md:gap-6">
-                    <div className="absolute left-[12%] right-[12%] top-[50%] hidden h-[2px] -translate-y-1/2 bg-[linear-gradient(90deg,rgba(201,177,139,0.62),rgba(223,217,207,0.36))] md:block" />
+                  <div className="relative grid gap-4 md:grid-cols-3 md:gap-5">
+                    <div className="absolute left-[9%] right-[9%] top-[50%] hidden h-[3px] -translate-y-1/2 rounded-full bg-[linear-gradient(90deg,rgba(201,177,139,0.74),rgba(223,217,207,0.28))] shadow-[0_0_12px_rgba(201,177,139,0.18)] md:block" />
 
                     {[
                       {
@@ -124,13 +130,14 @@ export default async function DashboardPage({
                       },
                     ].map((pod) => (
                       <div key={pod.label} className="relative flex flex-col items-center">
-                        <div className="absolute top-[22px] z-[2] hidden h-5 w-5 rounded-full border border-[#d7bc86] bg-[linear-gradient(180deg,#d9bf87,#caa561)] shadow-[0_0_14px_rgba(201,177,139,0.34)] md:block" />
+                        <div className="absolute top-[20px] z-[2] hidden h-6 w-6 rounded-full border border-[#d7bc86] bg-[linear-gradient(180deg,#dcc58f,#caa561)] shadow-[0_0_18px_rgba(201,177,139,0.38)] md:block" />
 
-                        <div className="w-full rounded-[24px] border border-white/70 bg-white/62 p-5 shadow-[0_14px_34px_rgba(79,57,24,0.05)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_42px_rgba(79,57,24,0.09)] md:pt-8">
-                          <p className="text-[10px] uppercase tracking-[0.22em] text-[#8f7443]">
+                        <div className="client-interactive group w-full rounded-[24px] border border-white/70 bg-white/62 p-5 shadow-[0_14px_34px_rgba(79,57,24,0.05)] backdrop-blur-xl transition-all duration-500 hover:-translate-y-1.5 hover:bg-white/76 hover:shadow-[0_24px_48px_rgba(79,57,24,0.10)] md:pt-8">
+                          <div className="absolute inset-0 rounded-[24px] bg-gradient-to-tr from-white/0 via-white/18 to-white/0 opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+                          <p className="relative text-[10px] uppercase tracking-[0.22em] text-[#8f7443]">
                             {pod.label}
                           </p>
-                          <p className="mt-3 text-[15px] leading-7 text-[#48433b]">
+                          <p className="relative mt-3 text-[15px] leading-8 text-[#48433b]">
                             {pod.value}
                           </p>
                         </div>
@@ -141,7 +148,7 @@ export default async function DashboardPage({
               </div>
 
               {secondaryAnalyses.length > 0 ? (
-                <div className="border-t border-white/40 pt-5">
+                <div className="border-t border-white/38 pt-5">
                   <div className="mb-5 flex items-center justify-between gap-4">
                     <h3
                       className="text-[22px] text-[#081426]"
@@ -162,7 +169,7 @@ export default async function DashboardPage({
                     {secondaryAnalyses.map((analysis) => (
                       <article
                         key={analysis.id}
-                        className="client-interactive rounded-[24px] border border-white/65 bg-white/42 p-5 shadow-[0_10px_28px_rgba(79,57,24,0.04)] backdrop-blur-lg hover:-translate-y-1 hover:bg-white/55 hover:shadow-[0_18px_40px_rgba(79,57,24,0.08)]"
+                        className="client-interactive rounded-[24px] border border-white/68 bg-white/46 p-5 shadow-[0_12px_28px_rgba(79,57,24,0.05)] backdrop-blur-lg transition-all duration-500 hover:-translate-y-1.5 hover:border-[#d0bea3] hover:bg-white/65 hover:shadow-[0_24px_48px_rgba(79,57,24,0.12)]"
                       >
                         <div className="flex items-start justify-between gap-5">
                           <div className="space-y-2">
@@ -173,13 +180,13 @@ export default async function DashboardPage({
                             </div>
 
                             <h4
-                              className="text-[28px] leading-[1.1] text-[#081426]"
+                              className="text-[28px] leading-[1.08] text-[#081426]"
                               style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
                             >
                               {analysis.title}
                             </h4>
 
-                            <p className="text-[14px] leading-7 text-[#5f5a51]">
+                            <p className="max-w-[560px] text-[14px] leading-7 text-[#5f5a51]">
                               {analysis.progressLine}
                             </p>
                           </div>
@@ -187,14 +194,14 @@ export default async function DashboardPage({
                           <div className="flex flex-col gap-2">
                             <Link
                               href={`/dashboard?analysis=${analysis.id}`}
-                              className="client-interactive client-focus-ring inline-flex items-center rounded-full border border-[#d2bea1] bg-[#fbf4e8] px-4 py-2 text-[10px] uppercase tracking-[0.18em] text-[#5f584d] hover:border-[#081426]/18 hover:bg-[#f3eadc] hover:text-[#081426] hover:shadow-[0_10px_24px_rgba(79,57,24,0.08)]"
+                              className="client-interactive client-focus-ring inline-flex items-center rounded-full border border-[#d2bea1] bg-[#fbf4e8] px-4 py-2 text-[10px] uppercase tracking-[0.18em] text-[#5f584d] hover:border-[#081426]/18 hover:bg-[#f3eadc] hover:text-[#081426] hover:shadow-[0_12px_26px_rgba(79,57,24,0.10)]"
                             >
                               Set as Focus
                             </Link>
 
                             <Link
                               href={analysis.href}
-                              className="client-interactive client-focus-ring inline-flex items-center rounded-full border border-[#cfb894] bg-[#081426] px-4 py-2 text-[10px] uppercase tracking-[0.18em] text-[#f6ecdb] hover:bg-[#13243a] hover:text-white hover:shadow-[0_14px_32px_rgba(15,28,46,0.18)]"
+                              className="client-interactive client-focus-ring inline-flex items-center rounded-full border border-[#cfb894] bg-[#081426] px-4 py-2 text-[10px] uppercase tracking-[0.18em] text-[#f6ecdb] hover:bg-[#13243a] hover:text-white hover:shadow-[0_16px_34px_rgba(15,28,46,0.20)]"
                             >
                               Open
                             </Link>

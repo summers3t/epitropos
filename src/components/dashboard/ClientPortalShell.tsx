@@ -48,6 +48,7 @@ export default function ClientPortalShell({
   children,
 }: ClientPortalShellProps) {
   const pathname = usePathname();
+  const isDashboardHome = pathname === "/dashboard";
 
   return (
     <div className="min-h-screen overflow-hidden bg-[#efe7d8] text-[#2f3130]">
@@ -58,57 +59,62 @@ export default function ClientPortalShell({
         <div className="absolute inset-x-0 top-0 h-[360px] bg-[linear-gradient(180deg,rgba(255,255,255,0.22),transparent)]" />
       </div>
 
-      <div className="relative mx-auto w-full max-w-[1880px] px-3 py-5 md:px-5 md:py-6 xl:px-6">
+      <div className="relative mx-auto w-full max-w-[1920px] px-2 py-4 md:px-4 md:py-5 xl:px-4">
         <div className="client-glass-panel overflow-hidden rounded-[34px]">
-          <div className="border-b border-[#d7c5ac]/40 bg-[linear-gradient(180deg,rgba(8,20,38,0.97),rgba(14,31,54,0.93))] px-5 py-4 md:px-7 md:py-5 xl:px-8">
-            <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-              <div className="space-y-2.5">
-                <p className="text-[10px] uppercase tracking-[0.34em] text-[#d3bb8a]">
-                  {eyebrow}
-                </p>
-                <h1
-                  className="max-w-[980px] text-[38px] leading-[1.02] text-[#f6efdf] md:text-[46px] xl:text-[54px]"
-                  style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
-                >
-                  {title}
-                </h1>
-                {description ? (
-                  <p className="max-w-[880px] text-[15px] leading-7 text-[#d4d9df]">
-                    {description}
+          <div className="border-b border-[#d7c5ac]/30 bg-[linear-gradient(180deg,rgba(8,20,38,0.97),rgba(14,31,54,0.94))] px-5 py-3 md:px-7 md:py-4 xl:px-8">
+            {isDashboardHome ? (
+              <div className="h-[22px]" />
+            ) : (
+              <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+                <div className="space-y-2.5">
+                  <p className="text-[10px] uppercase tracking-[0.34em] text-[#d3bb8a]">
+                    {eyebrow}
                   </p>
-                ) : null}
-              </div>
-
-              <div className="flex flex-wrap items-center gap-4">
-                <div className="inline-flex flex-wrap items-center gap-2 rounded-full border border-white/10 bg-[rgba(255,255,255,0.07)] p-1.5 shadow-[0_16px_32px_rgba(0,0,0,0.16)] backdrop-blur-xl">
-                  {navItems.map((item) => {
-                    const active = isActivePath(pathname, item.href);
-                    const count = item.countKey ? counts[item.countKey] : 0;
-
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className={`client-interactive client-focus-ring inline-flex items-center gap-2 rounded-full border px-5 py-2.5 text-[11px] uppercase tracking-[0.2em] ${active
-                            ? "border-[#d1bb8c] bg-[#f4ead8] text-[#0f1c2e] shadow-[0_8px_20px_rgba(201,177,139,0.16),inset_0_1px_0_rgba(255,255,255,0.55)]"
-                            : "border-transparent bg-transparent text-[#e0e5ea] hover:border-white/14 hover:bg-white/[0.10] hover:text-white hover:shadow-[0_10px_24px_rgba(0,0,0,0.10)] active:bg-white/[0.14]"
-                          }`}
-                      >
-                        <span>{item.label}</span>
-                        {count ? <CountBadge count={count} /> : null}
-                      </Link>
-                    );
-                  })}
+                  <h1
+                    className="max-w-[980px] text-[38px] leading-[1.02] text-[#f6efdf] md:text-[46px] xl:text-[54px]"
+                    style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
+                  >
+                    {title}
+                  </h1>
+                  {description ? (
+                    <p className="max-w-[880px] text-[15px] leading-7 text-[#d4d9df]">
+                      {description}
+                    </p>
+                  ) : null}
                 </div>
 
-                {headerContent ? (
-                  <div className="shrink-0">{headerContent}</div>
-                ) : null}
+                <div className="flex flex-wrap items-center gap-4">
+                  <div className="inline-flex flex-wrap items-center gap-2 rounded-full border border-white/10 bg-[rgba(255,255,255,0.07)] p-1.5 shadow-[0_16px_32px_rgba(0,0,0,0.16)] backdrop-blur-xl">
+                    {navItems.map((item) => {
+                      const active = isActivePath(pathname, item.href);
+                      const count = item.countKey ? counts[item.countKey] : 0;
+
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          className={`client-interactive client-focus-ring inline-flex items-center gap-2 rounded-full border px-5 py-2.5 text-[11px] uppercase tracking-[0.2em] ${
+                            active
+                              ? "border-[#d1bb8c] bg-[#f4ead8] text-[#0f1c2e] shadow-[0_8px_20px_rgba(201,177,139,0.16),inset_0_1px_0_rgba(255,255,255,0.55)]"
+                              : "border-transparent bg-transparent text-[#e0e5ea] hover:border-white/14 hover:bg-white/[0.10] hover:text-white hover:shadow-[0_10px_24px_rgba(0,0,0,0.10)] active:bg-white/[0.14]"
+                          }`}
+                        >
+                          <span>{item.label}</span>
+                          {count ? <CountBadge count={count} /> : null}
+                        </Link>
+                      );
+                    })}
+                  </div>
+
+                  {headerContent ? (
+                    <div className="shrink-0">{headerContent}</div>
+                  ) : null}
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
-          <div className="px-5 py-5 md:px-7 md:py-6 xl:px-8 xl:py-7">{children}</div>
+          <div className="px-4 py-4 md:px-5 md:py-5 xl:px-5 xl:py-5">{children}</div>
         </div>
       </div>
     </div>
