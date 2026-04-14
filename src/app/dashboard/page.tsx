@@ -42,10 +42,10 @@ export default async function DashboardPage({
     >
       <div className="space-y-4">
         {primaryAnalysis ? (
-          <section className="client-glass-panel relative overflow-hidden rounded-[30px] p-4 md:p-5 xl:p-5">
-            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.14),rgba(255,248,239,0.06)_24%,rgba(239,231,216,0.14)_100%)]" />
+          <section className="relative overflow-visible rounded-[30px] p-2 md:p-2 xl:p-2">
+            <div className="absolute inset-0 rounded-[30px] bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,248,239,0.03)_24%,rgba(239,231,216,0.08)_100%)]" />
             <div className="relative space-y-5">
-              <div className="grid gap-5 xl:grid-cols-[1.08fr_1.22fr] xl:items-start">
+              <div className="grid gap-5 xl:grid-cols-[0.98fr_1.32fr] xl:items-start">
                 <div className="space-y-4">
                   <div className="space-y-1.5">
                     <p className="text-[10px] uppercase tracking-[0.3em] text-[#8f7443]">
@@ -113,7 +113,8 @@ export default async function DashboardPage({
                   </div>
 
                   <div className="relative grid gap-4 md:grid-cols-3 md:gap-5">
-                    <div className="absolute left-[9%] right-[9%] top-[50%] hidden h-[3px] -translate-y-1/2 rounded-full bg-[linear-gradient(90deg,rgba(201,177,139,0.74),rgba(223,217,207,0.28))] shadow-[0_0_12px_rgba(201,177,139,0.18)] md:block" />
+                    <div className="absolute left-[7%] right-[7%] top-[50%] hidden h-[4px] -translate-y-1/2 rounded-full bg-[linear-gradient(90deg,rgba(201,177,139,0.92),rgba(226,214,190,0.72),rgba(201,177,139,0.92))] shadow-[0_0_16px_rgba(201,177,139,0.24)] md:block" />
+                    <div className="absolute left-[7%] right-[7%] top-[50%] hidden h-[1px] -translate-y-1/2 bg-white/50 md:block" />
 
                     {[
                       {
@@ -130,9 +131,9 @@ export default async function DashboardPage({
                       },
                     ].map((pod) => (
                       <div key={pod.label} className="relative flex flex-col items-center">
-                        <div className="absolute top-[20px] z-[2] hidden h-6 w-6 rounded-full border border-[#d7bc86] bg-[linear-gradient(180deg,#dcc58f,#caa561)] shadow-[0_0_18px_rgba(201,177,139,0.38)] md:block" />
+                        <div className="absolute top-[18px] z-[2] hidden h-7 w-7 rounded-full border border-[#d7bc86] bg-[linear-gradient(180deg,#e2cb97,#caa561)] shadow-[0_0_22px_rgba(201,177,139,0.42)] md:block" />
 
-                        <div className="client-interactive group w-full rounded-[24px] border border-white/70 bg-white/62 p-5 shadow-[0_14px_34px_rgba(79,57,24,0.05)] backdrop-blur-xl transition-all duration-500 hover:-translate-y-1.5 hover:bg-white/76 hover:shadow-[0_24px_48px_rgba(79,57,24,0.10)] md:pt-8">
+                        <div className="client-interactive group w-full rounded-[24px] border border-white/78 bg-white/64 p-5 shadow-[0_14px_34px_rgba(79,57,24,0.05)] backdrop-blur-xl transition-all duration-500 hover:-translate-y-2.5 hover:border-[#d7bc86]/70 hover:bg-white/82 hover:shadow-[0_28px_56px_rgba(79,57,24,0.14)] md:pt-8">
                           <div className="absolute inset-0 rounded-[24px] bg-gradient-to-tr from-white/0 via-white/18 to-white/0 opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
                           <p className="relative text-[10px] uppercase tracking-[0.22em] text-[#8f7443]">
                             {pod.label}
@@ -148,7 +149,7 @@ export default async function DashboardPage({
               </div>
 
               {secondaryAnalyses.length > 0 ? (
-                <div className="border-t border-white/38 pt-5">
+                <div className="pt-4">
                   <div className="mb-5 flex items-center justify-between gap-4">
                     <h3
                       className="text-[22px] text-[#081426]"
@@ -169,7 +170,7 @@ export default async function DashboardPage({
                     {secondaryAnalyses.map((analysis) => (
                       <article
                         key={analysis.id}
-                        className="client-interactive rounded-[24px] border border-white/68 bg-white/46 p-5 shadow-[0_12px_28px_rgba(79,57,24,0.05)] backdrop-blur-lg transition-all duration-500 hover:-translate-y-1.5 hover:border-[#d0bea3] hover:bg-white/65 hover:shadow-[0_24px_48px_rgba(79,57,24,0.12)]"
+                        className="client-interactive group rounded-[24px] border border-white/70 bg-white/48 p-5 shadow-[0_12px_28px_rgba(79,57,24,0.05)] backdrop-blur-lg transition-all duration-500 hover:-translate-y-2 hover:border-[#d0bea3] hover:bg-white/72 hover:shadow-[0_30px_58px_rgba(79,57,24,0.16)]"
                       >
                         <div className="flex items-start justify-between gap-5">
                           <div className="space-y-2">

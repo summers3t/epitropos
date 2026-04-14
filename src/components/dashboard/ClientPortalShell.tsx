@@ -61,7 +61,7 @@ export default function ClientPortalShell({
 
       <div className="relative mx-auto w-full max-w-[1920px] px-2 py-4 md:px-4 md:py-5 xl:px-4">
         <div className="client-glass-panel overflow-hidden rounded-[34px]">
-          <div className="border-b border-[#d7c5ac]/30 bg-[linear-gradient(180deg,rgba(8,20,38,0.97),rgba(14,31,54,0.94))] px-5 py-3 md:px-7 md:py-4 xl:px-8">
+          <div className={`${isDashboardHome ? "border-b-0" : "border-b border-[#d7c5ac]/30"} bg-[linear-gradient(180deg,rgba(8,20,38,0.97),rgba(14,31,54,0.94))] px-5 py-3 md:px-7 md:py-4 xl:px-8`}>
             {isDashboardHome ? (
               <div className="h-[22px]" />
             ) : (
