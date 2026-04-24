@@ -2,15 +2,18 @@
 
 :root {
   --color-navy: #0f1c2e;
+  --color-navy-light: #16283f;
   --color-charcoal: #2b2f33;
   --color-stone: #d6cfc4;
   --color-gold: #a68b4a;
+  --color-gold-light: #c9b18b;
+  --color-gold-muted: #d7bc86;
   --header-h: 61px;
   --client-portal-bg-image: url("/images/client-portal-bg.jpg");
   --roadmap-section-bg-image: url("/images/roadmap-section-bg.jpg");
 }
 
-/* Base page styling (your current file sets white/black and overrides look) */
+/* Base page styling */
 html,
 body {
   height: 100%;
@@ -23,12 +26,12 @@ html {
 body {
   background:
     radial-gradient(1200px 700px at 20% 10%,
-      rgba(166, 139, 74, 0.12),
+      rgba(166, 139, 74, 0.08),
       transparent 60%),
     radial-gradient(1000px 600px at 80% 0%,
-      rgba(15, 28, 46, 0.05),
+      rgba(15, 28, 46, 0.04),
       transparent 55%),
-    linear-gradient(180deg, #f6f0e6 0%, #eee4d2 50%, #e9deca 100%);
+    linear-gradient(180deg, #f8f4ec 0%, #f0e8d8 50%, #ebe3d3 100%);
   color: #2f3130;
   font-family:
     var(--font-inter),
@@ -42,6 +45,8 @@ body {
     "Segoe UI Emoji";
   line-height: 1.6;
   scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 h1,
@@ -52,69 +57,136 @@ h4 {
   letter-spacing: -0.02em;
 }
 
-/* Animations (from your template, kept minimal) */
+/* Premium serif for display headings */
+.font-display {
+  font-family: Georgia, "Times New Roman", serif;
+  letter-spacing: -0.01em;
+}
+
+/* Animations */
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(12px);
   }
-
   to {
     opacity: 1;
     transform: translateY(0);
   }
 }
 
-@keyframes roadmapPulse {
-
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(15, 28, 46, 0);
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
   }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
 
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes roadmapGlow {
+  0%, 100% {
+    box-shadow:
+      0 0 0 0 rgba(201, 177, 139, 0),
+      0 0 0 0 rgba(201, 177, 139, 0);
+  }
   50% {
-    box-shadow: 0 0 0 12px rgba(15, 28, 46, 0.08);
+    box-shadow:
+      0 0 0 8px rgba(201, 177, 139, 0.08),
+      0 0 24px rgba(201, 177, 139, 0.18);
   }
+}
+
+@keyframes silkRoadFlow {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes subtleFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
 }
 
 .animate-fadeIn {
-  animation: fadeIn 1s ease-out forwards;
+  animation: fadeIn 0.8s ease-out forwards;
 }
 
-.delay-100 {
-  animation-delay: 0.1s;
+.animate-fadeIn-delay-1 {
+  animation: fadeIn 0.8s ease-out 0.15s forwards;
+  opacity: 0;
 }
 
-.delay-200 {
-  animation-delay: 0.2s;
+.animate-fadeIn-delay-2 {
+  animation: fadeIn 0.8s ease-out 0.3s forwards;
+  opacity: 0;
 }
 
-.delay-300 {
-  animation-delay: 0.3s;
+.animate-fadeIn-delay-3 {
+  animation: fadeIn 0.8s ease-out 0.45s forwards;
+  opacity: 0;
 }
 
-.animate-roadmapPulse {
-  animation: roadmapPulse 2.8s ease-in-out infinite;
+.animate-fadeInScale {
+  animation: fadeInScale 0.6s ease-out forwards;
 }
 
-/* Subtle scrollbar */
+.animate-slideInRight {
+  animation: slideInRight 0.7s ease-out forwards;
+}
+
+.animate-roadmapGlow {
+  animation: roadmapGlow 2.6s ease-in-out infinite;
+}
+
+.animate-silk-road {
+  background: linear-gradient(
+    90deg, 
+    transparent 0%, 
+    rgba(201, 177, 139, 0.15) 20%, 
+    rgba(201, 177, 139, 0.6) 50%, 
+    rgba(201, 177, 139, 0.15) 80%, 
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: silkRoadFlow 6s linear infinite;
+}
+
+.animate-subtleFloat {
+  animation: subtleFloat 4s ease-in-out infinite;
+}
+
+/* Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.18);
-  border-radius: 4px;
+  background: rgba(166, 139, 74, 0.3);
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.28);
+  background: rgba(166, 139, 74, 0.5);
 }
 
+/* Background image layer */
 .client-portal-bg-image {
   position: absolute;
   inset: 0;
@@ -122,29 +194,63 @@ h4 {
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  opacity: 0.54;
-  filter: blur(3px) saturate(0.95);
-  transform: scale(1);
+  opacity: 0.4;
+  filter: blur(2px) saturate(0.9);
 }
 
+/* Glass panel - main container */
 .client-glass-panel {
   background: linear-gradient(180deg,
-      rgba(255, 251, 246, 0.66),
-      rgba(243, 233, 219, 0.56));
-  backdrop-filter: blur(30px) saturate(155%);
-  border: 1px solid rgba(215, 198, 171, 0.78);
+      rgba(255, 251, 246, 0.72),
+      rgba(243, 233, 219, 0.62));
+  backdrop-filter: blur(24px) saturate(140%);
+  border: 1px solid rgba(215, 198, 171, 0.6);
   box-shadow:
-    0 28px 78px rgba(79, 57, 24, 0.14),
-    inset 0 1px 0 rgba(255, 255, 255, 0.52);
+    0 24px 64px rgba(79, 57, 24, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
+/* Glass card - content surfaces */
+.client-glass-card {
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(16px) saturate(130%);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow:
+    0 8px 32px rgba(79, 57, 24, 0.04),
+    0 1px 3px rgba(0, 0, 0, 0.02);
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.client-glass-card:hover {
+  background: rgba(255, 255, 255, 0.7);
+  border-color: rgba(201, 177, 139, 0.5);
+  box-shadow:
+    0 12px 40px rgba(79, 57, 24, 0.08),
+    0 0 20px rgba(201, 177, 139, 0.1);
+  transform: translateY(-2px);
+}
+
+/* Active/selected glass state */
+.client-glass-active {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(20px) saturate(140%);
+  border: 1px solid rgba(212, 176, 107, 0.5);
+  box-shadow:
+    0 0 24px rgba(201, 177, 139, 0.12),
+    0 16px 48px rgba(79, 57, 24, 0.08);
+}
+
+/* Nested subtle glass */
+.client-glass-nested {
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 4px 16px rgba(79, 57, 24, 0.03);
+}
+
+/* Interactive elements */
 .client-interactive {
-  transition:
-    transform 180ms ease,
-    box-shadow 220ms ease,
-    border-color 220ms ease,
-    background-color 220ms ease,
-    color 220ms ease;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .client-interactive:hover {
@@ -153,62 +259,22 @@ h4 {
 
 .client-interactive:active {
   transform: translateY(0);
+  transition-duration: 0.15s;
 }
 
+/* Focus rings */
 .client-focus-ring:focus-visible {
   outline: none;
   box-shadow:
-    0 0 0 3px rgba(15, 28, 46, 0.12),
-    0 10px 30px rgba(15, 28, 46, 0.08);
+    0 0 0 2px rgba(15, 28, 46, 0.08),
+    0 0 0 4px rgba(201, 177, 139, 0.15);
 }
 
-@keyframes roadmapGlow {
-
-  0%,
-  100% {
-    box-shadow:
-      0 0 0 0 rgba(201, 177, 139, 0),
-      0 0 0 0 rgba(201, 177, 139, 0);
-  }
-
-  50% {
-    box-shadow:
-      0 0 0 8px rgba(201, 177, 139, 0.12),
-      0 0 24px rgba(201, 177, 139, 0.28);
-  }
-}
-
-.animate-roadmapGlow {
-  animation: roadmapGlow 2.6s ease-in-out infinite;
-}
-
+/* Roadmap specific */
 .roadmap-line-glow {
   background: linear-gradient(90deg, transparent, var(--color-gold), transparent);
   height: 1px;
-  filter: drop-shadow(0 0 4px rgba(166, 139, 74, 0.4));
-}
-
-.client-glass-nested {
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  box-shadow: 0 8px 32px rgba(79, 57, 24, 0.04);
-}
-
-.client-glass-active {
-  background: rgba(255, 255, 255, 0.6);
-  border: 1px solid #d4b06b;
-  box-shadow: 0 20px 40px rgba(166, 139, 74, 0.15);
-}
-
-.client-glass-card-active {
-  background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(18px) saturate(130%);
-  border: 1px solid rgba(212, 176, 107, 0.62);
-  box-shadow:
-    0 0 28px rgba(201, 177, 139, 0.18),
-    0 18px 42px rgba(79, 57, 24, 0.10),
-    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  filter: drop-shadow(0 0 3px rgba(166, 139, 74, 0.3));
 }
 
 .roadmap-section-bg {
@@ -218,52 +284,32 @@ h4 {
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  opacity: 0.22;
-  filter: blur(10px) saturate(0.82);
-  transform: scale(1.04);
+  opacity: 0.18;
+  filter: blur(8px) saturate(0.8);
+  transform: scale(1.02);
 }
 
 .roadmap-scroll-shell {
   scrollbar-width: thin;
-  scrollbar-color: rgba(166, 139, 74, 0.55) rgba(255, 255, 255, 0.14);
+  scrollbar-color: rgba(166, 139, 74, 0.4) rgba(255, 255, 255, 0.1);
 }
 
 .roadmap-scroll-shell::-webkit-scrollbar {
-  height: 10px;
+  height: 8px;
 }
 
 .roadmap-scroll-shell::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 999px;
 }
 
 .roadmap-scroll-shell::-webkit-scrollbar-thumb {
-  background: linear-gradient(90deg, rgba(166, 139, 74, 0.72), rgba(212, 176, 107, 0.92));
+  background: linear-gradient(90deg, rgba(166, 139, 74, 0.5), rgba(212, 176, 107, 0.7));
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-.roadmap-scroll-shell::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(90deg, rgba(166, 139, 74, 0.88), rgba(212, 176, 107, 1));
-}
-
-@keyframes roadmapCardFloat {
-
-  0%,
-  100% {
-    transform: translateY(-10px);
-  }
-
-  50% {
-    transform: translateY(-14px);
-  }
-}
-
-.animate-roadmapCardFloat {
-  animation: roadmapCardFloat 3.4s ease-in-out infinite;
-}
-
-/* Dashboard app frame */
+/* Dashboard frame */
 .dashboard-frame {
   position: relative;
   min-height: calc(100dvh - var(--header-h));
@@ -273,4 +319,80 @@ h4 {
 
 body:has(.dashboard-frame) footer {
   display: none;
+}
+
+/* Premium badge/chip styles */
+.badge-gold {
+  background: rgba(243, 231, 208, 0.8);
+  border: 1px solid rgba(209, 188, 150, 0.6);
+  color: #8d6f3f;
+}
+
+.badge-navy {
+  background: rgba(15, 28, 46, 0.9);
+  border: 1px solid rgba(207, 184, 148, 0.4);
+  color: #f6ecdb;
+}
+
+.badge-muted {
+  background: rgba(251, 246, 238, 0.7);
+  border: 1px solid rgba(221, 209, 190, 0.5);
+  color: #676054;
+}
+
+/* Connection line system */
+.connection-line {
+  position: absolute;
+  background: linear-gradient(90deg, 
+    rgba(201, 177, 139, 0), 
+    rgba(201, 177, 139, 0.4) 20%, 
+    rgba(201, 177, 139, 0.6) 50%, 
+    rgba(201, 177, 139, 0.4) 80%, 
+    rgba(201, 177, 139, 0)
+  );
+  height: 1px;
+}
+
+/* Status indicators */
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-gold);
+  box-shadow: 0 0 0 3px rgba(201, 177, 139, 0.2), 0 0 12px rgba(201, 177, 139, 0.4);
+}
+
+.status-dot-pulse {
+  animation: roadmapGlow 2.6s ease-in-out infinite;
+}
+
+/* Typography utilities */
+.text-balance {
+  text-wrap: balance;
+}
+
+.tracking-premium {
+  letter-spacing: 0.2em;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fadeIn,
+  .animate-fadeIn-delay-1,
+  .animate-fadeIn-delay-2,
+  .animate-fadeIn-delay-3,
+  .animate-fadeInScale,
+  .animate-slideInRight,
+  .animate-roadmapGlow,
+  .animate-silk-road,
+  .animate-subtleFloat {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .client-interactive:hover,
+  .client-glass-card:hover {
+    transform: none;
+  }
 }

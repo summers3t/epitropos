@@ -40,162 +40,188 @@ export default async function DashboardPage({
       description="The client portal focuses on the current stage, the next expected step, and the strongest point of attention right now."
       counts={counts}
     >
-      <div className="space-y-4">
+      <div className="space-y-8">
         {primaryAnalysis ? (
-          <section className="relative overflow-visible px-1 pb-2 pt-1">
-            <div className="grid gap-4 xl:grid-cols-[0.92fr_1.38fr] xl:items-start">
-              <div className="space-y-4">
-                <div className="space-y-1">
-                  <p className="text-[10px] uppercase tracking-[0.32em] text-[#8f7443]">
-                    Dashboard
+          <section className="animate-fadeIn">
+            {/* Main composition: Primary focus + Guidance system */}
+            <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr] xl:gap-8 xl:items-start">
+
+              {/* LEFT: Primary Analysis Card */}
+              <div className="space-y-6">
+                {/* Welcome context */}
+                <div className="space-y-2">
+                  <p className="text-[10px] uppercase tracking-[0.3em] text-[#8f7443]">
+                    Current Focus
                   </p>
-                  <h2
-                    className="text-[48px] leading-[0.96] text-[#081426] md:text-[62px]"
-                    style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
-                  >
-                    Welcome.
+                  <h2 className="font-display text-[40px] leading-[0.95] text-[#081426] md:text-[52px]">
+                    Welcome back.
                   </h2>
-                  <p className="text-[15px] leading-7 text-[#4f4a42] xl:whitespace-nowrap">
+                  <p className="text-[14px] leading-7 text-[#5c564e] max-w-[600px]">
                     Follow the current stage, the next expected step, and all published deliverables from one place.
                   </p>
                 </div>
 
+                {/* Primary Card - Dominant element */}
                 <Link
                   href={primaryAnalysis.href}
-                  className="client-interactive client-focus-ring group block rounded-[30px] border border-[#d7bc86]/70 bg-[rgba(255,255,255,0.88)] p-7 shadow-[0_22px_48px_rgba(166,139,74,0.18)] backdrop-blur-xl transition-all duration-500 hover:-translate-y-[4px] hover:border-[#081426]/18 hover:bg-[rgba(255,255,255,0.96)] hover:shadow-[0_28px_54px_rgba(15,28,46,0.13)] active:translate-y-0 active:bg-[rgba(248,242,233,0.97)]"
+                  className="client-interactive client-focus-ring group relative block overflow-hidden rounded-[28px] border border-[#d7bc86]/50 bg-[rgba(255,255,255,0.82)] p-6 md:p-8 shadow-[0_20px_60px_rgba(166,139,74,0.12)] backdrop-blur-xl transition-all duration-500 hover:shadow-[0_24px_64px_rgba(15,28,46,0.08)] hover:border-[#081426]/10"
                 >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-full border border-[#d1bc96] bg-[#f3e7d0] px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[#8d6f3f]">
+                  {/* Subtle gradient overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-[rgba(201,177,139,0.03)] via-transparent to-[rgba(15,28,46,0.02)] pointer-events-none" />
+
+                  {/* Status indicators */}
+                  <div className="relative flex flex-wrap items-center gap-2 mb-6">
+                    <span className="badge-gold rounded-full px-3 py-1 text-[10px] uppercase tracking-[0.16em]">
                       {primaryAnalysis.planLabel}
                     </span>
-                    <span className="rounded-full border border-[#ddd1be] bg-[#fbf6ee] px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[#676054]">
+                    <span className="badge-muted rounded-full px-3 py-1 text-[10px] uppercase tracking-[0.16em]">
                       {primaryAnalysis.stageLabel}
                     </span>
+                    {primaryAnalysis.hasAction && (
+                      <span className="ml-auto flex items-center gap-1.5 text-[10px] uppercase tracking-[0.14em] text-[#8d6f3f]">
+                        <span className="status-dot status-dot-pulse" />
+                        Action needed
+                      </span>
+                    )}
                   </div>
 
-                  <h3
-                    className="mt-5 text-[34px] leading-[1.04] text-[#081426] md:text-[42px] transition-colors duration-300 group-hover:text-[#13243a]"
-                    style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
-                  >
+                  <h3 className="font-display relative text-[32px] leading-[1.05] text-[#081426] md:text-[40px] transition-colors duration-300 group-hover:text-[#13243a]">
                     {primaryAnalysis.title}
                   </h3>
 
-                  <p className="mt-3 max-w-[720px] text-[16px] leading-8 text-[#5c564e] transition-colors duration-300 group-hover:text-[#474138]">
+                  <p className="relative mt-4 max-w-[640px] text-[15px] leading-8 text-[#5c564e]">
                     {primaryAnalysis.contextLine}
                   </p>
+
+                  {/* Hover hint */}
+                  <div className="relative mt-6 flex items-center gap-2 text-[11px] uppercase tracking-[0.16em] text-[#8f7443] opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                    <span>Open analysis</span>
+                    <svg className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                    </svg>
+                  </div>
                 </Link>
               </div>
 
-              <div className="space-y-4 xl:pt-[46px]">
-                <div className="flex justify-end">
-                  <div className="inline-flex flex-wrap items-center gap-2 rounded-full border border-[#d7c6ab]/72 bg-[rgba(255,255,255,0.52)] p-1.5 shadow-[0_18px_36px_rgba(79,57,24,0.08)] backdrop-blur-xl">
-                    <Link
-                      href="/dashboard"
-                      className="client-interactive client-focus-ring inline-flex items-center rounded-full border border-[#d1bb8c] bg-[#f4ead8] px-6 py-2.5 text-[11px] uppercase tracking-[0.2em] text-[#0f1c2e] shadow-[0_8px_20px_rgba(201,177,139,0.16),inset_0_1px_0_rgba(255,255,255,0.55)]"
-                    >
-                      Dashboard
-                    </Link>
-
-                    <Link
-                      href="/dashboard/analyses"
-                      className="client-interactive client-focus-ring inline-flex items-center gap-2 rounded-full border border-white/76 bg-white/28 px-6 py-2.5 text-[11px] uppercase tracking-[0.2em] text-[#3b3a36] hover:border-[#d1bb8c] hover:bg-white/58 hover:text-[#081426] hover:shadow-[0_10px_24px_rgba(79,57,24,0.08)]"
-                    >
-                      <span>My Analyses</span>
-                      {counts.analyses ? (
-                        <span className="inline-flex min-w-[22px] items-center justify-center rounded-full border border-[#d5c2a5] bg-[#f8efe2] px-2 py-0.5 text-[10px] tracking-[0.14em] text-[#6b5633]">
-                          {counts.analyses}
-                        </span>
-                      ) : null}
-                    </Link>
-                  </div>
+              {/* RIGHT: Guidance System - Three connected pods */}
+              <div className="space-y-4 xl:pt-[72px]">
+                {/* Connection line - desktop only */}
+                <div className="hidden xl:block relative h-px mb-2">
+                  <div className="absolute inset-0 connection-line" />
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-[#c9b18b] shadow-[0_0_12px_rgba(201,177,139,0.5)]" />
                 </div>
 
-                <div className="relative xl:pt-2">
-                  <div className="absolute left-[4%] right-[4%] top-[78px] hidden h-[12px] rounded-full bg-[linear-gradient(90deg,rgba(201,177,139,0.22),rgba(226,214,190,0.16),rgba(201,177,139,0.22))] blur-[2px] xl:block" />
-                  <div className="absolute left-[4%] right-[4%] top-[78px] hidden h-[5px] rounded-full bg-[linear-gradient(90deg,rgba(201,177,139,1),rgba(231,220,198,0.86),rgba(201,177,139,1))] shadow-[0_0_20px_rgba(201,177,139,0.24)] xl:block" />
-                  <div className="absolute left-[4%] right-[4%] top-[80px] hidden h-[1px] bg-white/68 xl:block" />
+                <div className="grid gap-3 xl:gap-4">
+                  {[
+                    {
+                      label: "Current Stage",
+                      value: primaryAnalysis.progressLine,
+                      icon: (
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      ),
+                    },
+                    {
+                      label: "What Requires Attention Now",
+                      value: primaryAnalysis.attentionLine,
+                      icon: (
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                        </svg>
+                      ),
+                    },
+                    {
+                      label: "What Comes Next",
+                      value: primaryAnalysis.nextLine,
+                      icon: (
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                        </svg>
+                      ),
+                    },
+                  ].map((pod, index) => (
+                    <div 
+                      key={pod.label} 
+                      className={`client-glass-card group relative rounded-[20px] p-5 md:p-6 ${
+                        index === 0 ? 'client-glass-active' : ''
+                      } animate-fadeIn-delay-${index + 1}`}
+                    >
+                      {/* Top accent line for active state */}
+                      {index === 0 && (
+                        <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-[#d4b06b] to-transparent" />
+                      )}
 
-                  <div className="grid gap-4 xl:grid-cols-3 xl:gap-5 xl:auto-rows-fr">
-                    {[
-                      {
-                        label: "Current Stage",
-                        value: primaryAnalysis.progressLine,
-                      },
-                      {
-                        label: "What Requires Attention Now",
-                        value: primaryAnalysis.attentionLine,
-                      },
-                      {
-                        label: "What Comes Next",
-                        value: primaryAnalysis.nextLine,
-                      },
-                    ].map((pod) => (
-                      <div key={pod.label} className="relative flex h-full flex-col items-center">
+                      <div className="flex items-start gap-3">
+                        <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+                          index === 0 
+                            ? 'bg-[#f3e7d0] text-[#8d6f3f]' 
+                            : 'bg-[#f8f4ec] text-[#a89b8a]'
+                        }`}>
+                          {pod.icon}
+                        </div>
 
-                        <div className="client-interactive group relative flex h-full w-full flex-col rounded-[24px] border border-white/78 bg-white/66 p-5 shadow-[0_14px_34px_rgba(79,57,24,0.05)] backdrop-blur-xl transition-all duration-500 hover:-translate-y-[3px] hover:border-[#d7bc86]/74 hover:bg-white/80 hover:shadow-[0_20px_38px_rgba(79,57,24,0.10)] xl:min-h-[286px] xl:pt-12">
-                          <div className="absolute inset-0 rounded-[24px] bg-gradient-to-tr from-white/0 via-white/20 to-white/0 opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
-                          <p className="relative text-[10px] uppercase tracking-[0.22em] text-[#8f7443]">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[10px] uppercase tracking-[0.2em] text-[#8f7443]">
                             {pod.label}
                           </p>
-                          <p className="relative mt-3 text-[15px] leading-8 text-[#48433b]">
+                          <p className="mt-2 text-[13px] leading-6 text-[#4e4a43] font-light">
                             {pod.value}
                           </p>
                         </div>
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
 
-            {secondaryAnalyses.length > 0 ? (
-              <div className="pt-6">
-                <div className="mb-5">
-                  <h3
-                    className="text-[22px] text-[#081426]"
-                    style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
-                  >
+            {/* SECONDARY: Other Analyses */}
+            {secondaryAnalyses.length > 0 && (
+              <div className="animate-fadeIn-delay-2 pt-4">
+                <div className="flex items-center gap-4 mb-5">
+                  <div className="h-px flex-1 bg-gradient-to-r from-[#d7c6ab]/40 to-transparent" />
+                  <h3 className="font-display text-[18px] text-[#081426] shrink-0">
                     Other Analyses
                   </h3>
+                  <div className="h-px flex-1 bg-gradient-to-l from-[#d7c6ab]/40 to-transparent" />
                 </div>
 
-                <div className="grid gap-4 xl:grid-cols-2">
-                  {secondaryAnalyses.map((analysis) => (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {secondaryAnalyses.map((analysis, index) => (
                     <article
                       key={analysis.id}
-                      className="client-interactive group rounded-[24px] border border-white/72 bg-white/52 p-5 shadow-[0_14px_30px_rgba(79,57,24,0.05)] backdrop-blur-lg transition-all duration-500 hover:-translate-y-[3px] hover:border-[#d0bea3] hover:bg-white/74 hover:shadow-[0_20px_38px_rgba(79,57,24,0.10)]"
+                      className="client-interactive client-focus-ring group relative rounded-[20px] border border-white/60 bg-white/40 p-5 backdrop-blur-xl transition-all duration-500 hover:bg-white/70 hover:border-[#c9b18b]/40 hover:shadow-[0_12px_36px_rgba(79,57,24,0.08)] animate-fadeIn-delay-3"
+                      style={{ animationDelay: `${0.5 + index * 0.1}s` }}
                     >
-                      <div className="flex items-start justify-between gap-5">
-                        <div className="space-y-2">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-full border border-[#ddd1be] bg-[#fbf6ee] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-[#676054]">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0 flex-1 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <span className="badge-muted rounded-full px-2.5 py-0.5 text-[10px] uppercase tracking-[0.14em]">
                               {analysis.stageLabel}
                             </span>
                           </div>
 
-                          <h4
-                            className="text-[28px] leading-[1.08] text-[#081426] transition-colors duration-300 group-hover:text-[#13243a]"
-                            style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
-                          >
+                          <h4 className="font-display text-[22px] leading-[1.1] text-[#081426] transition-colors duration-300 group-hover:text-[#13243a]">
                             {analysis.title}
                           </h4>
 
-                          <p className="max-w-[560px] text-[14px] leading-7 text-[#5f5a51]">
+                          <p className="text-[13px] leading-6 text-[#5f5a51]">
                             {analysis.progressLine}
                           </p>
                         </div>
 
-                        <div className="flex flex-col gap-2">
+                        <div className="shrink-0 flex flex-col gap-2">
                           <Link
                             href={`/dashboard?analysis=${analysis.id}`}
-                            className="client-interactive client-focus-ring inline-flex items-center rounded-full border border-[#d2bea1] bg-[#fbf4e8] px-4 py-2 text-[10px] uppercase tracking-[0.18em] text-[#5f584d] hover:border-[#081426]/18 hover:bg-[#f3eadc] hover:text-[#081426] hover:shadow-[0_12px_26px_rgba(79,57,24,0.10)]"
+                            className="client-interactive inline-flex items-center justify-center rounded-full border border-[#d2bea1]/60 bg-[#fbf4e8]/80 px-3 py-1.5 text-[10px] uppercase tracking-[0.14em] text-[#5f584d] hover:border-[#081426]/15 hover:bg-[#f3eadc] transition-all duration-300"
                           >
-                            Set as Focus
+                            Focus
                           </Link>
 
                           <Link
                             href={analysis.href}
-                            className="client-interactive client-focus-ring inline-flex items-center rounded-full border border-[#cfb894] bg-[#081426] px-4 py-2 text-[10px] uppercase tracking-[0.18em] text-[#f6ecdb] hover:bg-[#13243a] hover:text-white hover:shadow-[0_16px_34px_rgba(15,28,46,0.20)]"
+                            className="client-interactive inline-flex items-center justify-center rounded-full border border-[#cfb894]/60 bg-[#081426] px-3 py-1.5 text-[10px] uppercase tracking-[0.14em] text-[#f6ecdb] hover:bg-[#13243a] transition-all duration-300"
                           >
                             Open
                           </Link>
@@ -205,28 +231,33 @@ export default async function DashboardPage({
                   ))}
                 </div>
               </div>
-            ) : null}
+            )}
           </section>
         ) : (
-          <section className="rounded-[30px] bg-white/30 p-8 backdrop-blur-md">
-            <h2
-              className="text-[42px] text-[#081426]"
-              style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
-            >
-              No analyses yet.
-            </h2>
+          /* Empty state */
+          <section className="animate-fadeIn max-w-2xl">
+            <div className="relative overflow-hidden rounded-[28px] border border-white/50 bg-white/30 p-8 md:p-12 backdrop-blur-xl">
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#d7c6ab]/50 to-transparent" />
 
-            <p className="mt-4 max-w-[760px] text-[15px] leading-8 text-[#5f5a51]">
-              The first analysis appears here after the initial request is submitted.
-            </p>
+              <h2 className="font-display text-[36px] leading-[1.05] text-[#081426] md:text-[44px]">
+                No analyses yet.
+              </h2>
 
-            <div className="mt-6">
-              <Link
-                href="/screening"
-                className="client-interactive client-focus-ring inline-flex items-center rounded-full border border-[#cfb894] bg-[#081426] px-6 py-3 text-[11px] uppercase tracking-[0.2em] text-[#f6ecdb] hover:bg-[#13243a] hover:text-white hover:shadow-[0_14px_32px_rgba(15,28,46,0.18)]"
-              >
-                Begin Screening
-              </Link>
+              <p className="mt-4 text-[15px] leading-8 text-[#5f5a51]">
+                The first analysis appears here after the initial request is submitted. Begin a screening to start your property evaluation journey.
+              </p>
+
+              <div className="mt-8">
+                <Link
+                  href="/screening"
+                  className="client-interactive client-focus-ring inline-flex items-center gap-2 rounded-full border border-[#cfb894] bg-[#081426] px-6 py-3 text-[11px] uppercase tracking-[0.18em] text-[#f6ecdb] hover:bg-[#13243a] hover:shadow-[0_12px_28px_rgba(15,28,46,0.15)] transition-all duration-300"
+                >
+                  <span>Begin Screening</span>
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                  </svg>
+                </Link>
+              </div>
             </div>
           </section>
         )}
