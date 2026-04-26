@@ -4,13 +4,19 @@ import { createClient } from "@/lib/supabase/server";
 import ConfirmSubmitButton from "@/components/ConfirmSubmitButton";
 import ClientPortalShell from "@/components/dashboard/ClientPortalShell";
 import { getClientPortalCounts } from "@/lib/dashboard/getClientPortalCounts";
+import {
+  formatRecommendedPlan,
+  formatTriageResult,
+  getDecisionPresentation,
+  getDecisionToneClasses,
+} from "@/lib/intake/clientDecision";
 import { deleteOwnScreeningRequest } from "../deleteScreeningRequest";
 
 function formatStatusLabel(status: string | null | undefined) {
   if (!status) return "—";
 
   const labels: Record<string, string> = {
-    new: "New",
+    new: "Submitted",
     accepted: "Accepted",
     rejected: "Rejected",
     offer_sent: "Offer sent",
@@ -53,27 +59,27 @@ function getScreeningProgressSteps({
     },
     {
       key: "review",
-      label: "Under review",
+      label: "Review",
       state: "upcoming" as "done" | "current" | "upcoming",
     },
     {
       key: "offer",
-      label: "Offer issued",
+      label: "Offer",
       state: "upcoming" as "done" | "current" | "upcoming",
     },
     {
       key: "payment",
-      label: "Payment confirmed",
+      label: "Payment",
       state: "upcoming" as "done" | "current" | "upcoming",
     },
     {
       key: "analysis",
-      label: "In analysis",
+      label: "Analysis",
       state: "upcoming" as "done" | "current" | "upcoming",
     },
     {
-      key: "outcome",
-      label: "Outcome delivered",
+      key: "delivery",
+      label: "Delivery",
       state: "upcoming" as "done" | "current" | "upcoming",
     },
   ];
@@ -124,13 +130,30 @@ function getScreeningProgressSteps({
       return base;
     }
 
-    base[3].state = "upcoming";
     return base;
   }
 
   base[1].state = "current";
   return base;
 }
+
+function renderValue(value: unknown) {
+  if (typeof value === "string" && value.trim()) return value;
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (typeof value === "number") return String(value);
+  return "—";
+}
+
+const readinessOrder = [
+  ["whyGreece", "Why Greece"],
+  ["stage", "Current stage"],
+  ["propertyUse", "Property use"],
+  ["budgetBand", "Budget band"],
+  ["financing", "Financing"],
+  ["identifiedProperty", "Property identified"],
+  ["seriousness", "Urgency"],
+  ["mainWorry", "Main worry"],
+] as const;
 
 type PageProps = {
   params: Promise<{
@@ -158,7 +181,7 @@ export default async function DashboardScreeningDetailPage({
   const { data: request, error } = await supabase
     .from("screening_requests")
     .select(
-      "id, user_id, name, status, created_at, budget_range, budget_min, budget_max, currency, financing_type, goal, risk_tolerance, preferred_markets, decision_timeline, phone, property_identified, listing_url, plan_interest, notes",
+      "id, user_id, name, status, created_at, notes, triage_result, recommended_plan, primary_blocker, readiness_answers, screening_answers",
     )
     .eq("id", id)
     .eq("user_id", user.id)
@@ -189,10 +212,10 @@ export default async function DashboardScreeningDetailPage({
 
   const { data: relatedOrder, error: relatedOrderError } = relatedOffer
     ? await supabase
-        .from("orders")
-        .select("id, payment_status")
-        .eq("offer_id", relatedOffer.id)
-        .maybeSingle()
+      .from("orders")
+      .select("id, payment_status")
+      .eq("offer_id", relatedOffer.id)
+      .maybeSingle()
     : { data: null, error: null as null | Error };
 
   if (relatedOrderError) {
@@ -201,11 +224,11 @@ export default async function DashboardScreeningDetailPage({
 
   const { data: relatedCase, error: relatedCaseError } = relatedOrder
     ? await supabase
-        .from("cases")
-        .select("id, status")
-        .eq("order_id", relatedOrder.id)
-        .eq("client_id", user.id)
-        .maybeSingle()
+      .from("cases")
+      .select("id, status")
+      .eq("order_id", relatedOrder.id)
+      .eq("client_id", user.id)
+      .maybeSingle()
     : { data: null, error: null as null | Error };
 
   if (relatedCaseError) {
@@ -215,11 +238,32 @@ export default async function DashboardScreeningDetailPage({
   const paymentPending = relatedOrder?.payment_status === "pending";
   const paymentPaid = relatedOrder?.payment_status === "paid";
 
+  const readinessAnswers =
+    request.readiness_answers &&
+      typeof request.readiness_answers === "object" &&
+      !Array.isArray(request.readiness_answers)
+      ? (request.readiness_answers as Record<string, unknown>)
+      : {};
+
+  const screeningAnswers =
+    request.screening_answers &&
+      typeof request.screening_answers === "object" &&
+      !Array.isArray(request.screening_answers)
+      ? (request.screening_answers as Record<string, unknown>)
+      : {};
+
+  const decision = getDecisionPresentation({
+    triageResult: request.triage_result,
+    recommendedPlan: request.recommended_plan,
+  });
+
+  const toneClasses = getDecisionToneClasses(decision.tone);
+
   return (
     <ClientPortalShell
       eyebrow="Client Portal"
       title={request.name || "Screening Request"}
-      description="Review your submitted screening details and the current status of this request."
+      description="Review the current decision, recommendation, and next relevant step for this screening."
       counts={counts}
     >
       <section className="space-y-6">
@@ -243,8 +287,16 @@ export default async function DashboardScreeningDetailPage({
               </p>
             </div>
 
-            <div className="inline-flex min-w-[118px] justify-center rounded-full border border-[#d6b67a] bg-white/80 px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-[#9a6a16] shadow-sm">
-              {formatStatusLabel(request.status)}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex min-w-[118px] justify-center rounded-full border border-[#d6b67a] bg-white/80 px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-[#9a6a16] shadow-sm">
+                {formatStatusLabel(request.status)}
+              </div>
+
+              {request.recommended_plan ? (
+                <div className="inline-flex justify-center rounded-full border border-[#dcc79e] bg-[#fff8ea] px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-[#8b6d35] shadow-sm">
+                  {formatRecommendedPlan(request.recommended_plan)}
+                </div>
+              ) : null}
             </div>
           </div>
 
@@ -299,143 +351,153 @@ export default async function DashboardScreeningDetailPage({
           <p className="mt-4 text-[13px] leading-6 text-[#6b7280]">
             {getStatusHelp(request.status)}
           </p>
+        </article>
 
-          <dl className="mt-6 grid gap-4 md:grid-cols-2">
+        <article
+          className={[
+            "rounded-[24px] border p-6 shadow-[0_18px_48px_rgba(148,119,66,0.08)] backdrop-blur",
+            toneClasses.panel,
+          ].join(" ")}
+        >
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div className="space-y-3">
+              <div
+                className={[
+                  "inline-flex rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.18em]",
+                  toneClasses.badge,
+                ].join(" ")}
+              >
+                {decision.badge}
+              </div>
+
+              <div>
+                <h2
+                  className="text-[30px] leading-tight text-[#0f1c2e]"
+                  style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
+                >
+                  {decision.title}
+                </h2>
+                <p className="mt-3 max-w-3xl text-[14px] leading-7 text-[#5f6675]">
+                  {decision.summary}
+                </p>
+              </div>
+            </div>
+
+            {(request.triage_result || request.recommended_plan) ? (
+              <div className="rounded-2xl border border-[#eadfca] bg-white/70 px-4 py-3 text-[12px] text-[#6b7280]">
+                <div>
+                  <span className="text-[#9a8660]">Triage:</span>{" "}
+                  {formatTriageResult(request.triage_result)}
+                </div>
+                <div className="mt-1">
+                  <span className="text-[#9a8660]">Plan:</span>{" "}
+                  {formatRecommendedPlan(request.recommended_plan)}
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="mt-6 grid gap-4 md:grid-cols-[1fr_1fr]">
+            <div className="rounded-2xl border border-[#eadfca] bg-white/70 p-4">
+              <div className="text-[10px] uppercase tracking-[0.14em] text-[#9a8660]">
+                Main blocker
+              </div>
+              <div className="mt-2 text-[13px] leading-6 text-[#5f6675]">
+                {request.primary_blocker || "—"}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-[#eadfca] bg-white/70 p-4">
+              <div className="text-[10px] uppercase tracking-[0.14em] text-[#9a8660]">
+                Next step
+              </div>
+              <div className="mt-2 text-[13px] leading-6 text-[#5f6675]">
+                <p className="font-medium text-[#0f1c2e]">
+                  {decision.nextStepTitle}
+                </p>
+                <p className="mt-2">{decision.nextStepBody}</p>
+              </div>
+            </div>
+          </div>
+
+          {decision.ctaLabel && decision.ctaHref ? (
+            <div className="mt-5">
+              <Link
+                href={decision.ctaHref}
+                className="inline-flex items-center rounded-xl border border-[#b8935c] bg-[#fff8ea] px-5 py-2.5 text-xs uppercase tracking-[0.14em] text-[#9a6a16] transition hover:bg-[#fff3db]"
+              >
+                {decision.ctaLabel}
+              </Link>
+            </div>
+          ) : null}
+        </article>
+
+        <article className="rounded-[24px] border border-[#eadfca] bg-white/55 p-6 shadow-[0_20px_60px_rgba(148,119,66,0.10)] backdrop-blur-xl">
+          <h3
+            className="text-[24px] leading-tight text-[#0f1c2e]"
+            style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
+          >
+            Submitted frame
+          </h3>
+
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            {readinessOrder.map(([key, label]) => (
+              <div
+                key={key}
+                className="rounded-2xl border border-[#eadfca] bg-white/70 p-4"
+              >
+                <dt className="text-[10px] uppercase tracking-[0.14em] text-[#9a8660]">
+                  {label}
+                </dt>
+                <dd className="mt-1 text-[13px] text-[#6b7280]">
+                  {renderValue(readinessAnswers[key])}
+                </dd>
+              </div>
+            ))}
+
             <div className="rounded-2xl border border-[#eadfca] bg-white/70 p-4">
               <dt className="text-[10px] uppercase tracking-[0.14em] text-[#9a8660]">
-                Screening / case label
+                Situation
               </dt>
               <dd className="mt-1 text-[13px] text-[#6b7280]">
-                {request.name || "—"}
+                {renderValue(screeningAnswers.situation)}
               </dd>
             </div>
 
             <div className="rounded-2xl border border-[#eadfca] bg-white/70 p-4">
               <dt className="text-[10px] uppercase tracking-[0.14em] text-[#9a8660]">
-                Status
+                Location
               </dt>
               <dd className="mt-1 text-[13px] text-[#6b7280]">
-                {formatStatusLabel(request.status)}
+                {renderValue(screeningAnswers.locationText)}
               </dd>
             </div>
 
             <div className="rounded-2xl border border-[#eadfca] bg-white/70 p-4">
               <dt className="text-[10px] uppercase tracking-[0.14em] text-[#9a8660]">
-                Submitted
+                Missing piece
               </dt>
               <dd className="mt-1 text-[13px] text-[#6b7280]">
-                {new Date(request.created_at).toLocaleString()}
+                {renderValue(screeningAnswers.missingPiece)}
               </dd>
             </div>
 
             <div className="rounded-2xl border border-[#eadfca] bg-white/70 p-4">
               <dt className="text-[10px] uppercase tracking-[0.14em] text-[#9a8660]">
-                Phone
+                Preferred help type
               </dt>
               <dd className="mt-1 text-[13px] text-[#6b7280]">
-                {request.phone || "—"}
+                {renderValue(screeningAnswers.helpType)}
               </dd>
             </div>
-
-            <div className="rounded-2xl border border-[#eadfca] bg-white/70 p-4">
-              <dt className="text-[10px] uppercase tracking-[0.14em] text-[#9a8660]">
-                Plan interest
-              </dt>
-              <dd className="mt-1 text-[13px] text-[#6b7280]">
-                {request.plan_interest || "—"}
-              </dd>
-            </div>
-
-            <div className="rounded-2xl border border-[#eadfca] bg-white/70 p-4">
-              <dt className="text-[10px] uppercase tracking-[0.14em] text-[#9a8660]">
-                Investment objective
-              </dt>
-              <dd className="mt-1 text-[13px] text-[#6b7280]">
-                {request.goal || "—"}
-              </dd>
-            </div>
-
-            <div className="rounded-2xl border border-[#eadfca] bg-white/70 p-4">
-              <dt className="text-[10px] uppercase tracking-[0.14em] text-[#9a8660]">
-                Risk tolerance
-              </dt>
-              <dd className="mt-1 text-[13px] text-[#6b7280]">
-                {request.risk_tolerance || "—"}
-              </dd>
-            </div>
-
-            <div className="rounded-2xl border border-[#eadfca] bg-white/70 p-4">
-              <dt className="text-[10px] uppercase tracking-[0.14em] text-[#9a8660]">
-                Preferred markets
-              </dt>
-              <dd className="mt-1 text-[13px] text-[#6b7280]">
-                {request.preferred_markets || "—"}
-              </dd>
-            </div>
-
-            <div className="rounded-2xl border border-[#eadfca] bg-white/70 p-4">
-              <dt className="text-[10px] uppercase tracking-[0.14em] text-[#9a8660]">
-                Budget range
-              </dt>
-              <dd className="mt-1 text-[13px] text-[#6b7280]">
-                {request.budget_range || "—"}
-              </dd>
-            </div>
-
-            <div className="rounded-2xl border border-[#eadfca] bg-white/70 p-4">
-              <dt className="text-[10px] uppercase tracking-[0.14em] text-[#9a8660]">
-                Budget minimum / maximum
-              </dt>
-              <dd className="mt-1 text-[13px] text-[#6b7280]">
-                {request.budget_min && request.budget_max
-                  ? `${request.currency || ""} ${request.budget_min} — ${request.budget_max}`
-                  : "—"}
-              </dd>
-            </div>
-
-            <div className="rounded-2xl border border-[#eadfca] bg-white/70 p-4">
-              <dt className="text-[10px] uppercase tracking-[0.14em] text-[#9a8660]">
-                Decision timeline
-              </dt>
-              <dd className="mt-1 text-[13px] text-[#6b7280]">
-                {request.decision_timeline || "—"}
-              </dd>
-            </div>
-
-            <div className="rounded-2xl border border-[#eadfca] bg-white/70 p-4">
-              <dt className="text-[10px] uppercase tracking-[0.14em] text-[#9a8660]">
-                Financing type
-              </dt>
-              <dd className="mt-1 text-[13px] text-[#6b7280]">
-                {request.financing_type || "—"}
-              </dd>
-            </div>
-
-            <div className="rounded-2xl border border-[#eadfca] bg-white/70 p-4">
-              <dt className="text-[10px] uppercase tracking-[0.14em] text-[#9a8660]">
-                Property identified
-              </dt>
-              <dd className="mt-1 text-[13px] text-[#6b7280]">
-                {request.property_identified ? "Yes" : "No"}
-              </dd>
-            </div>
-
-            <div className="rounded-2xl border border-[#eadfca] bg-white/70 p-4">
-              <dt className="text-[10px] uppercase tracking-[0.14em] text-[#9a8660]">
-                Listing link
-              </dt>
-              <dd className="mt-1 break-all text-[13px] text-[#6b7280]">
-                {request.listing_url || "—"}
-              </dd>
-            </div>
-          </dl>
+          </div>
 
           <div className="mt-4 rounded-2xl border border-[#eadfca] bg-white/70 p-4">
             <div className="text-[10px] uppercase tracking-[0.14em] text-[#9a8660]">
               Additional context
             </div>
             <div className="mt-1 whitespace-pre-wrap text-[13px] text-[#6b7280]">
-              {request.notes || "—"}
+              {renderValue(screeningAnswers.additionalContext || request.notes)}
             </div>
           </div>
 
@@ -446,6 +508,15 @@ export default async function DashboardScreeningDetailPage({
             >
               Back to Screening
             </Link>
+
+            {decision.ctaLabel && decision.ctaHref ? (
+              <Link
+                href={decision.ctaHref}
+                className="rounded-xl border border-[#b8935c] bg-[#fff8ea] px-4 py-2 text-xs text-[#9a6a16] transition hover:bg-[#fff3db]"
+              >
+                {decision.ctaLabel}
+              </Link>
+            ) : null}
 
             {canDelete ? (
               <form action={deleteOwnScreeningRequest.bind(null, request.id)}>

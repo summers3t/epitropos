@@ -4,6 +4,10 @@ import { createClient } from "@/lib/supabase/server";
 import ConfirmSubmitButton from "@/components/ConfirmSubmitButton";
 import ClientPortalShell from "@/components/dashboard/ClientPortalShell";
 import { getClientPortalCounts } from "@/lib/dashboard/getClientPortalCounts";
+import {
+  formatRecommendedPlan,
+  formatTriageResult,
+} from "@/lib/intake/clientDecision";
 import { deleteOwnScreeningRequest } from "./deleteScreeningRequest";
 
 function formatStatusLabel(status: string | null | undefined) {
@@ -17,13 +21,6 @@ function formatStatusLabel(status: string | null | undefined) {
   };
 
   return labels[status] ?? status;
-}
-
-function formatPlanLabel(planType: string | null | undefined) {
-  if (!planType) return "—";
-  if (planType === "core") return "Core";
-  if (planType === "strategic") return "Strategic";
-  return planType;
 }
 
 function formatClientDate(value: string | null | undefined) {
@@ -48,9 +45,9 @@ function getStatusHelp(status: string | null | undefined) {
     case "new":
       return "Awaiting review";
     case "accepted":
-      return "Accepted for offer preparation";
+      return "Accepted for next step";
     case "offer_sent":
-      return "Offer already issued";
+      return "Commercial offer already issued";
     case "rejected":
       return "Reviewed but not accepted";
     default:
@@ -73,7 +70,7 @@ export default async function DashboardScreeningPage() {
   const { data: screeningRequests, error } = await supabase
     .from("screening_requests")
     .select(
-      "id, name, status, created_at, budget_range, financing_type, goal, plan_interest",
+      "id, name, status, created_at, triage_result, recommended_plan, primary_blocker",
     )
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
@@ -82,7 +79,7 @@ export default async function DashboardScreeningPage() {
     <ClientPortalShell
       eyebrow="Client Portal"
       title="Screenings"
-      description="Track submitted screening requests and review the next relevant step."
+      description="Track submitted screening requests, review recommendations, and see the next relevant step."
       counts={counts}
     >
       <div className="space-y-6">
@@ -91,93 +88,98 @@ export default async function DashboardScreeningPage() {
             Screening requests could not be loaded right now.
           </div>
         ) : screeningRequests && screeningRequests.length > 0 ? (
-          <section className="min-w-0">
-            <div className="hidden grid-cols-[minmax(0,1fr)_1fr_1fr_1fr_1fr_160px_110px] gap-6 px-2 py-3 text-[10px] uppercase tracking-[0.32em] text-[#9a8660] xl:grid">
-              <div>Name</div>
-              <div>Date</div>
-              <div>Plan</div>
-              <div>Budget</div>
-              <div>Goal</div>
-              <div className="text-center">Status</div>
-              <div className="text-center">Action</div>
-            </div>
+          <section className="space-y-4">
+            {screeningRequests.map((request) => {
+              const canDelete = request.status === "new";
+              const hasDecision =
+                !!request.triage_result || !!request.recommended_plan;
 
-            <div>
-              {screeningRequests.map((request) => {
-                const canDelete = request.status === "new";
+              return (
+                <article
+                  key={request.id}
+                  className="group rounded-[24px] border border-[#eadfca] bg-white/70 p-5 shadow-[0_18px_48px_rgba(148,119,66,0.08)] transition duration-300 hover:-translate-y-0.5 hover:bg-[#fffaf2]"
+                >
+                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="inline-flex rounded-full border border-[#d6b67a] bg-white/80 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[#9a6a16]">
+                          {formatStatusLabel(request.status)}
+                        </span>
 
-                return (
-                  <article
-                    key={request.id}
-                    className="relative border-b border-[#eadfca] px-2 py-4 transition duration-300 ease-out hover:bg-[#fffaf0] hover:shadow-[0_8px_20px_rgba(148,119,66,0.08)]"
-                  >
-                    <Link
-                      href={`/dashboard/screening/${request.id}`}
-                      className="absolute inset-0 z-10"
-                      aria-label={`Open ${request.name || "screening request"}`}
-                    />
+                        {request.recommended_plan ? (
+                          <span className="inline-flex rounded-full border border-[#dcc79e] bg-[#fff8ea] px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[#8b6d35]">
+                            {formatRecommendedPlan(request.recommended_plan)}
+                          </span>
+                        ) : null}
 
-                    <div className="grid min-w-0 items-center gap-4 xl:grid-cols-[minmax(0,1fr)_1fr_1fr_1fr_1fr_160px_110px] xl:gap-6">
-                      <div className="min-w-0">
-                        <p className="truncate text-[14px] font-semibold text-[#0f1c2e]">
+                        {request.triage_result ? (
+                          <span className="inline-flex rounded-full border border-[#eadfca] bg-white px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[#756b59]">
+                            {formatTriageResult(request.triage_result)}
+                          </span>
+                        ) : null}
+                      </div>
+
+                      <div>
+                        <p className="text-[16px] font-semibold text-[#0f1c2e]">
                           {request.name || "Screening request"}
                         </p>
-                        <p className="mt-0.5 text-[11px] text-[#8b7a5c]">
+                        <p className="mt-0.5 text-[12px] text-[#8b7a5c]">
                           {getStatusHelp(request.status)}
                         </p>
                       </div>
-
-                      <div className="text-[13px] text-[#6b7280]">
-                        {formatClientDate(request.created_at)}
-                      </div>
-
-                      <div className="text-[13px] text-[#6b7280]">
-                        {request.plan_interest
-                          ? formatPlanLabel(request.plan_interest)
-                          : "—"}
-                      </div>
-
-                      <div className="text-[13px] text-[#6b7280]">
-                        {request.budget_range || "—"}
-                      </div>
-
-                      <div className="text-[13px] text-[#6b7280]">
-                        {request.goal || "—"}
-                      </div>
-
-                      <div className="flex justify-start xl:justify-center">
-                        <div className="flex w-full justify-start xl:justify-center">
-                          <span className="inline-flex min-w-[118px] justify-center rounded-full border border-[#d6b67a] bg-white/80 px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-[#9a6a16] shadow-sm">
-                            {formatStatusLabel(request.status)}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="relative z-20 flex justify-start xl:justify-center">
-                        {canDelete ? (
-                          <form
-                            action={deleteOwnScreeningRequest.bind(
-                              null,
-                              request.id,
-                            )}
-                            className="relative z-20"
-                          >
-                            <ConfirmSubmitButton
-                              confirmMessage="Delete this screening request? This cannot be undone."
-                              className="relative z-20 border border-red-400/20 px-3 py-1.5 text-[11px] text-red-400/70 transition hover:bg-red-500/10"
-                            >
-                              Delete
-                            </ConfirmSubmitButton>
-                          </form>
-                        ) : (
-                          <span className="text-[11px] text-[#3a4050]">—</span>
-                        )}
-                      </div>
                     </div>
-                  </article>
-                );
-              })}
-            </div>
+
+                    <div className="text-[13px] text-[#6b7280]">
+                      {formatClientDate(request.created_at)}
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 md:grid-cols-[1.15fr_0.85fr_auto] md:items-start">
+                    <div className="rounded-2xl border border-[#eadfca] bg-[#fffdf8] p-4">
+                      <div className="text-[10px] uppercase tracking-[0.14em] text-[#9a8660]">
+                        Decision view
+                      </div>
+                      <p className="mt-2 text-[13px] leading-6 text-[#5f6675]">
+                        {hasDecision
+                          ? "A recommendation is available for this screening. Open it to see the decision and the suggested next step."
+                          : "This screening is still under internal review. The recommendation will appear here once the review is complete."}
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-[#eadfca] bg-[#fffdf8] p-4">
+                      <div className="text-[10px] uppercase tracking-[0.14em] text-[#9a8660]">
+                        Primary blocker
+                      </div>
+                      <p className="mt-2 text-[13px] leading-6 text-[#5f6675]">
+                        {request.primary_blocker || "—"}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 md:justify-end">
+                      <Link
+                        href={`/dashboard/screening/${request.id}`}
+                        className="inline-flex items-center rounded-xl border border-[#dcc79e]/70 bg-white/70 px-4 py-2 text-xs text-[#6b7280] transition hover:bg-[#fffaf0] hover:text-[#0f1c2e]"
+                      >
+                        Open
+                      </Link>
+
+                      {canDelete ? (
+                        <form
+                          action={deleteOwnScreeningRequest.bind(null, request.id)}
+                        >
+                          <ConfirmSubmitButton
+                            confirmMessage="Delete this screening request? This cannot be undone."
+                            className="border border-red-400/20 px-3 py-2 text-[11px] text-red-400/75 transition hover:bg-red-500/10"
+                          >
+                            Delete
+                          </ConfirmSubmitButton>
+                        </form>
+                      ) : null}
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
           </section>
         ) : (
           <section className="py-8">
@@ -195,10 +197,10 @@ export default async function DashboardScreeningPage() {
 
             <div className="mt-5">
               <Link
-                href="/screening"
+                href="/readiness-check"
                 className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
               >
-                Apply for Screening
+                Start Readiness Check
               </Link>
             </div>
           </section>
