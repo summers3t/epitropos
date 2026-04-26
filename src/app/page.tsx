@@ -1,135 +1,175 @@
-import Image from "next/image";
 import Link from "next/link";
 
-const cityImage =
-  "https://huggingface.co/spaces/summers3t/aegean-dreams-digital-streams/resolve/main/images/Thessaloniki-Sunset-From-Eptapyrgio-Castle.jpg";
-
-const problemImage =
-  "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1200&q=80";
-
-const principles = [
+const plans = [
   {
-    title: "Risk-First Analysis",
-    body: "We test each property against pricing realism, renovation exposure, liquidity, and financing constraints before any recommendation is issued.",
+    name: "Foundation",
+    body: "Подрежда случая, преди да тръгнете в грешна посока.",
   },
   {
-    title: "Pure Independence",
-    body: "No broker commission. No seller incentive. No pressure to approve a deal that should never happen.",
+    name: "Evaluation",
+    body: "Показва дали конкретният имот си струва, преди да се обвържете.",
+    featured: true,
   },
   {
-    title: "Institutional Rigour",
-    body: "Structured advisory logic, disciplined judgment, and written conclusions designed to reduce expensive mistakes before capital is committed.",
+    name: "Guidance",
+    body: "Превежда ви през сделката и първите важни стъпки след нея.",
   },
 ];
 
-const processSteps = [
+const steps = [
   {
     number: "01",
-    title: "Screening",
-    body: "You submit your objective, budget, and constraints. We assess fit before any engagement begins.",
+    title: "Readiness Check",
+    body: "Кратък първи филтър, който показва има ли смислен сигнал за следващ етап.",
   },
   {
     number: "02",
-    title: "Case Opening",
-    body: "Once accepted and paid, a structured advisory case is opened around your property target and decision context.",
+    title: "Serious Screening",
+    body: "По-сериозна втора стъпка за валидиране на случая и избор на правилния тип помощ.",
   },
   {
     number: "03",
-    title: "Field Analysis",
-    body: "We evaluate candidate properties through risk, pricing, rental realism, condition, and acquisition logic.",
+    title: "Recommended Path",
+    body: "След преглед се определя най-разумният следващ ход: Foundation, Evaluation или Guidance.",
   },
   {
     number: "04",
-    title: "Verdict",
-    body: "You receive a written recommendation designed for one purpose: clarity before commitment.",
+    title: "Paid Work",
+    body: "Едва тогава започва реалната работа: рамка, имотен анализ или guidance.",
   },
 ];
 
-export default function Home() {
+export default function HomePage() {
   return (
     <div className="-mx-6 -my-12">
-      <section className="relative min-h-[calc(68vh-72px)] overflow-hidden">
-        <div className="absolute inset-0">
-          <Image
-            src={cityImage}
-            alt="Thessaloniki skyline"
-            fill
-            priority
-            unoptimized
-            className="object-cover"
-          />
-          <div className="absolute inset-0 bg-[#05080d]/56" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#060a11]/68 via-[#08101a]/42 to-[#060a11]/66" />
-        </div>
-
-        <div className="relative z-10 mx-auto flex min-h-[calc(68vh-72px)] w-full max-w-[1440px] items-center px-6 py-14">
+      <section className="relative overflow-hidden border-b border-white/10">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(214,207,196,0.16),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(166,139,74,0.12),transparent_28%),linear-gradient(135deg,#07101a_0%,#0b1622_48%,#09111b_100%)]" />
+        <div className="relative mx-auto flex min-h-[calc(74vh-72px)] w-full max-w-[1440px] items-center px-6 py-16">
           <div className="max-w-[760px]">
-            <p className="text-[11px] uppercase tracking-[0.30em] text-gold/90">
-              Independent Advisory · Risk-First
+            <p className="text-[11px] uppercase tracking-[0.3em] text-stone/80">
+              Independent Guided Acquisition
             </p>
 
             <h1
-              className="mt-6 max-w-[780px] text-5xl leading-[0.98] text-white md:text-7xl"
+              className="mt-6 text-5xl leading-[0.98] text-white md:text-7xl"
               style={{ fontFamily: "Georgia, Times New Roman, serif" }}
             >
-              We represent buyers.
+              Buy property in Greece
               <br />
-              <span className="italic text-stone">Not sellers.</span>
+              <span className="italic text-stone">with more clarity and less risk.</span>
             </h1>
 
-            <p className="mt-8 max-w-[640px] text-base leading-8 text-white/72 md:text-lg">
-              Epitropos provides independent property investment analysis before
-              you commit capital. No brokerage incentives. No transaction bias.
-              Only decision-focused advisory designed to reduce expensive
-              mistakes.
+            <p className="mt-8 max-w-[640px] text-base leading-8 text-white/70 md:text-lg">
+              Epitropos is a calm, independent advisory layer between you and a
+              process that is often more confusing, more fragmented, and more
+              expensive to get wrong than it first appears.
             </p>
 
-            <div className="mt-10 flex flex-wrap items-center gap-5">
+            <div className="mt-10 flex flex-wrap gap-4">
               <Link
-                href="/screening"
+                href="/readiness-check"
                 className="inline-flex items-center rounded-md bg-stone px-7 py-4 text-[12px] font-medium uppercase tracking-[0.16em] text-navy transition hover:opacity-95"
               >
-                Begin Screening →
+                Start Readiness Check
               </Link>
 
               <Link
-                href="/methodology"
-                className="text-[12px] uppercase tracking-[0.18em] text-white/68 transition hover:text-white"
+                href="/plans"
+                className="inline-flex items-center rounded-md border border-white/15 px-7 py-4 text-[12px] uppercase tracking-[0.16em] text-white/75 transition hover:bg-white/5 hover:text-white"
               >
-                Our Methodology →
+                View Plans
               </Link>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="-mt-px">
-        <div className="mx-auto w-full max-w-[1440px] px-6">
-          <div className="grid gap-0 md:grid-cols-3">
-            {principles.map((item, index) => (
-              <article
-                key={item.title}
-                className="relative py-14 md:min-h-[280px] md:py-16"
+      <section className="border-b border-white/10">
+        <div className="mx-auto grid w-full max-w-[1440px] gap-12 px-6 py-20 md:grid-cols-[1.1fr_0.9fr] md:py-24">
+          <div className="max-w-[720px]">
+            <p className="text-[11px] uppercase tracking-[0.3em] text-white/45">
+              Why this matters
+            </p>
+
+            <h2
+              className="mt-6 text-4xl leading-tight text-white md:text-6xl"
+              style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+            >
+              The costly part is rarely the obvious one.
+            </h2>
+
+            <div className="mt-8 space-y-6 text-base leading-8 text-white/68">
+              <p>
+                Most buyers can see the asking price. What they usually do not
+                see clearly is the interaction between area quality, document
+                risk, renovation exposure, financing pressure, negotiation
+                timing, and future usability.
+              </p>
+              <p>
+                That is where false confidence becomes expensive. Epitropos
+                exists to reduce the chance of getting pulled into a weak deal,
+                a weak process, or a weak strategic fit.
+              </p>
+            </div>
+          </div>
+
+          <div className="rounded-[32px] border border-white/10 bg-white/[0.05] p-6 backdrop-blur md:p-8">
+            <div className="text-[11px] uppercase tracking-[0.18em] text-white/45">
+              What you are really buying
+            </div>
+            <ul className="mt-6 space-y-4 text-sm leading-7 text-white/78 md:text-[15px]">
+              <li>• More structure before you commit</li>
+              <li>• A lower chance of expensive mistakes</li>
+              <li>• A calmer path through a cross-border process</li>
+              <li>• Independent judgment instead of transaction pressure</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-b border-white/10">
+        <div className="mx-auto w-full max-w-[1440px] px-6 py-20 md:py-24">
+          <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.3em] text-white/45">
+                Plans
+              </p>
+              <h2
+                className="mt-5 text-4xl text-white md:text-5xl"
+                style={{ fontFamily: "Georgia, Times New Roman, serif" }}
               >
-                {index < principles.length - 1 ? (
-                  <div className="pointer-events-none absolute right-0 top-1/2 hidden h-[62%] w-px -translate-y-1/2 bg-white/10 md:block" />
-                ) : null}
+                Three levels. One logic.
+              </h2>
+            </div>
 
-                <div className="max-w-[330px] md:px-10">
-                  <h2
-                    className="text-[26px] leading-[1.12] tracking-[0.01em] text-white md:text-[30px]"
-                    style={{
-                      fontFamily:
-                        '"Baskerville", "Times New Roman", Georgia, serif',
-                    }}
-                  >
-                    {item.title}
-                  </h2>
+            <Link
+              href="/plans"
+              className="text-[12px] uppercase tracking-[0.16em] text-stone transition hover:text-white"
+            >
+              Full plan details →
+            </Link>
+          </div>
 
-                  <p className="mt-5 max-w-[300px] text-[14px] leading-7 text-white/54 md:text-[15px]">
-                    {item.body}
-                  </p>
-                </div>
+          <div className="mt-12 grid gap-5 md:grid-cols-3">
+            {plans.map((plan) => (
+              <article
+                key={plan.name}
+                className={[
+                  "rounded-[28px] border p-6 backdrop-blur",
+                  plan.featured
+                    ? "border-stone/30 bg-stone/[0.08]"
+                    : "border-white/10 bg-white/[0.05]",
+                ].join(" ")}
+              >
+                <h3
+                  className="text-2xl text-white"
+                  style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+                >
+                  {plan.name}
+                </h3>
+                <p className="mt-4 text-sm leading-7 text-white/72">
+                  {plan.body}
+                </p>
               </article>
             ))}
           </div>
@@ -137,137 +177,78 @@ export default function Home() {
       </section>
 
       <section className="border-b border-white/10">
-        <div className="mx-auto grid w-full max-w-[1440px] gap-14 px-6 py-20 md:grid-cols-[1.05fr_0.95fr] md:py-24">
-          <div className="max-w-[700px]">
-            <p className="text-[11px] uppercase tracking-[0.30em] text-white/45">
-              The Problem
-            </p>
-
-            <h2
-              className="mt-6 text-4xl leading-tight text-white md:text-6xl"
-              style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-            >
-              The people showing you properties are paid to sell them.
-            </h2>
-
-            <p className="mt-8 max-w-[650px] text-base leading-8 text-white/68">
-              Brokers, agents, developers, and intermediaries are usually paid
-              when a transaction closes — not when you make a disciplined
-              investment decision.
-            </p>
-
-            <p className="mt-6 max-w-[650px] text-base leading-8 text-white/68">
-              Epitropos exists to reverse that misalignment. We are retained by
-              buyers. We answer to buyers. We are compensated only by buyers.
-            </p>
-
-            <div className="mt-10">
-              <Link
-                href="/methodology"
-                className="text-[12px] uppercase tracking-[0.18em] text-gold transition hover:text-stone"
-              >
-                Why independent advisory matters →
-              </Link>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-center md:justify-end">
-            <div className="relative w-full max-w-[620px] overflow-hidden border border-white/10 bg-black/20 aspect-[4/3]">
-              <Image
-                src={problemImage}
-                alt="House and keys"
-                fill
-                unoptimized
-                className="object-cover"
-              />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="border-b border-white/10">
-        <div className="mx-auto w-full max-w-[1440px] px-6 py-18 md:py-20">
-          <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+        <div className="mx-auto w-full max-w-[1440px] px-6 py-20 md:py-24">
+          <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
             <div>
-              <p className="text-[11px] uppercase tracking-[0.30em] text-white/45">
-                How It Works
+              <p className="text-[11px] uppercase tracking-[0.3em] text-white/45">
+                How it works
               </p>
-
               <h2
                 className="mt-5 text-4xl text-white md:text-5xl"
                 style={{ fontFamily: "Georgia, Times New Roman, serif" }}
               >
-                From Screening to Verdict
+                A controlled path, not a pushy funnel.
               </h2>
             </div>
 
             <Link
-              href="/process"
-              className="text-[12px] uppercase tracking-[0.18em] text-gold transition hover:text-stone"
+              href="/how-it-works"
+              className="text-[12px] uppercase tracking-[0.16em] text-stone transition hover:text-white"
             >
-              Full Process →
+              See full flow →
             </Link>
           </div>
 
-          <div className="mt-14 grid gap-0 md:grid-cols-4">
-            {processSteps.map((step, index) => (
-              <div
-                key={step.number}
-                className={`py-8 md:py-10 ${
-                  index < processSteps.length - 1
-                    ? "md:border-r md:border-white/10"
-                    : ""
-                } ${index > 0 ? "border-t border-white/10 md:border-t-0" : ""}`}
+          <div className="mt-12 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {steps.map((item) => (
+              <article
+                key={item.number}
+                className="rounded-[24px] border border-white/10 bg-white/[0.05] p-6 backdrop-blur"
               >
-                <div className="max-w-[260px] pr-8">
-                  <div className="text-[12px] uppercase tracking-[0.20em] text-gold/90">
-                    {step.number}
-                  </div>
-
-                  <h3
-                    className="mt-6 text-2xl text-white"
-                    style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-                  >
-                    {step.title}
-                  </h3>
-
-                  <p className="mt-5 text-sm leading-7 text-white/62">
-                    {step.body}
-                  </p>
+                <div className="text-[11px] uppercase tracking-[0.2em] text-stone/85">
+                  {item.number}
                 </div>
-              </div>
+                <h3
+                  className="mt-4 text-2xl text-white"
+                  style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+                >
+                  {item.title}
+                </h3>
+                <p className="mt-4 text-sm leading-7 text-white/65">
+                  {item.body}
+                </p>
+              </article>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="border-b border-white/10">
+      <section>
         <div className="mx-auto max-w-[980px] px-6 py-24 text-center md:py-28">
-          <p className="text-[11px] uppercase tracking-[0.30em] text-white/45">
-            Ready To Proceed
+          <p className="text-[11px] uppercase tracking-[0.3em] text-white/45">
+            Start here
           </p>
 
           <h2
             className="mt-6 text-5xl leading-[1.02] text-white md:text-7xl"
             style={{ fontFamily: "Georgia, Times New Roman, serif" }}
           >
-            Request a screening.
+            See whether there is a real path
             <br />
-            <span className="italic text-stone">No obligation.</span>
+            <span className="italic text-stone">before you go deeper.</span>
           </h2>
 
           <p className="mx-auto mt-8 max-w-[700px] text-base leading-8 text-white/68">
-            The screening is a short intake step that helps determine whether we
-            can add value to your specific investment situation before any
-            formal engagement begins.
+            The first step is short, calm, and useful. It is meant to create
+            signal — not pressure.
           </p>
 
           <div className="mt-10">
             <Link
-              href="/screening"
+              href="/readiness-check"
               className="inline-flex items-center rounded-md bg-stone px-8 py-4 text-[12px] font-medium uppercase tracking-[0.16em] text-navy transition hover:opacity-95"
             >
-              Begin Screening →
+              Start Readiness Check
             </Link>
           </div>
         </div>

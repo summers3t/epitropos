@@ -206,23 +206,11 @@ export default function Header({
 
           <div className="flex min-w-0 items-center gap-6">
             <nav className="hidden items-center gap-8 text-[12px] uppercase tracking-[0.18em] text-white/62 md:flex">
-              <Link href="/methodology" className="transition hover:text-white">
-                Methodology
+              <Link href="/plans" className="transition hover:text-white">
+                Plans
               </Link>
-              <Link href="/services" className="transition hover:text-white">
-                Services
-              </Link>
-              <Link href="/process" className="transition hover:text-white">
-                Process
-              </Link>
-              <Link href="/cases" className="transition hover:text-white">
-                Cases
-              </Link>
-              <Link href="/pricing" className="transition hover:text-white">
-                Pricing
-              </Link>
-              <Link href="/faq" className="transition hover:text-white">
-                FAQ
+              <Link href="/how-it-works" className="transition hover:text-white">
+                How it works
               </Link>
             </nav>
 
@@ -254,7 +242,7 @@ export default function Header({
                     )}
 
                     <div className="min-w-0">
-                      <div className="text-xs font-medium text-white/90 whitespace-nowrap">
+                      <div className="text-xs font-medium whitespace-nowrap text-white/90">
                         {displayName || "Signed in"}
                       </div>
                       <div className="text-[10px] uppercase tracking-[0.14em] text-white/45">
@@ -272,10 +260,10 @@ export default function Header({
               ) : (
                 <>
                   <Link
-                    href="/screening"
+                    href="/readiness-check"
                     className="inline-flex items-center rounded-md bg-stone px-5 py-3 text-[12px] font-medium uppercase tracking-[0.14em] text-navy transition hover:opacity-95"
                   >
-                    Begin Screening
+                    Start Check
                   </Link>
 
                   <Link
@@ -298,7 +286,7 @@ export default function Header({
 
             <Link
               href="/admin/screening"
-              className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-3 py-1.5 text-xs hover:bg-white/5 transition"
+              className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-3 py-1.5 text-xs transition hover:bg-white/5"
             >
               <span>Screening</span>
               <Badge count={adminCounts.screening} />
@@ -306,7 +294,7 @@ export default function Header({
 
             <Link
               href="/admin/orders"
-              className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-3 py-1.5 text-xs hover:bg-white/5 transition"
+              className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-3 py-1.5 text-xs transition hover:bg-white/5"
             >
               <span>Orders</span>
               <Badge count={adminCounts.orders} />
@@ -314,7 +302,7 @@ export default function Header({
 
             <Link
               href="/admin/cases"
-              className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-3 py-1.5 text-xs hover:bg-white/5 transition"
+              className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-3 py-1.5 text-xs transition hover:bg-white/5"
             >
               <span>Cases</span>
               <Badge count={adminCounts.cases} />
