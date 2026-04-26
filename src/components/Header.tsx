@@ -206,10 +206,16 @@ export default function Header({
 
           <div className="flex min-w-0 items-center gap-6">
             <nav className="hidden items-center gap-8 text-[12px] uppercase tracking-[0.18em] text-white/62 md:flex">
-              <Link href="/plans" className="transition hover:text-white">
+              <Link
+                href="/plans"
+                className="relative transition duration-300 hover:text-white after:absolute after:-bottom-1.5 after:left-0 after:h-px after:w-0 after:bg-stone/80 after:transition-all after:duration-300 hover:after:w-full"
+              >
                 Plans
               </Link>
-              <Link href="/how-it-works" className="transition hover:text-white">
+              <Link
+                href="/how-it-works"
+                className="relative transition duration-300 hover:text-white after:absolute after:-bottom-1.5 after:left-0 after:h-px after:w-0 after:bg-stone/80 after:transition-all after:duration-300 hover:after:w-full"
+              >
                 How it works
               </Link>
             </nav>
@@ -219,7 +225,7 @@ export default function Header({
                 <>
                   <Link
                     href="/dashboard"
-                    className="hidden text-[12px] uppercase tracking-[0.18em] text-white/62 transition hover:text-white md:inline-flex"
+                    className="relative hidden text-[12px] uppercase tracking-[0.18em] text-white/62 transition duration-300 hover:text-white after:absolute after:-bottom-1.5 after:left-0 after:h-px after:w-0 after:bg-stone/80 after:transition-all after:duration-300 hover:after:w-full md:inline-flex"
                   >
                     Dashboard
                   </Link>
@@ -268,7 +274,7 @@ export default function Header({
 
                   <Link
                     href="/auth/login"
-                    className="hidden text-[12px] uppercase tracking-[0.18em] text-white/62 transition hover:text-white md:inline-flex"
+                    className="relative hidden text-[12px] uppercase tracking-[0.18em] text-white/62 transition duration-300 hover:text-white after:absolute after:-bottom-1.5 after:left-0 after:h-px after:w-0 after:bg-stone/80 after:transition-all after:duration-300 hover:after:w-full md:inline-flex"
                   >
                     Sign in
                   </Link>

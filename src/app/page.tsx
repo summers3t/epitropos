@@ -70,7 +70,7 @@ export default function HomePage() {
             <div className="mt-10 flex flex-wrap gap-4">
               <Link
                 href="/readiness-check"
-                className="inline-flex items-center rounded-md bg-stone px-7 py-4 text-[12px] font-medium uppercase tracking-[0.16em] text-navy transition hover:opacity-95"
+                className="inline-flex items-center rounded-md bg-stone px-7 py-4 text-[12px] font-medium uppercase tracking-[0.16em] text-navy shadow-[0_12px_30px_rgba(214,207,196,0.12)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_40px_rgba(214,207,196,0.18)]"
               >
                 Start Readiness Check
               </Link>
@@ -154,12 +154,12 @@ export default function HomePage() {
             </Link>
           </div>
 
-          <div className="mt-12 grid gap-5 md:grid-cols-3">
+          <div className="group mt-12 grid gap-5 md:grid-cols-3">
             {plans.map((plan) => (
               <article
                 key={plan.name}
                 className={[
-                  "rounded-[28px] border p-7 shadow-[0_18px_60px_rgba(0,0,0,0.14)] backdrop-blur",
+                  "rounded-[28px] border p-7 shadow-[0_18px_60px_rgba(0,0,0,0.14)] backdrop-blur transition duration-300 group-hover:opacity-60 hover:-translate-y-1 hover:opacity-100 hover:shadow-[0_28px_80px_rgba(0,0,0,0.22)]",
                   plan.featured
                     ? "border-stone/25 bg-stone/[0.08]"
                     : "border-white/10 bg-white/[0.04]",
@@ -203,11 +203,11 @@ export default function HomePage() {
             </Link>
           </div>
 
-          <div className="mt-12 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="group mt-12 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {steps.map((item) => (
               <article
                 key={item.number}
-                className="rounded-[24px] border border-white/10 bg-white/[0.04] p-6 shadow-[0_14px_40px_rgba(0,0,0,0.12)] backdrop-blur"
+                className="rounded-[24px] border border-white/10 bg-white/[0.04] p-6 shadow-[0_14px_40px_rgba(0,0,0,0.12)] backdrop-blur transition duration-300 group-hover:opacity-60 hover:-translate-y-1 hover:opacity-100 hover:shadow-[0_24px_60px_rgba(0,0,0,0.20)]"
               >
                 <div className="text-[11px] uppercase tracking-[0.2em] text-stone/85">
                   {item.number}
@@ -251,7 +251,7 @@ export default function HomePage() {
             <div className="mt-10">
               <Link
                 href="/readiness-check"
-                className="inline-flex items-center rounded-md bg-stone px-8 py-4 text-[12px] font-medium uppercase tracking-[0.16em] text-navy transition hover:opacity-95"
+                className="inline-flex items-center rounded-md bg-stone px-8 py-4 text-[12px] font-medium uppercase tracking-[0.16em] text-navy shadow-[0_12px_30px_rgba(214,207,196,0.12)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_40px_rgba(214,207,196,0.18)]"
               >
                 Start Readiness Check
               </Link>
