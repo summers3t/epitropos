@@ -41,25 +41,27 @@ const steps = [
 
 export default function HomePage() {
   return (
-    <div className="-mx-6 -my-12">
+    <div className="-mx-6 -my-12 bg-[radial-gradient(circle_at_top_left,rgba(214,207,196,0.10),transparent_20%),radial-gradient(circle_at_bottom_right,rgba(166,139,74,0.08),transparent_22%),linear-gradient(180deg,#07101a_0%,#0b1622_50%,#09111b_100%)] text-stone">
       <section className="relative overflow-hidden border-b border-white/10">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(214,207,196,0.16),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(166,139,74,0.12),transparent_28%),linear-gradient(135deg,#07101a_0%,#0b1622_48%,#09111b_100%)]" />
-        <div className="relative mx-auto flex min-h-[calc(74vh-72px)] w-full max-w-[1440px] items-center px-6 py-16">
-          <div className="max-w-[760px]">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(214,207,196,0.12),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(166,139,74,0.10),transparent_28%),linear-gradient(135deg,#07101a_0%,#0b1622_48%,#09111b_100%)]" />
+        <div className="relative mx-auto flex min-h-[calc(76vh-72px)] w-full max-w-[1440px] items-center px-6 py-20">
+          <div className="max-w-[800px]">
             <p className="text-[11px] uppercase tracking-[0.3em] text-stone/80">
               Independent Guided Acquisition
             </p>
 
             <h1
-              className="mt-6 text-5xl leading-[0.98] text-white md:text-7xl"
+              className="mt-6 max-w-[760px] text-5xl leading-[0.96] text-white md:text-7xl"
               style={{ fontFamily: "Georgia, Times New Roman, serif" }}
             >
               Buy property in Greece
               <br />
-              <span className="italic text-stone">with more clarity and less risk.</span>
+              <span className="italic text-stone">
+                with more clarity and less risk.
+              </span>
             </h1>
 
-            <p className="mt-8 max-w-[640px] text-base leading-8 text-white/70 md:text-lg">
+            <p className="mt-8 max-w-[650px] text-base leading-8 text-white/70 md:text-lg">
               Epitropos is a calm, independent advisory layer between you and a
               process that is often more confusing, more fragmented, and more
               expensive to get wrong than it first appears.
@@ -75,7 +77,7 @@ export default function HomePage() {
 
               <Link
                 href="/plans"
-                className="inline-flex items-center rounded-md border border-white/15 px-7 py-4 text-[12px] uppercase tracking-[0.16em] text-white/75 transition hover:bg-white/5 hover:text-white"
+                className="inline-flex items-center rounded-md border border-white/15 bg-white/[0.02] px-7 py-4 text-[12px] uppercase tracking-[0.16em] text-white/75 transition hover:bg-white/5 hover:text-white"
               >
                 View Plans
               </Link>
@@ -84,50 +86,52 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="border-b border-white/10">
-        <div className="mx-auto grid w-full max-w-[1440px] gap-12 px-6 py-20 md:grid-cols-[1.1fr_0.9fr] md:py-24">
-          <div className="max-w-[720px]">
-            <p className="text-[11px] uppercase tracking-[0.3em] text-white/45">
-              Why this matters
-            </p>
-
-            <h2
-              className="mt-6 text-4xl leading-tight text-white md:text-6xl"
-              style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-            >
-              The costly part is rarely the obvious one.
-            </h2>
-
-            <div className="mt-8 space-y-6 text-base leading-8 text-white/68">
-              <p>
-                Most buyers can see the asking price. What they usually do not
-                see clearly is the interaction between area quality, document
-                risk, renovation exposure, financing pressure, negotiation
-                timing, and future usability.
+      <section className="border-b border-white/10 bg-black/[0.10]">
+        <div className="mx-auto w-full max-w-[1440px] px-6 py-20 md:py-24">
+          <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
+            <div className="rounded-[32px] border border-white/10 bg-white/[0.03] p-8 backdrop-blur md:p-10">
+              <p className="text-[11px] uppercase tracking-[0.3em] text-white/45">
+                Why this matters
               </p>
-              <p>
-                That is where false confidence becomes expensive. Epitropos
-                exists to reduce the chance of getting pulled into a weak deal,
-                a weak process, or a weak strategic fit.
-              </p>
-            </div>
-          </div>
 
-          <div className="rounded-[32px] border border-white/10 bg-white/[0.05] p-6 backdrop-blur md:p-8">
-            <div className="text-[11px] uppercase tracking-[0.18em] text-white/45">
-              What you are really buying
+              <h2
+                className="mt-6 max-w-[820px] text-4xl leading-[1.02] text-white md:text-6xl"
+                style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+              >
+                The costly part is rarely the obvious one.
+              </h2>
+
+              <div className="mt-8 max-w-[760px] space-y-6 text-base leading-8 text-white/68">
+                <p>
+                  Most buyers can see the asking price. What they usually do not
+                  see clearly is the interaction between area quality, document
+                  risk, renovation exposure, financing pressure, negotiation
+                  timing, and future usability.
+                </p>
+                <p>
+                  That is where false confidence becomes expensive. Epitropos
+                  exists to reduce the chance of getting pulled into a weak
+                  deal, a weak process, or a weak strategic fit.
+                </p>
+              </div>
             </div>
-            <ul className="mt-6 space-y-4 text-sm leading-7 text-white/78 md:text-[15px]">
-              <li>• More structure before you commit</li>
-              <li>• A lower chance of expensive mistakes</li>
-              <li>• A calmer path through a cross-border process</li>
-              <li>• Independent judgment instead of transaction pressure</li>
-            </ul>
+
+            <div className="rounded-[32px] border border-stone/15 bg-gradient-to-b from-stone/[0.08] to-white/[0.03] p-8 shadow-[0_24px_80px_rgba(0,0,0,0.18)] backdrop-blur md:p-10">
+              <div className="text-[11px] uppercase tracking-[0.22em] text-white/45">
+                What you are really buying
+              </div>
+              <ul className="mt-6 space-y-4 text-sm leading-7 text-white/82 md:text-[15px]">
+                <li>• More structure before you commit</li>
+                <li>• A lower chance of expensive mistakes</li>
+                <li>• A calmer path through a cross-border process</li>
+                <li>• Independent judgment instead of transaction pressure</li>
+              </ul>
+            </div>
           </div>
         </div>
       </section>
 
-      <section className="border-b border-white/10">
+      <section className="border-b border-white/10 bg-white/[0.02]">
         <div className="mx-auto w-full max-w-[1440px] px-6 py-20 md:py-24">
           <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
             <div>
@@ -155,10 +159,10 @@ export default function HomePage() {
               <article
                 key={plan.name}
                 className={[
-                  "rounded-[28px] border p-6 backdrop-blur",
+                  "rounded-[28px] border p-7 shadow-[0_18px_60px_rgba(0,0,0,0.14)] backdrop-blur",
                   plan.featured
-                    ? "border-stone/30 bg-stone/[0.08]"
-                    : "border-white/10 bg-white/[0.05]",
+                    ? "border-stone/25 bg-stone/[0.08]"
+                    : "border-white/10 bg-white/[0.04]",
                 ].join(" ")}
               >
                 <h3
@@ -167,7 +171,7 @@ export default function HomePage() {
                 >
                   {plan.name}
                 </h3>
-                <p className="mt-4 text-sm leading-7 text-white/72">
+                <p className="mt-4 text-sm leading-7 text-white/74">
                   {plan.body}
                 </p>
               </article>
@@ -176,7 +180,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="border-b border-white/10">
+      <section className="border-b border-white/10 bg-black/[0.10]">
         <div className="mx-auto w-full max-w-[1440px] px-6 py-20 md:py-24">
           <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
             <div>
@@ -203,7 +207,7 @@ export default function HomePage() {
             {steps.map((item) => (
               <article
                 key={item.number}
-                className="rounded-[24px] border border-white/10 bg-white/[0.05] p-6 backdrop-blur"
+                className="rounded-[24px] border border-white/10 bg-white/[0.04] p-6 shadow-[0_14px_40px_rgba(0,0,0,0.12)] backdrop-blur"
               >
                 <div className="text-[11px] uppercase tracking-[0.2em] text-stone/85">
                   {item.number}
@@ -214,7 +218,7 @@ export default function HomePage() {
                 >
                   {item.title}
                 </h3>
-                <p className="mt-4 text-sm leading-7 text-white/65">
+                <p className="mt-4 text-sm leading-7 text-white/68">
                   {item.body}
                 </p>
               </article>
@@ -223,33 +227,35 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section>
+      <section className="bg-white/[0.02]">
         <div className="mx-auto max-w-[980px] px-6 py-24 text-center md:py-28">
-          <p className="text-[11px] uppercase tracking-[0.3em] text-white/45">
-            Start here
-          </p>
+          <div className="rounded-[36px] border border-white/10 bg-white/[0.04] px-8 py-12 shadow-[0_24px_80px_rgba(0,0,0,0.18)] backdrop-blur md:px-12 md:py-16">
+            <p className="text-[11px] uppercase tracking-[0.3em] text-white/45">
+              Start here
+            </p>
 
-          <h2
-            className="mt-6 text-5xl leading-[1.02] text-white md:text-7xl"
-            style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-          >
-            See whether there is a real path
-            <br />
-            <span className="italic text-stone">before you go deeper.</span>
-          </h2>
-
-          <p className="mx-auto mt-8 max-w-[700px] text-base leading-8 text-white/68">
-            The first step is short, calm, and useful. It is meant to create
-            signal — not pressure.
-          </p>
-
-          <div className="mt-10">
-            <Link
-              href="/readiness-check"
-              className="inline-flex items-center rounded-md bg-stone px-8 py-4 text-[12px] font-medium uppercase tracking-[0.16em] text-navy transition hover:opacity-95"
+            <h2
+              className="mt-6 text-5xl leading-[1.02] text-white md:text-7xl"
+              style={{ fontFamily: "Georgia, Times New Roman, serif" }}
             >
-              Start Readiness Check
-            </Link>
+              See whether there is a real path
+              <br />
+              <span className="italic text-stone">before you go deeper.</span>
+            </h2>
+
+            <p className="mx-auto mt-8 max-w-[700px] text-base leading-8 text-white/68">
+              The first step is short, calm, and useful. It is meant to create
+              signal — not pressure.
+            </p>
+
+            <div className="mt-10">
+              <Link
+                href="/readiness-check"
+                className="inline-flex items-center rounded-md bg-stone px-8 py-4 text-[12px] font-medium uppercase tracking-[0.16em] text-navy transition hover:opacity-95"
+              >
+                Start Readiness Check
+              </Link>
+            </div>
           </div>
         </div>
       </section>

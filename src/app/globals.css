@@ -25,14 +25,14 @@ html {
 
 body {
   background:
-    radial-gradient(1200px 700px at 20% 10%,
-      rgba(166, 139, 74, 0.08),
-      transparent 60%),
-    radial-gradient(1000px 600px at 80% 0%,
-      rgba(15, 28, 46, 0.04),
-      transparent 55%),
-    linear-gradient(180deg, #f8f4ec 0%, #f0e8d8 50%, #ebe3d3 100%);
-  color: #2f3130;
+    radial-gradient(1200px 700px at 18% 8%,
+      rgba(166, 139, 74, 0.10),
+      transparent 58%),
+    radial-gradient(900px 520px at 82% 0%,
+      rgba(214, 207, 196, 0.06),
+      transparent 52%),
+    linear-gradient(180deg, #07101a 0%, #0b1622 46%, #09111b 100%);
+  color: var(--color-stone);
   font-family:
     var(--font-inter),
     ui-sans-serif,
@@ -55,6 +55,7 @@ h3,
 h4 {
   font-family: var(--font-montserrat), ui-sans-serif, system-ui;
   letter-spacing: -0.02em;
+  text-wrap: balance;
 }
 
 /* Premium serif for display headings */
