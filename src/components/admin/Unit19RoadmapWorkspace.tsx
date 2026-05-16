@@ -193,7 +193,9 @@ export default function Unit19RoadmapWorkspace({
         };
     }, [stages]);
 
-    const progressPercent = Math.round((taskTotals.done / taskTotals.total) * 100);
+    const progressPercent = Math.round(
+        (taskTotals.done / Math.max(taskTotals.total, 1)) * 100,
+    );
 
     function toggleExpanded(stageId: string) {
         setExpandedStageIds((current) => {
@@ -282,18 +284,19 @@ export default function Unit19RoadmapWorkspace({
         <section className="relative -mx-6 -mb-12 -mt-36 min-h-screen overflow-hidden bg-[#eef4fb] px-5 pb-10 pt-36 text-[#0f1c2e]">
             <div className="absolute inset-0">
                 <div
-                    className="absolute inset-0 bg-[length:100%_auto] bg-top bg-no-repeat opacity-95"
+                    className="absolute inset-0 bg-[length:100%_auto] bg-top bg-no-repeat opacity-70"
                     style={{
                         backgroundImage: `url('${BACKGROUND_IMAGE}')`,
                     }}
                 />
-                <div className="absolute inset-0 bg-gradient-to-r from-[#f8fbff]/96 via-[#f4f8fd]/82 to-[#f8fbff]/34" />
-                <div className="absolute inset-0 bg-gradient-to-b from-white/52 via-white/28 to-[#e8f1fa]/82" />
+                <div className="absolute inset-0 bg-gradient-to-r from-[#f8fbff]/92 via-[#f4f8fd]/72 to-[#f8fbff]/18" />
+                <div className="absolute inset-0 bg-gradient-to-b from-white/36 via-white/18 to-[#e8f1fa]/78" />
+                <div className="absolute left-1/4 top-20 h-[420px] w-[420px] rounded-full bg-[#2f80ed]/8 blur-[120px]" />
             </div>
 
             <div className="relative mx-auto grid max-w-[1480px] gap-7 lg:grid-cols-[118px_minmax(0,1fr)]">
                 <aside className="hidden lg:block">
-                    <div className="sticky top-32 flex max-h-[calc(100vh-150px)] min-h-[680px] flex-col justify-between overflow-hidden rounded-[28px] border border-white/72 bg-white/48 p-3 shadow-[0_22px_80px_rgba(41,73,112,0.14),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-2xl">
+                    <div className="sticky top-32 flex max-h-[calc(100vh-150px)] min-h-[680px] flex-col justify-between overflow-hidden rounded-[28px] border border-white/80 bg-white/36 p-3 shadow-[0_24px_70px_rgba(41,73,112,0.10),inset_0_1px_0_rgba(255,255,255,0.92)] backdrop-blur-2xl">
                         <div>
                             <Link href="/" className="mb-6 flex justify-center">
                                 <Image
@@ -306,7 +309,7 @@ export default function Unit19RoadmapWorkspace({
                                 />
                             </Link>
 
-                            <nav className="space-y-2">
+                            <nav className="space-y-1.5">
                                 {[
                                     ["Roadmap", "/admin/unit-19-roadmap", "▱"],
                                     ["Dashboard", "/admin", "□"],
@@ -323,7 +326,7 @@ export default function Unit19RoadmapWorkspace({
                                             key={href}
                                             href={href}
                                             className={[
-                                                "group flex flex-col items-center gap-2 rounded-2xl border px-2 py-3 text-[11px] transition duration-300 active:scale-[0.98]",
+                                                "group flex flex-col items-center gap-1.5 rounded-2xl border px-2 py-2.5 text-[10px] font-medium transition duration-300 active:scale-[0.96]",
                                                 active
                                                     ? "border-white/85 bg-white/72 text-[#2f80ed] shadow-[0_16px_44px_rgba(47,128,237,0.14)]"
                                                     : "border-transparent text-[#53657d] hover:-translate-y-0.5 hover:border-white/80 hover:bg-white/58 hover:text-[#0f1c2e]",
@@ -373,7 +376,7 @@ export default function Unit19RoadmapWorkspace({
                     <header className="relative overflow-hidden rounded-[34px] border border-white/72 bg-white/48 p-6 shadow-[0_24px_90px_rgba(41,73,112,0.13),inset_0_1px_0_rgba(255,255,255,0.92)] backdrop-blur-2xl md:p-8">
                         <div className="absolute inset-y-0 right-0 hidden w-[38%] bg-gradient-to-l from-white/10 to-transparent md:block" />
 
-                        <div className="relative flex flex-col gap-8 xl:flex-row xl:items-end xl:justify-between">
+                        <div className="relative space-y-7">
                             <div className="max-w-2xl">
                                 <div className="mb-5 flex flex-wrap items-center gap-3">
                                     <span className="rounded-full border border-[#2f80ed]/20 bg-[#2f80ed]/9 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#2f80ed]">
@@ -393,20 +396,21 @@ export default function Unit19RoadmapWorkspace({
                                 </p>
                             </div>
 
-                            <div className="grid gap-3 sm:grid-cols-2 xl:w-[1260px] xl:grid-cols-4">
+                            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                                 {unit19KeyMetrics.map((metric, index) => {
                                     const value =
                                         metric.label === "Progress"
                                             ? `${progressPercent}%`
-                                            : metric.label === "Active blockers"
-                                                ? `${taskTotals.active}`
-                                                : metric.value;
+                                            : metric.label === "Current focus"
+                                                ? "Post-acq."
+                                                : metric.label === "Active blockers"
+                                                    ? `${taskTotals.active}`
+                                                    : metric.value;
 
                                     return (
-                                        <button
+                                        <div
                                             key={metric.label}
-                                            type="button"
-                                            className="group min-h-[128px] rounded-[22px] border border-white/76 bg-white/58 p-5 text-left shadow-[0_18px_54px_rgba(41,73,112,0.11),inset_0_1px_0_rgba(255,255,255,0.96)] backdrop-blur-2xl transition duration-300 hover:-translate-y-1 hover:border-[#2f80ed]/35 hover:bg-white/82 hover:shadow-[0_28px_80px_rgba(47,128,237,0.14)] active:translate-y-0 active:scale-[0.985]"
+                                            className="group min-h-[118px] overflow-hidden rounded-[22px] border border-white/80 bg-white/62 p-5 text-left shadow-[0_18px_54px_rgba(41,73,112,0.10),inset_0_1px_0_rgba(255,255,255,0.96)] backdrop-blur-2xl transition duration-300 hover:-translate-y-1 hover:border-[#2f80ed]/30 hover:bg-white/84 hover:shadow-[0_28px_80px_rgba(47,128,237,0.12)]"
                                         >
                                             <div className="mb-4 flex h-8 w-8 items-center justify-center rounded-xl border border-[#2f80ed]/15 bg-[#2f80ed]/8 text-[#2f80ed]">
                                                 {["◎", "□", "▱", "▣"][index] ?? "○"}
@@ -414,10 +418,10 @@ export default function Unit19RoadmapWorkspace({
                                             <div className="text-[11px] uppercase tracking-[0.15em] text-[#687891]">
                                                 {metric.label}
                                             </div>
-                                            <div className="mt-2 whitespace-nowrap text-[26px] font-semibold leading-none text-[#0f1c2e]">
+                                            <div className="mt-2 break-words text-[24px] font-semibold leading-tight text-[#0f1c2e]">
                                                 {value}
                                             </div>
-                                            <div className="mt-3 min-h-[30px] text-[11px] leading-5 text-[#53657d]">
+                                            <div className="mt-3 text-[11px] leading-5 text-[#53657d]">
                                                 {metric.detail}
                                             </div>
 
@@ -429,7 +433,7 @@ export default function Unit19RoadmapWorkspace({
                                                     />
                                                 </div>
                                             ) : null}
-                                        </button>
+                                        </div>
                                     );
                                 })}
                             </div>
@@ -475,8 +479,8 @@ export default function Unit19RoadmapWorkspace({
                             </div>
                         </div>
 
-                        <div className="relative space-y-3">
-                            <div className="absolute bottom-8 left-[22px] top-8 hidden w-px bg-[#cbd7e6] md:block" />
+                        <div className="relative space-y-3 pl-0 md:pl-[70px]">
+                            <div className="absolute bottom-8 left-[32px] top-8 hidden w-px bg-[#b8c7d9] md:block" />
 
                             {visibleStages.map((stage) => {
                                 const selected = stage.id === selectedStageId;
@@ -491,7 +495,7 @@ export default function Unit19RoadmapWorkspace({
                                         ].join(" ")}
                                     >
                                         <div
-                                            className="grid cursor-pointer gap-4 md:grid-cols-[58px_minmax(0,1fr)_auto_auto]"
+                                            className="grid cursor-pointer gap-4 md:grid-cols-[minmax(0,1fr)_auto_auto]"
                                             role="button"
                                             tabIndex={0}
                                             onClick={(event) => {
@@ -524,10 +528,10 @@ export default function Unit19RoadmapWorkspace({
                                                 }
                                             }}
                                         >
-                                            <div className="flex items-start justify-center">
+                                            <div className="hidden md:block">
                                                 <div
                                                     className={[
-                                                        "z-10 flex h-11 w-11 items-center justify-center rounded-2xl border text-sm font-semibold transition",
+                                                        "absolute -left-[59px] top-5 z-10 flex h-9 w-9 items-center justify-center rounded-full border text-sm font-semibold transition",
                                                         getStageMarkerClasses(stage.status, selected),
                                                     ].join(" ")}
                                                 >
@@ -756,11 +760,11 @@ export default function Unit19RoadmapWorkspace({
                         </div>
                     </section>
 
-                    <section className="grid gap-5 rounded-[30px] border border-white/72 bg-white/54 p-5 shadow-[0_22px_80px_rgba(41,73,112,0.12),inset_0_1px_0_rgba(255,255,255,0.94)] backdrop-blur-2xl md:grid-cols-[1fr_1fr_1fr_280px]">
+                    <section className="grid gap-5 rounded-[30px] border border-white/72 bg-white/58 p-5 shadow-[0_22px_80px_rgba(41,73,112,0.12),inset_0_1px_0_rgba(255,255,255,0.94)] backdrop-blur-2xl xl:grid-cols-[1fr_1fr_1fr_320px]">
                         {unit19FocusNotes.map((note, index) => (
                             <div
                                 key={note}
-                                className="border-[#cbd7e6]/70 text-sm leading-6 text-[#263957] md:border-r md:pr-5"
+                                className="border-[#cbd7e6]/70 text-sm leading-6 text-[#263957] xl:border-r xl:pr-5"
                             >
                                 <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.15em] text-[#2f80ed]">
                                     {index === 0
@@ -773,14 +777,47 @@ export default function Unit19RoadmapWorkspace({
                             </div>
                         ))}
 
-                        <div className="relative overflow-hidden rounded-2xl">
-                            <div
-                                className="absolute inset-0 bg-cover bg-center"
-                                style={{
-                                    backgroundImage: `url('${BACKGROUND_IMAGE}')`,
-                                }}
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-r from-transparent to-white/16" />
+                        <div className="rounded-[24px] border border-[#2f80ed]/20 bg-white/62 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                            <div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#2f80ed]">
+                                AI Workspace
+                            </div>
+
+                            <p className="mt-2 text-sm leading-6 text-[#263957]">
+                                Use the project chat as the working layer for decisions, summaries and
+                                next-step planning.
+                            </p>
+
+                            <div className="mt-4 space-y-2">
+                                <a
+                                    href="https://chat.openai.com/"
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="flex items-center justify-between rounded-2xl border border-[#2f80ed]/25 bg-[#2f80ed]/8 px-4 py-3 text-sm font-semibold text-[#165bbb] transition hover:-translate-y-0.5 hover:bg-[#2f80ed]/12 active:translate-y-0 active:scale-[0.98]"
+                                >
+                                    <span>Open ChatGPT</span>
+                                    <span>↗</span>
+                                </a>
+
+                                <button
+                                    type="button"
+                                    className="flex w-full items-center justify-between rounded-2xl border border-[#cbd7e6] bg-white/60 px-4 py-3 text-left text-sm text-[#53657d] transition hover:-translate-y-0.5 hover:border-[#2f80ed]/35 hover:bg-white active:translate-y-0 active:scale-[0.98]"
+                                >
+                                    <span>Export roadmap context</span>
+                                    <span className="rounded-full border border-[#cbd7e6] px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-[#687891]">
+                                        Soon
+                                    </span>
+                                </button>
+
+                                <button
+                                    type="button"
+                                    className="flex w-full items-center justify-between rounded-2xl border border-[#cbd7e6] bg-white/60 px-4 py-3 text-left text-sm text-[#53657d] transition hover:-translate-y-0.5 hover:border-[#2f80ed]/35 hover:bg-white active:translate-y-0 active:scale-[0.98]"
+                                >
+                                    <span>Epitropos AI Assistant</span>
+                                    <span className="rounded-full border border-[#cbd7e6] px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-[#687891]">
+                                        Planned
+                                    </span>
+                                </button>
+                            </div>
                         </div>
                     </section>
                 </main>
