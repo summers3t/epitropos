@@ -308,10 +308,17 @@ export default function Header({
 
             <Link
               href="/admin/cases"
-              className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-3 py-1.5 text-xs transition hover:bg-white/5"
+              className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-3 py-1.5 text-xs transition hover:-translate-y-0.5 hover:border-stone/30 hover:bg-white/5 active:translate-y-0 active:scale-[0.985]"
             >
               <span>Cases</span>
               <Badge count={adminCounts.cases} />
+            </Link>
+
+            <Link
+              href="/admin/unit-19-roadmap"
+              className="inline-flex items-center gap-2 rounded-xl border border-stone/25 bg-stone/10 px-3 py-1.5 text-xs text-stone transition hover:-translate-y-0.5 hover:border-stone/45 hover:bg-stone/15 hover:text-white active:translate-y-0 active:scale-[0.985]"
+            >
+              <span>Unit 19</span>
             </Link>
           </div>
         ) : null}

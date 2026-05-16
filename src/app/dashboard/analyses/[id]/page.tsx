@@ -1,388 +1,743 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import ConfirmSubmitButton from "@/components/ConfirmSubmitButton";
 import ClientPortalShell from "@/components/dashboard/ClientPortalShell";
-import AnalysisRoadmapDesktop from "@/components/dashboard/AnalysisRoadmapDesktop";
 import { getClientPortalCounts } from "@/lib/dashboard/getClientPortalCounts";
-import { getClientAnalyses, type ClientAnalysisStage } from "@/lib/dashboard/getClientAnalyses";
+import {
+  formatRecommendedPlan,
+  formatTriageResult,
+  getDecisionPresentation,
+  getDecisionToneClasses,
+} from "@/lib/intake/clientDecision";
+import { deleteOwnScreeningRequest } from "../../screening/deleteScreeningRequest";
 
-type RoadmapStepState = "complete" | "current" | "upcoming";
+function formatCaseStatusLabel(status: string | null | undefined) {
+  if (!status) return "—";
 
-type RoadmapStep = {
-    label: string;
-    state: RoadmapStepState;
-    note: string;
+  const labels: Record<string, string> = {
+    active: "Active",
+    analysis: "Analysis",
+    delivered: "Delivered",
+    closed: "Closed",
+  };
+
+  return labels[status] ?? status;
+}
+
+function formatAnalysisStageLabel(input: {
+  screeningStatus: string | null | undefined;
+  offerStatus: string | null | undefined;
+  paymentStatus: string | null | undefined;
+  caseStatus: string | null | undefined;
+  hasPublishedReport: boolean;
+}) {
+  const {
+    screeningStatus,
+    offerStatus,
+    paymentStatus,
+    caseStatus,
+    hasPublishedReport,
+  } = input;
+
+  if (screeningStatus === "rejected") return "Declined";
+  if (caseStatus === "closed") return "Completed";
+  if (hasPublishedReport || caseStatus === "delivered") return "Report Ready";
+  if (caseStatus === "analysis") return "Analysis In Progress";
+  if (caseStatus === "active") return "Analysis Started";
+  if (paymentStatus === "pending") return "Awaiting Payment";
+  if (offerStatus === "sent") return "Offer Ready";
+  if (screeningStatus === "accepted") return "Accepted";
+  return "Request Received";
+}
+
+function getProgressSteps({
+  screeningStatus,
+  offerStatus,
+  paymentStatus,
+  caseStatus,
+  hasPublishedReport,
+}: {
+  screeningStatus: string | null | undefined;
+  offerStatus: string | null | undefined;
+  paymentStatus: string | null | undefined;
+  caseStatus: string | null | undefined;
+  hasPublishedReport: boolean;
+}) {
+  const steps = [
+    { key: "request", label: "Request", state: "upcoming" as "done" | "current" | "upcoming" },
+    { key: "review", label: "Review", state: "upcoming" as "done" | "current" | "upcoming" },
+    { key: "offer", label: "Offer", state: "upcoming" as "done" | "current" | "upcoming" },
+    { key: "payment", label: "Payment", state: "upcoming" as "done" | "current" | "upcoming" },
+    { key: "analysis", label: "Analysis", state: "upcoming" as "done" | "current" | "upcoming" },
+    { key: "report", label: "Report", state: "upcoming" as "done" | "current" | "upcoming" },
+  ];
+
+  steps[0].state = "done";
+
+  if (screeningStatus === "new") {
+    steps[1].state = "current";
+    return steps;
+  }
+
+  if (screeningStatus === "rejected") {
+    steps[1].state = "current";
+    return steps;
+  }
+
+  steps[1].state = "done";
+
+  if (screeningStatus === "accepted" && !offerStatus) {
+    steps[2].state = "current";
+    return steps;
+  }
+
+  if (offerStatus === "sent" || offerStatus === "accepted") {
+    steps[2].state = "done";
+  }
+
+  if (paymentStatus === "pending") {
+    steps[3].state = "current";
+    return steps;
+  }
+
+  if (paymentStatus === "paid") {
+    steps[3].state = "done";
+  }
+
+  if (caseStatus === "active" || caseStatus === "analysis") {
+    steps[4].state = "current";
+  }
+
+  if (caseStatus === "analysis") {
+    steps[4].state = "current";
+  }
+
+  if (caseStatus === "delivered" || caseStatus === "closed") {
+    steps[4].state = "done";
+    steps[5].state = "current";
+  }
+
+  if (hasPublishedReport) {
+    steps[5].state = caseStatus === "closed" ? "done" : "current";
+  }
+
+  return steps;
+}
+
+function getGuidanceText({
+  screeningStatus,
+  offerStatus,
+  paymentStatus,
+  caseStatus,
+  hasPublishedReport,
+}: {
+  screeningStatus: string | null | undefined;
+  offerStatus: string | null | undefined;
+  paymentStatus: string | null | undefined;
+  caseStatus: string | null | undefined;
+  hasPublishedReport: boolean;
+}) {
+  if (screeningStatus === "rejected") {
+    return {
+      current: "The request was reviewed but not accepted for further work.",
+      attention: "No action is required at this stage.",
+      next: "A new request may be submitted later if circumstances change.",
+    };
+  }
+
+  if (caseStatus === "closed") {
+    return {
+      current: "The analysis has been completed.",
+      attention: "No immediate action is required.",
+      next: "All final outputs remain available for review.",
+    };
+  }
+
+  if (hasPublishedReport || caseStatus === "delivered") {
+    return {
+      current: "The final report is available.",
+      attention: "Open and review the delivered report.",
+      next: "The final conclusion and written output are now available in this analysis.",
+    };
+  }
+
+  if (caseStatus === "analysis") {
+    return {
+      current: "This analysis is currently in the evaluation phase.",
+      attention: "No action is required at this stage.",
+      next: "The final report will be prepared once the review is complete.",
+    };
+  }
+
+  if (caseStatus === "active") {
+    return {
+      current: "Preparation is complete and the evaluation phase is beginning.",
+      attention: "No action is required at this stage.",
+      next: "The next update will appear once the active review advances.",
+    };
+  }
+
+  if (paymentStatus === "pending") {
+    return {
+      current: "Commercial acceptance is complete, but work has not started yet.",
+      attention: "Payment confirmation is required before the analysis can begin.",
+      next: "Once payment is confirmed, the analysis will move into the active phase.",
+    };
+  }
+
+  if (offerStatus === "sent") {
+    return {
+      current: "The request has passed review and the offer is ready.",
+      attention: "Review the offer.",
+      next: "After acceptance and payment confirmation, the analysis will begin.",
+    };
+  }
+
+  if (screeningStatus === "accepted") {
+    return {
+      current: "The request has been accepted and the next commercial step is being prepared.",
+      attention: "No action is required at this stage.",
+      next: "The next update will appear once the offer is prepared.",
+    };
+  }
+
+  return {
+    current: "The request has been received and is currently under review.",
+    attention: "No action is required at this stage.",
+    next: "The next update will appear after the review is completed.",
+  };
+}
+
+function renderValue(value: unknown) {
+  if (typeof value === "string" && value.trim()) return value;
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (typeof value === "number") return String(value);
+  return "—";
+}
+
+const readinessOrder = [
+  ["whyGreece", "Why Greece"],
+  ["stage", "Current stage"],
+  ["propertyUse", "Property use"],
+  ["budgetBand", "Budget band"],
+  ["financing", "Financing"],
+  ["identifiedProperty", "Property identified"],
+  ["seriousness", "Urgency"],
+  ["mainWorry", "Main worry"],
+] as const;
+
+type PageProps = {
+  params: Promise<{
+    id: string;
+  }>;
 };
 
-function buildRoadmap(stage: ClientAnalysisStage): RoadmapStep[] {
-    const steps = [
-        {
-            key: "request_received",
-            label: "Request Received",
-            note: "The request is in the queue for initial review.",
-        },
-        {
-            key: "accepted",
-            label: "Accepted",
-            note: "The request passed review and is moving into formal engagement.",
-        },
-        {
-            key: "offer_ready",
-            label: "Offer Ready",
-            note: "The commercial proposal is available for review.",
-        },
-        {
-            key: "awaiting_payment",
-            label: "Payment Confirmation",
-            note: "The analysis is ready to open once payment is confirmed.",
-        },
-        {
-            key: "analysis_started",
-            label: "Analysis Started",
-            note: "Preparation is complete and evaluation has formally opened.",
-        },
-        {
-            key: "analysis_in_progress",
-            label: "Evaluation",
-            note: "The core risk, pricing, and viability factors are under review.",
-        },
-        {
-            key: "report_ready",
-            label: "Report Ready",
-            note: "The final conclusion and written output are available.",
-        },
-        {
-            key: "completed",
-            label: "Completed",
-            note: "The analysis is finished and all final outputs remain available.",
-        },
-    ] as const;
-
-    const stageOrder: Record<ClientAnalysisStage, number> = {
-        request_received: 0,
-        accepted: 1,
-        offer_ready: 2,
-        awaiting_payment: 3,
-        analysis_started: 4,
-        analysis_in_progress: 5,
-        report_ready: 6,
-        completed: 7,
-        declined: 1,
-    };
-
-    if (stage === "declined") {
-        return [
-            {
-                label: "Request Received",
-                state: "complete",
-                note: "The request was submitted and reviewed.",
-            },
-            {
-                label: "Reviewed",
-                state: "complete",
-                note: "The request reached a formal decision point.",
-            },
-            {
-                label: "Not Accepted",
-                state: "current",
-                note: "The request did not move into an active analysis.",
-            },
-        ];
-    }
-
-    const currentIndex = stageOrder[stage];
-
-    return steps.map((step, index) => ({
-        label: step.label,
-        note: step.note,
-        state:
-            index < currentIndex
-                ? ("complete" as const)
-                : index === currentIndex
-                    ? ("current" as const)
-                    : ("upcoming" as const),
-    }));
-}
-
-function getRoadmapSectionLabel(stage: ClientAnalysisStage) {
-    if (stage === "declined") {
-        return "Review Outcome";
-    }
-
-    return "Journey Overview";
-}
-
-function getRoadmapStateLabel(state: RoadmapStepState) {
-    switch (state) {
-        case "complete":
-            return "Completed";
-        case "current":
-            return "Current stage";
-        case "upcoming":
-            return "Upcoming";
-    }
-}
-
-function getRoadmapNodeClasses(state: RoadmapStepState) {
-    switch (state) {
-        case "current":
-            return {
-                node: "animate-roadmapGlow border-[#d4b06b] bg-gradient-to-b from-[#d4b06b] to-[#c39a49] text-white shadow-[0_0_20px_rgba(212,176,107,0.4)] ring-4 ring-[#d4b06b]/10",
-                line: "roadmap-line-glow",
-                card: "client-glass-active ring-1 ring-[#c9b18b]/20 border-white/60 bg-white/40 backdrop-blur-2xl shadow-[0_30px_60px_-12px_rgba(79,57,24,0.12),inset_0_1px_1px_rgba(255,255,255,0.7)]",
-                title: "text-[#8d6f3f] font-semibold",
-                text: "text-[#5b554b]",
-            };
-        case "complete":
-            return {
-                node: "border-[#d1bc96] bg-[#f3e7d0] text-[#8d6f3f]",
-                line: "bg-[#d0bb96]/30",
-                card: "client-glass-nested border-white/40 bg-white/20 opacity-90",
-                title: "text-[#4b4034]",
-                text: "text-[#6a645a]",
-            };
-        default:
-            return {
-                node: "border-[#e5e0d8] bg-white/10 text-[#aca294]",
-                line: "bg-[#d9d2c7]/20",
-                card: "border-white/10 bg-white/5 backdrop-blur-sm opacity-50 grayscale-[0.5]",
-                title: "text-[#91887a]",
-                text: "text-[#91887a]",
-            };
-    }
-}
-
 export default async function DashboardAnalysisDetailPage({
-    params,
-}: {
-    params: Promise<{ id: string }>;
-}) {
-    const { id } = await params;
+  params,
+}: PageProps) {
+  const { id } = await params;
 
-    const supabase = await createClient();
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-    if (!user) {
-        redirect("/auth/login");
-    }
+  if (!user) {
+    redirect(`/auth/login?redirect=/dashboard/analyses/${id}`);
+  }
 
-    const [counts, analyses] = await Promise.all([
-        getClientPortalCounts(supabase, user.id),
-        getClientAnalyses(supabase, user.id),
-    ]);
+  const counts = await getClientPortalCounts(supabase, user.id);
 
-    const analysis = analyses.find((item) => item.id === id);
+  const { data: screening, error: screeningError } = await supabase
+    .from("screening_requests")
+    .select(
+      "id, user_id, name, status, created_at, notes, triage_result, recommended_plan, primary_blocker, readiness_answers, screening_answers, plan_interest, budget_range, goal",
+    )
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .maybeSingle();
 
-    if (!analysis) {
-        notFound();
-    }
+  if (screeningError) {
+    throw new Error(screeningError.message);
+  }
 
-    const roadmap = buildRoadmap(analysis.stage);
+  if (!screening) {
+    notFound();
+  }
 
-    return (
-        <ClientPortalShell
-            eyebrow="Client Portal"
-            title={analysis.title}
-            description="The analysis remains organised around the current stage, the next expected step, and the final outcome once available."
-            counts={counts}
-            headerContent={
-                <Link
-                    href="/dashboard/analyses"
-                    className="client-interactive client-focus-ring inline-flex items-center rounded-full border border-[#d2bea1] bg-[#fbf4e8] px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-[#5f584d] hover:border-[#0f1c2e]/20 hover:bg-[#f3eadc] hover:text-[#0f1c2e] hover:shadow-[0_10px_24px_rgba(79,57,24,0.08)] active:bg-[#efe3d2]"
-                >
-                    Back to My Analyses
-                </Link>
-            }
-        >
-            <div className="space-y-6">
-                <section className="client-glass-panel rounded-[30px] p-6 md:p-8 xl:p-10">
-                    <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded-full border border-[#d1bc96] bg-[#f3e7d0] px-3 py-1.5 text-[10px] uppercase tracking-[0.16em] text-[#8d6f3f]">
-                            {analysis.planLabel}
-                        </span>
-                        <span className="rounded-full border border-[#ddd1be] bg-[#fbf6ee] px-3 py-1.5 text-[10px] uppercase tracking-[0.16em] text-[#676054]">
-                            {analysis.stageLabel}
-                        </span>
-                    </div>
+  const { data: relatedOffer, error: relatedOfferError } = await supabase
+    .from("offers")
+    .select("id, plan_type, price_amount, currency, status, created_at")
+    .eq("screening_request_id", screening.id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
-                    <div className="mt-5 max-w-[980px] space-y-4">
-                        <h2
-                            className="text-4xl leading-[1.04] text-[#1d2834] md:text-[46px] xl:text-[54px]"
-                            style={{ fontFamily: 'Georgia, \"Times New Roman\", serif' }}
-                        >
-                            {analysis.title}
-                        </h2>
+  if (relatedOfferError) {
+    throw new Error(relatedOfferError.message);
+  }
 
-                        <p className="max-w-[840px] text-[15px] leading-8 text-[#5f5a51] md:text-base">
-                            {analysis.contextLine}
-                        </p>
-                    </div>
-                </section>
+  const { data: relatedOrder, error: relatedOrderError } = relatedOffer
+    ? await supabase
+        .from("orders")
+        .select("id, payment_status")
+        .eq("offer_id", relatedOffer.id)
+        .maybeSingle()
+    : { data: null, error: null as null | Error };
 
-                <section className="client-glass-panel rounded-[30px] p-6 md:p-8 xl:p-10">
-                    <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-                        <div className="rounded-[24px] border border-[#d8c5a5] bg-[linear-gradient(180deg,#fbf5ea,#f1e3cc)] p-5 md:p-6">
-                            <p className="text-[11px] uppercase tracking-[0.24em] text-[#9a7b48]">
-                                Current Guidance
-                            </p>
+  if (relatedOrderError) {
+    throw new Error(relatedOrderError.message);
+  }
 
-                            <div className="mt-5 space-y-4">
-                                <div>
-                                    <div className="text-[10px] uppercase tracking-[0.18em] text-[#766f63]">
-                                        Current stage
-                                    </div>
-                                    <div
-                                        className="mt-2 text-[28px] leading-tight text-[#0f1c2e] md:text-[34px]"
-                                        style={{ fontFamily: 'Georgia, \"Times New Roman\", serif' }}
-                                    >
-                                        {analysis.stageLabel}
-                                    </div>
-                                </div>
+  const { data: relatedCase, error: relatedCaseError } =
+    relatedOrder && relatedOrder.payment_status === "paid"
+      ? await supabase
+          .from("cases")
+          .select(
+            "id, title, status, decision_status, decision_summary, recommended_property_id",
+          )
+          .eq("order_id", relatedOrder.id)
+          .eq("client_id", user.id)
+          .maybeSingle()
+      : { data: null, error: null as null | Error };
 
-                                <p className="max-w-[760px] text-[15px] leading-8 text-[#4e4a43] md:text-base">
-                                    {analysis.progressLine}
-                                </p>
-                            </div>
-                        </div>
+  if (relatedCaseError) {
+    throw new Error(relatedCaseError.message);
+  }
 
-                        <div className="grid gap-4">
-                            <div className="rounded-[22px] border border-[#ddd0bc] bg-[#fbf5eb] p-5 shadow-[0_10px_30px_rgba(79,57,24,0.05)]">
-                                <div className="text-[10px] uppercase tracking-[0.18em] text-[#766f63]">
-                                    What requires attention now
-                                </div>
-                                <p className="mt-3 text-[15px] leading-8 text-[#4e4a43]">
-                                    {analysis.attentionLine}
-                                </p>
-                            </div>
+  const { data: caseProperties, error: casePropertiesError } = relatedCase
+    ? await supabase
+        .from("case_properties")
+        .select("id, title, address")
+        .eq("case_id", relatedCase.id)
+        .order("sort_order", { ascending: true })
+    : { data: [], error: null as null | Error };
 
-                            <div className="rounded-[22px] border border-[#ddd0bc] bg-[#fbf5eb] p-5 shadow-[0_10px_30px_rgba(79,57,24,0.05)]">
-                                <div className="text-[10px] uppercase tracking-[0.18em] text-[#766f63]">
-                                    What comes next
-                                </div>
-                                <p className="mt-3 text-[15px] leading-8 text-[#4e4a43]">
-                                    {analysis.nextLine}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </section>
+  if (casePropertiesError) {
+    throw new Error(casePropertiesError.message);
+  }
 
-                <section className="client-glass-panel overflow-hidden rounded-[30px] p-6 md:p-8 xl:p-10">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                        <p className="text-[11px] uppercase tracking-[0.24em] text-[#9a7b48]">
-                            {getRoadmapSectionLabel(analysis.stage)}
-                        </p>
+  const { data: reports, error: reportsError } = relatedCase
+    ? await supabase
+        .from("reports")
+        .select("id, title, summary, published, published_at, storage_path")
+        .eq("case_id", relatedCase.id)
+        .eq("published", true)
+        .order("published_at", { ascending: false })
+    : { data: [], error: null as null | Error };
 
-                        <span className="rounded-full border border-[#ddd0bc] bg-[#fbf5eb] px-3 py-1 text-[10px] uppercase tracking-[0.16em] text-[#766f63]">
-                            {roadmap.length} stages
-                        </span>
-                    </div>
+  if (reportsError) {
+    throw new Error(reportsError.message);
+  }
 
-                    <div className="mt-8 hidden xl:block">
-                        <AnalysisRoadmapDesktop roadmap={roadmap} />
-                    </div>
+  const recommendedProperty =
+    relatedCase?.recommended_property_id && caseProperties
+      ? caseProperties.find(
+          (item) => item.id === relatedCase.recommended_property_id,
+        ) ?? null
+      : null;
 
-                    <div className="relative mt-8 xl:hidden">
-                        <div className="absolute bottom-0 left-[19px] top-0 w-px bg-[linear-gradient(180deg,rgba(15,28,46,0.18),rgba(15,28,46,0.04))]" />
+  const hasPublishedReport = (reports?.length ?? 0) > 0;
 
-                        <div className="space-y-6">
-                            {roadmap.map((step, index) => {
-                                const styles = getRoadmapNodeClasses(step.state);
-                                const stateLabel = getRoadmapStateLabel(step.state);
+  const decision = getDecisionPresentation({
+    triageResult: screening.triage_result,
+    recommendedPlan: screening.recommended_plan,
+  });
 
-                                return (
-                                    <div
-                                        key={`${step.label}-${index}`}
-                                        className="client-interactive relative flex gap-5 rounded-[18px] px-2 py-1 hover:bg-[rgba(255,248,239,0.26)]"
-                                    >
-                                        <div className="relative z-[1] pt-1">
-                                            <span
-                                                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-[11px] font-semibold tracking-[0.08em] transition duration-500 ${styles.node}`}
-                                            >
-                                                {index + 1}
-                                            </span>
-                                        </div>
+  const toneClasses = getDecisionToneClasses(decision.tone);
 
-                                        <div
-                                            className={`client-interactive min-w-0 flex-1 rounded-[22px] border p-5 ${styles.card} ${index === roadmap.length - 1
-                                                ? "border-transparent"
-                                                : "border-white/0"
-                                                }`}
-                                        >
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <span
-                                                    className={`rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] ${step.state === "current"
-                                                        ? "border-[#d9c19b] bg-[#f6ead2] text-[#8f6f36]"
-                                                        : step.state === "complete"
-                                                            ? "border-[#d2c1a6] bg-[#f3e7d1] text-[#7c6540]"
-                                                            : "border-[#ddd0bc] bg-[#fbf5eb] text-[#8a8172]"
-                                                        }`}
-                                                >
-                                                    {stateLabel}
-                                                </span>
-                                            </div>
+  const guidance = getGuidanceText({
+    screeningStatus: screening.status,
+    offerStatus: relatedOffer?.status,
+    paymentStatus: relatedOrder?.payment_status,
+    caseStatus: relatedCase?.status,
+    hasPublishedReport,
+  });
 
-                                            <h3
-                                                className={`mt-3 text-[22px] leading-[1.2] ${styles.title}`}
-                                                style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
-                                            >
-                                                {step.label}
-                                            </h3>
+  const readinessAnswers =
+    screening.readiness_answers &&
+    typeof screening.readiness_answers === "object" &&
+    !Array.isArray(screening.readiness_answers)
+      ? (screening.readiness_answers as Record<string, unknown>)
+      : {};
 
-                                            <p className={`mt-3 max-w-[760px] text-[15px] leading-8 ${styles.text}`}>
-                                                {step.note}
-                                            </p>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                </section>
+  const screeningAnswers =
+    screening.screening_answers &&
+    typeof screening.screening_answers === "object" &&
+    !Array.isArray(screening.screening_answers)
+      ? (screening.screening_answers as Record<string, unknown>)
+      : {};
 
-                {analysis.decisionLabel || analysis.reportId ? (
-                    <section className="rounded-[30px] border border-[#dccdb5] bg-[linear-gradient(180deg,rgba(252,247,241,0.96),rgba(243,233,219,0.92))] p-6 shadow-[0_20px_60px_rgba(79,57,24,0.10)] md:p-8">
-                        <p className="text-[11px] uppercase tracking-[0.24em] text-[#9a7b48]">
-                            Final Result
-                        </p>
+  const canDelete = screening.status === "new";
 
-                        {analysis.decisionLabel ? (
-                            <div className="mt-4 rounded-[22px] border border-[#ddd0bc] bg-[#fbf5eb] p-5 shadow-[0_10px_30px_rgba(79,57,24,0.05)]">
-                                <div className="text-[10px] uppercase tracking-[0.18em] text-[#766f63]">
-                                    Conclusion
-                                </div>
-                                <div
-                                    className="mt-2 text-3xl text-[#0f1c2e]"
-                                    style={{ fontFamily: 'Georgia, \"Times New Roman\", serif' }}
-                                >
-                                    {analysis.decisionLabel}
-                                </div>
+  const displayPlan =
+    relatedOffer?.plan_type ?? screening.recommended_plan ?? screening.plan_interest;
 
-                                {analysis.decisionSummary ? (
-                                    <p className="mt-4 max-w-[900px] text-sm leading-7 text-[#4e4a43]">
-                                        {analysis.decisionSummary}
-                                    </p>
-                                ) : null}
-                            </div>
-                        ) : null}
+  return (
+    <ClientPortalShell
+      eyebrow="Client Portal"
+      title={screening.name || "Analysis"}
+      description="A single view of the current stage, the next expected step, and the final outputs for this engagement."
+      counts={counts}
+    >
+      <section className="space-y-6">
+        <div>
+          <Link
+            href="/dashboard/analyses"
+            className="inline-flex text-[11px] uppercase tracking-[0.2em] text-[#9a8660] transition hover:text-[#0f1c2e]"
+          >
+            ← Back to My Analyses
+          </Link>
+        </div>
 
-                        {analysis.reportId ? (
-                            <div className="mt-5 flex flex-wrap items-center gap-3">
-                                <a
-                                    href={`/api/reports/${analysis.reportId}/download`}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="client-interactive client-focus-ring inline-flex items-center rounded-full border border-[#cfb894] bg-[#0f1c2e] px-5 py-3 text-[11px] uppercase tracking-[0.18em] text-[#f6ecdb] hover:bg-[#16283f] hover:text-white hover:shadow-[0_14px_32px_rgba(15,28,46,0.18)] active:bg-[#0c1727]"
-                                >
-                                    Download Report
-                                </a>
-                            </div>
-                        ) : null}
-                    </section>
-                ) : null}
+        <article className="rounded-[24px] border border-[#dcc79e]/70 bg-white/55 p-6 shadow-[0_20px_60px_rgba(148,119,66,0.10)] backdrop-blur-xl">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex rounded-full border border-[#dcc79e] bg-[#fff8ea] px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[#8b6d35]">
+                  {formatRecommendedPlan(displayPlan)}
+                </span>
+                <span className="inline-flex rounded-full border border-[#eadfca] bg-white px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[#756b59]">
+                  {formatAnalysisStageLabel({
+                    screeningStatus: screening.status,
+                    offerStatus: relatedOffer?.status,
+                    paymentStatus: relatedOrder?.payment_status,
+                    caseStatus: relatedCase?.status,
+                    hasPublishedReport,
+                  })}
+                </span>
+              </div>
+
+              <div>
+                <p className="text-[18px] font-semibold text-[#0f1c2e]">
+                  {screening.name || "Analysis"}
+                </p>
+                <p className="mt-1 text-[13px] leading-6 text-[#5f6675]">
+                  {guidance.current}
+                </p>
+              </div>
             </div>
-        </ClientPortalShell>
-    );
+
+            <div className="rounded-2xl border border-[#eadfca] bg-white/70 px-4 py-3 text-[12px] text-[#6b7280]">
+              <div>
+                <span className="text-[#9a8660]">Request:</span>{" "}
+                {formatTriageResult(screening.triage_result)}
+              </div>
+              <div className="mt-1">
+                <span className="text-[#9a8660]">Screening status:</span>{" "}
+                {renderValue(screening.status)}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-3 md:grid-cols-6">
+            {getProgressSteps({
+              screeningStatus: screening.status,
+              offerStatus: relatedOffer?.status,
+              paymentStatus: relatedOrder?.payment_status,
+              caseStatus: relatedCase?.status,
+              hasPublishedReport,
+            }).map((step) => (
+              <div
+                key={step.key}
+                className={[
+                  "rounded-2xl border px-3 py-3",
+                  step.state === "done"
+                    ? "border-[#cfe0c8] bg-[#edf6e8]"
+                    : step.state === "current"
+                      ? "border-[#dcc79e] bg-[#fff8ea] ring-1 ring-[#dcc79e]/70"
+                      : "border-[#eadfca] bg-white/70",
+                ].join(" ")}
+              >
+                <div
+                  className={[
+                    "text-[10px] uppercase tracking-[0.14em]",
+                    step.state === "done"
+                      ? "text-[#57714e]"
+                      : step.state === "current"
+                        ? "text-[#9a6a16]"
+                        : "text-[#9a8660]",
+                  ].join(" ")}
+                >
+                  {step.state === "done"
+                    ? "Completed"
+                    : step.state === "current"
+                      ? "Current"
+                      : "Upcoming"}
+                </div>
+                <div
+                  className={[
+                    "mt-1 text-xs font-medium leading-5",
+                    step.state === "current"
+                      ? "text-[#0f1c2e]"
+                      : "text-[#4b5563]",
+                  ].join(" ")}
+                >
+                  {step.label}
+                </div>
+              </div>
+            ))}
+          </div>
+        </article>
+
+        <article
+          className={[
+            "rounded-[24px] border p-6 shadow-[0_18px_48px_rgba(148,119,66,0.08)] backdrop-blur",
+            toneClasses.panel,
+          ].join(" ")}
+        >
+          <div className="space-y-3">
+            <div
+              className={[
+                "inline-flex rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.18em]",
+                toneClasses.badge,
+              ].join(" ")}
+            >
+              {decision.badge}
+            </div>
+
+            <div>
+              <h2
+                className="text-[30px] leading-tight text-[#0f1c2e]"
+                style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
+              >
+                {decision.title}
+              </h2>
+              <p className="mt-3 max-w-3xl text-[14px] leading-7 text-[#5f6675]">
+                {decision.summary}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-4 md:grid-cols-[1fr_1fr]">
+            <div className="rounded-2xl border border-[#eadfca] bg-white/70 p-4">
+              <div className="text-[10px] uppercase tracking-[0.14em] text-[#9a8660]">
+                What requires attention now
+              </div>
+              <div className="mt-2 text-[13px] leading-6 text-[#5f6675]">
+                {screening.primary_blocker || guidance.attention}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-[#eadfca] bg-white/70 p-4">
+              <div className="text-[10px] uppercase tracking-[0.14em] text-[#9a8660]">
+                What comes next
+              </div>
+              <div className="mt-2 text-[13px] leading-6 text-[#5f6675]">
+                <p className="font-medium text-[#0f1c2e]">
+                  {decision.nextStepTitle}
+                </p>
+                <p className="mt-2">{decision.nextStepBody || guidance.next}</p>
+              </div>
+            </div>
+          </div>
+
+          {decision.ctaLabel && decision.ctaHref ? (
+            <div className="mt-5">
+              <Link
+                href={decision.ctaHref}
+                className="inline-flex items-center rounded-xl border border-[#b8935c] bg-[#fff8ea] px-5 py-2.5 text-xs uppercase tracking-[0.14em] text-[#9a6a16] transition hover:bg-[#fff3db]"
+              >
+                {decision.ctaLabel}
+              </Link>
+            </div>
+          ) : null}
+        </article>
+
+        {relatedCase ? (
+          <article className="rounded-[24px] border border-[#eadfca] bg-white/55 p-6 shadow-[0_20px_60px_rgba(148,119,66,0.10)] backdrop-blur-xl">
+            <h3
+              className="text-[24px] leading-tight text-[#0f1c2e]"
+              style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
+            >
+              Analysis Outcome
+            </h3>
+
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
+              <div className="rounded-2xl border border-[#eadfca] bg-white/70 p-4">
+                <div className="text-[10px] uppercase tracking-[0.14em] text-[#9a8660]">
+                  Case status
+                </div>
+                <div className="mt-1 text-[13px] text-[#6b7280]">
+                  {formatCaseStatusLabel(relatedCase.status)}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-[#eadfca] bg-white/70 p-4">
+                <div className="text-[10px] uppercase tracking-[0.14em] text-[#9a8660]">
+                  Decision status
+                </div>
+                <div className="mt-1 text-[13px] text-[#6b7280]">
+                  {renderValue(relatedCase.decision_status)}
+                </div>
+              </div>
+
+              {recommendedProperty ? (
+                <div className="rounded-2xl border border-[#eadfca] bg-white/70 p-4 md:col-span-2">
+                  <div className="text-[10px] uppercase tracking-[0.14em] text-[#9a8660]">
+                    Recommended property
+                  </div>
+                  <div className="mt-1 text-[13px] text-[#6b7280]">
+                    {recommendedProperty.title || recommendedProperty.address || "—"}
+                  </div>
+                </div>
+              ) : null}
+
+              {relatedCase.decision_summary ? (
+                <div className="rounded-2xl border border-[#eadfca] bg-white/70 p-4 md:col-span-2">
+                  <div className="text-[10px] uppercase tracking-[0.14em] text-[#9a8660]">
+                    Decision summary
+                  </div>
+                  <div className="mt-1 whitespace-pre-wrap text-[13px] text-[#6b7280]">
+                    {relatedCase.decision_summary}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </article>
+        ) : null}
+
+        <article className="rounded-[24px] border border-[#eadfca] bg-white/55 p-6 shadow-[0_20px_60px_rgba(148,119,66,0.10)] backdrop-blur-xl">
+          <h3
+            className="text-[24px] leading-tight text-[#0f1c2e]"
+            style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
+          >
+            Submitted Frame
+          </h3>
+
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            {readinessOrder.map(([key, label]) => (
+              <div
+                key={key}
+                className="rounded-2xl border border-[#eadfca] bg-white/70 p-4"
+              >
+                <dt className="text-[10px] uppercase tracking-[0.14em] text-[#9a8660]">
+                  {label}
+                </dt>
+                <dd className="mt-1 text-[13px] text-[#6b7280]">
+                  {renderValue(readinessAnswers[key])}
+                </dd>
+              </div>
+            ))}
+
+            <div className="rounded-2xl border border-[#eadfca] bg-white/70 p-4">
+              <dt className="text-[10px] uppercase tracking-[0.14em] text-[#9a8660]">
+                Client objective
+              </dt>
+              <dd className="mt-1 text-[13px] text-[#6b7280]">
+                {renderValue(screening.goal)}
+              </dd>
+            </div>
+
+            <div className="rounded-2xl border border-[#eadfca] bg-white/70 p-4">
+              <dt className="text-[10px] uppercase tracking-[0.14em] text-[#9a8660]">
+                Budget
+              </dt>
+              <dd className="mt-1 text-[13px] text-[#6b7280]">
+                {renderValue(screening.budget_range)}
+              </dd>
+            </div>
+
+            <div className="rounded-2xl border border-[#eadfca] bg-white/70 p-4">
+              <dt className="text-[10px] uppercase tracking-[0.14em] text-[#9a8660]">
+                Situation
+              </dt>
+              <dd className="mt-1 text-[13px] text-[#6b7280]">
+                {renderValue(screeningAnswers.situation)}
+              </dd>
+            </div>
+
+            <div className="rounded-2xl border border-[#eadfca] bg-white/70 p-4">
+              <dt className="text-[10px] uppercase tracking-[0.14em] text-[#9a8660]">
+                Location
+              </dt>
+              <dd className="mt-1 text-[13px] text-[#6b7280]">
+                {renderValue(screeningAnswers.locationText)}
+              </dd>
+            </div>
+          </div>
+
+          <div className="mt-4 rounded-2xl border border-[#eadfca] bg-white/70 p-4">
+            <div className="text-[10px] uppercase tracking-[0.14em] text-[#9a8660]">
+              Additional context
+            </div>
+            <div className="mt-1 whitespace-pre-wrap text-[13px] text-[#6b7280]">
+              {renderValue(screeningAnswers.additionalContext || screening.notes)}
+            </div>
+          </div>
+
+          {reports && reports.length > 0 ? (
+            <div className="mt-5 space-y-4">
+              <h4 className="text-[16px] font-semibold text-[#0f1c2e]">
+                Delivered Reports
+              </h4>
+
+              {reports.map((report) => (
+                <article
+                  key={report.id}
+                  className="rounded-2xl border border-[#eadfca] bg-white/70 p-4"
+                >
+                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div className="space-y-1">
+                      <p className="text-[14px] font-semibold text-[#0f1c2e]">
+                        {report.title}
+                      </p>
+                      <p className="text-[13px] text-[#6b7280]">
+                        {renderValue(report.summary)}
+                      </p>
+                    </div>
+
+                    {report.storage_path ? (
+                      <a
+                        href={`/api/reports/${report.id}/download`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center border border-[#b8935c] px-5 py-2.5 text-sm text-[#d6b26b] transition hover:bg-[#b8935c]/10"
+                      >
+                        Open Report
+                      </a>
+                    ) : (
+                      <span className="rounded-xl border border-[#dcc79e] bg-[#fff8ea] px-4 py-2 text-xs text-[#9a6a16]">
+                        Report file unavailable
+                      </span>
+                    )}
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : null}
+
+          <div className="mt-5 flex flex-wrap justify-end gap-3">
+            <Link
+              href="/dashboard/analyses"
+              className="rounded-xl border border-[#dcc79e]/70 bg-white/70 px-4 py-2 text-xs text-[#6b7280] transition hover:bg-[#fffaf0] hover:text-[#0f1c2e]"
+            >
+              Back to Analyses
+            </Link>
+
+            {decision.ctaLabel && decision.ctaHref ? (
+              <Link
+                href={decision.ctaHref}
+                className="rounded-xl border border-[#b8935c] bg-[#fff8ea] px-4 py-2 text-xs text-[#9a6a16] transition hover:bg-[#fff3db]"
+              >
+                {decision.ctaLabel}
+              </Link>
+            ) : null}
+
+            {canDelete ? (
+              <form action={deleteOwnScreeningRequest.bind(null, screening.id)}>
+                <ConfirmSubmitButton
+                  confirmMessage="Delete this request? This cannot be undone."
+                  className="rounded-xl border border-red-400/30 bg-white/70 px-4 py-2 text-xs text-red-500 transition hover:bg-red-50"
+                >
+                  Delete Request
+                </ConfirmSubmitButton>
+              </form>
+            ) : null}
+          </div>
+        </article>
+      </section>
+    </ClientPortalShell>
+  );
 }
