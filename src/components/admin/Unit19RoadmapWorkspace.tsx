@@ -363,7 +363,7 @@ export default function Unit19RoadmapWorkspace({ userName, userAvatarUrl }: Prop
                 </aside>
 
                 {/* ── Main ─────────────────────────────────────────────────── */}
-                <main className="space-y-5">
+                <main className="space-y-5 lg:col-start-2 lg:min-w-0">
 
                     {/* ── Hero Header ──────────────────────────────────────── */}
                     <header className="relative overflow-hidden rounded-[28px] border border-white/78 bg-white/[0.55] shadow-[0_24px_90px_rgba(41,73,112,0.11),inset_0_1px_0_rgba(255,255,255,0.96)] backdrop-blur-2xl">
