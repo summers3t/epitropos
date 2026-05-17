@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ComponentType } from "react";
 import type {
     RoadmapStageStatus,
     RoadmapTaskStatus,
@@ -421,7 +421,7 @@ export default function Unit19RoadmapWorkspace({
                                             <div className="mt-2 break-words text-[24px] font-semibold leading-tight text-[#0f1c2e]">
                                                 {value}
                                             </div>
-                                            <div className="mt-3 text-[11px] leading-5 text-[#53657d]">
+                                            <div className="mt-3 max-h-10 overflow-hidden text-[11px] leading-5 text-[#53657d]">
                                                 {metric.detail}
                                             </div>
 
@@ -479,8 +479,8 @@ export default function Unit19RoadmapWorkspace({
                             </div>
                         </div>
 
-                        <div className="relative space-y-3 pl-0 md:pl-[70px]">
-                            <div className="absolute bottom-8 left-[32px] top-8 hidden w-px bg-[#b8c7d9] md:block" />
+                        <div className="relative space-y-3.5 pl-0 md:pl-[64px]">
+                            <div className="absolute bottom-10 left-[28px] top-7 hidden w-px bg-gradient-to-b from-[#20a76b]/55 via-[#2f80ed]/65 to-[#b8c7d9]/70 md:block" />
 
                             {visibleStages.map((stage) => {
                                 const selected = stage.id === selectedStageId;
@@ -490,7 +490,7 @@ export default function Unit19RoadmapWorkspace({
                                     <article
                                         key={stage.id}
                                         className={[
-                                            "relative rounded-[20px] border p-4 backdrop-blur-2xl transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_54px_rgba(41,73,112,0.13)]",
+                                            "relative rounded-[22px] border p-4 backdrop-blur-2xl transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_22px_60px_rgba(41,73,112,0.14)]",
                                             getStageCardClasses(stage.status, selected),
                                         ].join(" ")}
                                     >
@@ -531,7 +531,7 @@ export default function Unit19RoadmapWorkspace({
                                             <div className="hidden md:block">
                                                 <div
                                                     className={[
-                                                        "absolute -left-[59px] top-5 z-10 flex h-9 w-9 items-center justify-center rounded-full border text-sm font-semibold transition",
+                                                        "absolute -left-[50px] top-5 z-10 flex h-8 w-8 items-center justify-center rounded-full border text-xs font-semibold transition",
                                                         getStageMarkerClasses(stage.status, selected),
                                                     ].join(" ")}
                                                 >
@@ -777,8 +777,9 @@ export default function Unit19RoadmapWorkspace({
                             </div>
                         ))}
 
-                        <div className="rounded-[24px] border border-[#2f80ed]/20 bg-white/62 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
-                            <div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#2f80ed]">
+                        <div className="rounded-[24px] border border-[#2f80ed]/18 bg-white/68 p-4 shadow-[0_14px_44px_rgba(41,73,112,0.08),inset_0_1px_0_rgba(255,255,255,0.94)] backdrop-blur-xl">
+                            <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.15em] text-[#2f80ed]">
+                                <span className="h-1.5 w-1.5 rounded-full bg-[#2f80ed]" />
                                 AI Workspace
                             </div>
 
@@ -800,7 +801,8 @@ export default function Unit19RoadmapWorkspace({
 
                                 <button
                                     type="button"
-                                    className="flex w-full items-center justify-between rounded-2xl border border-[#cbd7e6] bg-white/60 px-4 py-3 text-left text-sm text-[#53657d] transition hover:-translate-y-0.5 hover:border-[#2f80ed]/35 hover:bg-white active:translate-y-0 active:scale-[0.98]"
+                                    disabled
+                                    className="flex w-full cursor-not-allowed items-center justify-between rounded-2xl border border-[#cbd7e6] bg-white/48 px-4 py-3 text-left text-sm text-[#687891]"
                                 >
                                     <span>Export roadmap context</span>
                                     <span className="rounded-full border border-[#cbd7e6] px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-[#687891]">
@@ -810,7 +812,8 @@ export default function Unit19RoadmapWorkspace({
 
                                 <button
                                     type="button"
-                                    className="flex w-full items-center justify-between rounded-2xl border border-[#cbd7e6] bg-white/60 px-4 py-3 text-left text-sm text-[#53657d] transition hover:-translate-y-0.5 hover:border-[#2f80ed]/35 hover:bg-white active:translate-y-0 active:scale-[0.98]"
+                                    disabled
+                                    className="flex w-full cursor-not-allowed items-center justify-between rounded-2xl border border-[#cbd7e6] bg-white/48 px-4 py-3 text-left text-sm text-[#687891]"
                                 >
                                     <span>Epitropos AI Assistant</span>
                                     <span className="rounded-full border border-[#cbd7e6] px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-[#687891]">
