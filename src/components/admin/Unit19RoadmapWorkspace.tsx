@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState, type ComponentType } from "react";
+import { useMemo, useState } from "react";
 import type {
     RoadmapStageStatus,
     RoadmapTaskStatus,
@@ -16,423 +16,435 @@ import {
 } from "@/lib/admin/unit19RoadmapData";
 
 type FilterMode = "all" | "current" | "upcoming" | "completed";
-
 const BACKGROUND_IMAGE = "/images/unit19-roadmap-bg.jpg";
 
-function getStageLabel(status: RoadmapStageStatus) {
-    const labels: Record<RoadmapStageStatus, string> = {
-        completed: "Completed",
-        current: "In Progress",
-        upcoming: "Upcoming",
-        deferred: "Deferred",
-    };
+// ─── Label helpers ────────────────────────────────────────────────────────────
 
-    return labels[status];
+function getStageLabel(status: RoadmapStageStatus) {
+    return { completed: "Completed", current: "In Progress", upcoming: "Upcoming", deferred: "Deferred" }[status];
 }
 
 function getTaskLabel(status: RoadmapTaskStatus) {
-    const labels: Record<RoadmapTaskStatus, string> = {
-        done: "Done",
-        pending: "Pending",
-        scheduled: "Scheduled",
-        open: "Todo",
-        deferred: "Deferred",
-    };
-
-    return labels[status];
-}
-
-function getStageIcon(status: RoadmapStageStatus) {
-    if (status === "completed") return "✓";
-    if (status === "current") return "●";
-    if (status === "deferred") return "!";
-    return "○";
-}
-
-function getStageCardClasses(status: RoadmapStageStatus, selected: boolean) {
-    if (selected || status === "current") {
-        return "border-[#2f80ed]/45 bg-white/72 shadow-[0_20px_70px_rgba(47,128,237,0.16),inset_0_1px_0_rgba(255,255,255,0.95)]";
-    }
-
-    if (status === "completed") {
-        return "border-white/60 bg-white/46 opacity-70 hover:opacity-100";
-    }
-
-    if (status === "deferred") {
-        return "border-[#d6b3a7]/45 bg-white/34 opacity-62 hover:opacity-95";
-    }
-
-    return "border-white/58 bg-white/50 opacity-78 hover:opacity-100";
-}
-
-function getStageMarkerClasses(status: RoadmapStageStatus, selected: boolean) {
-    if (selected || status === "current") {
-        return "border-[#2f80ed] bg-[#2f80ed] text-white shadow-[0_0_0_8px_rgba(47,128,237,0.12),0_12px_30px_rgba(47,128,237,0.25)]";
-    }
-
-    if (status === "completed") {
-        return "border-[#20a76b] bg-[#20a76b] text-white shadow-[0_0_0_6px_rgba(32,167,107,0.12)]";
-    }
-
-    if (status === "deferred") {
-        return "border-[#c78973] bg-white/72 text-[#9a5b47]";
-    }
-
-    return "border-[#7d8ca5] bg-white/68 text-[#607086]";
-}
-
-function getStatusBadgeClasses(status: RoadmapStageStatus) {
-    if (status === "completed") {
-        return "border-[#20a76b]/25 bg-[#20a76b]/10 text-[#0f7448]";
-    }
-
-    if (status === "current") {
-        return "border-[#2f80ed]/30 bg-[#2f80ed]/10 text-[#165bbb]";
-    }
-
-    if (status === "deferred") {
-        return "border-[#c78973]/30 bg-[#c78973]/10 text-[#8c5947]";
-    }
-
-    return "border-[#7d8ca5]/28 bg-[#7d8ca5]/10 text-[#526176]";
-}
-
-function getTaskBadgeClasses(status: RoadmapTaskStatus) {
-    if (status === "done") {
-        return "border-[#20a76b]/25 bg-[#20a76b]/10 text-[#0f7448]";
-    }
-
-    if (status === "pending") {
-        return "border-[#2f80ed]/28 bg-[#2f80ed]/10 text-[#165bbb]";
-    }
-
-    if (status === "scheduled") {
-        return "border-[#8a65cc]/28 bg-[#8a65cc]/10 text-[#6240a0]";
-    }
-
-    if (status === "deferred") {
-        return "border-[#c78973]/30 bg-[#c78973]/10 text-[#8c5947]";
-    }
-
-    return "border-[#7d8ca5]/28 bg-[#7d8ca5]/10 text-[#526176]";
-}
-
-function createEmptyTask(stageId: string): Unit19RoadmapTask {
-    return {
-        id: `${stageId}-${Date.now()}`,
-        title: "Нова задача",
-        note: "Добави кратка бележка.",
-        status: "open",
-    };
+    return { done: "Done", pending: "In Progress", scheduled: "Scheduled", open: "Todo", deferred: "Deferred" }[status];
 }
 
 function isInteractiveField(target: EventTarget | null) {
     if (!(target instanceof HTMLElement)) return false;
-
-    return Boolean(
-        target.closest(
-            "input, textarea, select, button, a, [contenteditable='true']",
-        ),
-    );
+    return Boolean(target.closest("input, textarea, select, button, a, [contenteditable='true']"));
 }
 
-type Unit19RoadmapWorkspaceProps = {
-    userName?: string | null;
-    userAvatarUrl?: string | null;
-};
+function createEmptyTask(stageId: string): Unit19RoadmapTask {
+    return { id: `${stageId}-${Date.now()}`, title: "Нова задача", note: "Добави кратка бележка.", status: "open" };
+}
 
-export default function Unit19RoadmapWorkspace({
-    userName,
-    userAvatarUrl,
-}: Unit19RoadmapWorkspaceProps) {
-    const [stages, setStages] =
-        useState<Unit19RoadmapStage[]>(unit19RoadmapStages);
+// ─── SVG Icons ────────────────────────────────────────────────────────────────
 
+const IconMap = ({ c = "w-[18px] h-[18px]" }: { c?: string }) => (
+    <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
+        <circle cx="12" cy="9" r="2.5" />
+    </svg>
+);
+const IconLogOut = ({ c = "w-3.5 h-3.5" }: { c?: string }) => (
+    <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
+    </svg>
+);
+const IconCheck = ({ c = "w-3 h-3" }: { c?: string }) => (
+    <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="20 6 9 17 4 12" />
+    </svg>
+);
+const IconPlus = ({ c = "w-3 h-3" }: { c?: string }) => (
+    <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+);
+const IconChevron = ({ c = "w-3.5 h-3.5" }: { c?: string }) => (
+    <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="6 9 12 15 18 9" />
+    </svg>
+);
+
+const IconArrowUp = ({ c = "w-3.5 h-3.5" }: { c?: string }) => (
+    <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 19V5" />
+        <path d="M5 12l7-7 7 7" />
+    </svg>
+);
+const IconCollapse = ({ c = "w-3.5 h-3.5" }: { c?: string }) => (
+    <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M8 3v5H3" />
+        <path d="M16 3v5h5" />
+        <path d="M8 21v-5H3" />
+        <path d="M16 21v-5h5" />
+        <path d="M3 8l5-5" />
+        <path d="M21 8l-5-5" />
+        <path d="M3 16l5 5" />
+        <path d="M21 16l-5 5" />
+    </svg>
+);
+
+const IconExternal = ({ c = "w-3.5 h-3.5" }: { c?: string }) => (
+    <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+        <polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
+    </svg>
+);
+const IconBulb = ({ c = "w-4 h-4" }: { c?: string }) => (
+    <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9 18h6M10 22h4M12 2a7 7 0 0 1 7 7c0 2.5-1.3 4.7-3.3 5.9L15 17H9l-.7-2.1A7 7 0 0 1 5 9a7 7 0 0 1 7-7z" />
+    </svg>
+);
+
+// ─── Metric Card Icons ────────────────────────────────────────────────────────
+
+const IconClock = ({ c = "w-3.5 h-3.5" }: { c?: string }) => (
+    <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 3" />
+    </svg>
+);
+const IconCalendar = ({ c = "w-3.5 h-3.5" }: { c?: string }) => (
+    <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+    </svg>
+);
+const IconTrend = ({ c = "w-3.5 h-3.5" }: { c?: string }) => (
+    <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" /><polyline points="16 7 22 7 22 13" />
+    </svg>
+);
+const IconCheckSquare = ({ c = "w-3.5 h-3.5" }: { c?: string }) => (
+    <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="9 11 12 14 22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+    </svg>
+);
+
+// ─── Style helpers ────────────────────────────────────────────────────────────
+
+function stageCard(status: RoadmapStageStatus, selected: boolean) {
+    if (selected && status === "current")
+        return "border-[#2f80ed]/[0.38] bg-white/[0.92] shadow-[0_0_0_1.5px_rgba(47,128,237,0.22),0_20px_64px_rgba(47,128,237,0.14),inset_0_1px_0_rgba(255,255,255,1)]";
+    if (selected)
+        return "border-[#2f80ed]/[0.28] bg-white/[0.88] shadow-[0_0_0_1.5px_rgba(47,128,237,0.16),0_16px_48px_rgba(47,128,237,0.10),inset_0_1px_0_rgba(255,255,255,1)]";
+    if (status === "completed")
+        return "border-white/[0.62] bg-white/[0.52] opacity-[0.78] hover:opacity-100 hover:bg-white/[0.68] hover:shadow-[0_12px_36px_rgba(41,73,112,0.08)]";
+    if (status === "deferred")
+        return "border-[#e4ccc4]/[0.52] bg-white/[0.38] opacity-[0.68] hover:opacity-95";
+    return "border-white/[0.62] bg-white/[0.54] opacity-[0.82] hover:opacity-100 hover:bg-white/70 hover:shadow-[0_12px_36px_rgba(41,73,112,0.08)]";
+}
+
+function stageMarker(status: RoadmapStageStatus, selected: boolean) {
+    if (selected || status === "current")
+        return "border-2 border-[#2f80ed] bg-[#2f80ed] text-white shadow-[0_0_0_5px_rgba(47,128,237,0.15),0_8px_22px_rgba(47,128,237,0.32)]";
+    if (status === "completed")
+        return "border-2 border-[#20a76b] bg-[#20a76b] text-white shadow-[0_0_0_4px_rgba(32,167,107,0.13)]";
+    if (status === "deferred")
+        return "border-2 border-[#cfa090] bg-white/[0.85] text-[#a06050]";
+    return "border-2 border-[#c8d5e2] bg-white/[0.82] text-[#8fa3b8]";
+}
+
+function stageBadge(status: RoadmapStageStatus) {
+    if (status === "completed") return "border-[#20a76b]/[0.22] bg-[#20a76b]/[0.09] text-[#0f7448]";
+    if (status === "current")   return "border-[#2f80ed]/[0.26] bg-[#2f80ed]/[0.09] text-[#1560bc]";
+    if (status === "deferred")  return "border-[#cfa090]/[0.28] bg-[#cfa090]/[0.09] text-[#8c5947]";
+    return "border-[#9ab0c4]/[0.26] bg-[#9ab0c4]/[0.09] text-[#4e6880]";
+}
+
+function taskBadge(status: RoadmapTaskStatus) {
+    if (status === "done")      return "border-[#20a76b]/[0.22] bg-[#20a76b]/[0.09] text-[#0f7448]";
+    if (status === "pending")   return "border-[#2f80ed]/[0.26] bg-[#2f80ed]/[0.09] text-[#1560bc]";
+    if (status === "scheduled") return "border-[#8a65cc]/[0.26] bg-[#8a65cc]/[0.09] text-[#5e38a0]";
+    if (status === "deferred")  return "border-[#cfa090]/[0.28] bg-[#cfa090]/[0.09] text-[#8c5947]";
+    return "border-[#9ab0c4]/[0.26] bg-[#9ab0c4]/[0.09] text-[#4e6880]";
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
+type Props = { userName?: string | null; userAvatarUrl?: string | null };
+
+const TOP_FILTERS: { mode: FilterMode; label: string }[] = [
+    { mode: "all", label: "Full Journey" },
+    { mode: "current", label: "Current Focus" },
+    { mode: "upcoming", label: "Upcoming" },
+    { mode: "completed", label: "Completed" },
+];
+
+const SIDEBAR_FILTERS: { mode: FilterMode; label: string }[] = [
+    { mode: "all", label: "Full" },
+    { mode: "current", label: "Current" },
+    { mode: "upcoming", label: "Upcoming" },
+    { mode: "completed", label: "Completed" },
+];
+
+export default function Unit19RoadmapWorkspace({ userName, userAvatarUrl }: Props) {
+    const [stages, setStages] = useState<Unit19RoadmapStage[]>(unit19RoadmapStages);
     const [selectedStageId, setSelectedStageId] = useState(
-        unit19RoadmapStages.find((stage) => stage.status === "current")?.id ??
-        unit19RoadmapStages[0]?.id,
+        unit19RoadmapStages.find((s) => s.status === "current")?.id ?? unit19RoadmapStages[0]?.id,
     );
-
     const [expandedStageIds, setExpandedStageIds] = useState<Set<string>>(
-        () =>
-            new Set(
-                unit19RoadmapStages
-                    .filter((stage) => stage.status === "current")
-                    .map((stage) => stage.id),
-            ),
+        () => new Set(unit19RoadmapStages.filter((s) => s.status === "current").map((s) => s.id)),
     );
-
     const [filterMode, setFilterMode] = useState<FilterMode>("all");
     const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
 
     const visibleStages = useMemo(() => {
         if (filterMode === "all") return stages;
-
-        if (filterMode === "current") {
-            return stages.filter((stage) => stage.status === "current");
-        }
-
-        if (filterMode === "upcoming") {
-            return stages.filter(
-                (stage) => stage.status === "upcoming" || stage.status === "deferred",
-            );
-        }
-
-        return stages.filter((stage) => stage.status === "completed");
+        if (filterMode === "current") return stages.filter((s) => s.status === "current");
+        if (filterMode === "upcoming") return stages.filter((s) => s.status === "upcoming" || s.status === "deferred");
+        return stages.filter((s) => s.status === "completed");
     }, [filterMode, stages]);
 
     const taskTotals = useMemo(() => {
-        const allTasks = stages.flatMap((stage) => stage.tasks);
-
+        const all = stages.flatMap((s) => s.tasks);
         return {
-            done: allTasks.filter((task) => task.status === "done").length,
-            active: allTasks.filter((task) =>
-                ["pending", "scheduled", "open"].includes(task.status),
-            ).length,
-            total: allTasks.length,
+            done:   all.filter((t) => t.status === "done").length,
+            active: all.filter((t) => ["pending","scheduled","open"].includes(t.status)).length,
+            total:  all.length,
         };
     }, [stages]);
 
-    const progressPercent = Math.round(
-        (taskTotals.done / Math.max(taskTotals.total, 1)) * 100,
-    );
+    const progressPercent = Math.round((taskTotals.done / Math.max(taskTotals.total, 1)) * 100);
 
-    function toggleExpanded(stageId: string) {
-        setExpandedStageIds((current) => {
-            const next = new Set(current);
-
-            if (next.has(stageId)) {
-                next.delete(stageId);
+    function toggleExpanded(id: string) {
+        setExpandedStageIds((cur) => {
+            const n = new Set(cur);
+            if (n.has(id)) {
+                n.delete(id);
             } else {
-                next.add(stageId);
+                n.add(id);
             }
-
-            return next;
+            return n;
         });
     }
 
-    function selectStage(stageId: string) {
-        setSelectedStageId(stageId);
+    function collapseAll() {
+        setExpandedStageIds(new Set());
+    }
 
-        setExpandedStageIds((current) => {
-            const next = new Set(current);
-            next.add(stageId);
-            return next;
-        });
+    function scrollToTop() {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function selectStage(id: string) {
+        setSelectedStageId(id);
+        setExpandedStageIds((cur) => { const n = new Set(cur); n.add(id); return n; });
     }
 
     function addTask(stageId: string) {
-        const nextTask = createEmptyTask(stageId);
-
-        setStages((current) =>
-            current.map((stage) =>
-                stage.id === stageId
-                    ? {
-                        ...stage,
-                        tasks: [...stage.tasks, nextTask],
-                    }
-                    : stage,
-            ),
-        );
-
-        setEditingTaskId(nextTask.id);
-
-        setExpandedStageIds((current) => {
-            const next = new Set(current);
-            next.add(stageId);
-            return next;
-        });
+        const task = createEmptyTask(stageId);
+        setStages((cur) => cur.map((s) => s.id === stageId ? { ...s, tasks: [...s.tasks, task] } : s));
+        setEditingTaskId(task.id);
+        setExpandedStageIds((cur) => { const n = new Set(cur); n.add(stageId); return n; });
     }
 
     function removeTask(stageId: string, taskId: string) {
-        setStages((current) =>
-            current.map((stage) =>
-                stage.id === stageId
-                    ? {
-                        ...stage,
-                        tasks: stage.tasks.filter((task) => task.id !== taskId),
-                    }
-                    : stage,
-            ),
-        );
-
-        if (editingTaskId === taskId) {
-            setEditingTaskId(null);
-        }
+        setStages((cur) => cur.map((s) => s.id === stageId ? { ...s, tasks: s.tasks.filter((t) => t.id !== taskId) } : s));
+        if (editingTaskId === taskId) setEditingTaskId(null);
     }
 
-    function updateTask(
-        stageId: string,
-        taskId: string,
-        patch: Partial<Unit19RoadmapTask>,
-    ) {
-        setStages((current) =>
-            current.map((stage) =>
-                stage.id === stageId
-                    ? {
-                        ...stage,
-                        tasks: stage.tasks.map((task) =>
-                            task.id === taskId ? { ...task, ...patch } : task,
-                        ),
-                    }
-                    : stage,
-            ),
-        );
+    function updateTask(stageId: string, taskId: string, patch: Partial<Unit19RoadmapTask>) {
+        setStages((cur) => cur.map((s) =>
+            s.id === stageId ? { ...s, tasks: s.tasks.map((t) => t.id === taskId ? { ...t, ...patch } : t) } : s,
+        ));
     }
 
     return (
-        <section className="relative -mx-6 -mb-12 -mt-36 min-h-screen overflow-hidden bg-[#eef4fb] px-5 pb-10 pt-36 text-[#0f1c2e]">
-            <div className="absolute inset-0">
+        <section className="relative -mx-6 -mb-12 -mt-36 min-h-screen overflow-hidden bg-[#edf3fa] px-4 pb-14 pt-36 text-[#0f1c2e] sm:px-5">
+
+            {/* ── Background ───────────────────────────────────────────────── */}
+            <div className="pointer-events-none absolute inset-0">
                 <div
-                    className="absolute inset-0 bg-[length:100%_auto] bg-top bg-no-repeat opacity-70"
-                    style={{
-                        backgroundImage: `url('${BACKGROUND_IMAGE}')`,
-                    }}
+                    className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-60"
+                    style={{ backgroundImage: `url('${BACKGROUND_IMAGE}')` }}
                 />
-                <div className="absolute inset-0 bg-gradient-to-r from-[#f8fbff]/92 via-[#f4f8fd]/72 to-[#f8fbff]/18" />
-                <div className="absolute inset-0 bg-gradient-to-b from-white/36 via-white/18 to-[#e8f1fa]/78" />
-                <div className="absolute left-1/4 top-20 h-[420px] w-[420px] rounded-full bg-[#2f80ed]/8 blur-[120px]" />
+                <div className="absolute inset-0 bg-gradient-to-r from-[#edf3fa]/[0.92] via-[#edf3fa]/[0.68] to-[#e6eff8]/[0.10]" />
+                <div className="absolute inset-0 bg-gradient-to-b from-white/[0.14] via-transparent to-[#e0ecf8]/[0.36]" />
             </div>
 
-            <div className="relative mx-auto grid max-w-[1480px] gap-7 lg:grid-cols-[118px_minmax(0,1fr)]">
-                <aside className="hidden lg:block">
-                    <div className="sticky top-32 flex max-h-[calc(100vh-150px)] min-h-[680px] flex-col justify-between overflow-hidden rounded-[28px] border border-white/80 bg-white/36 p-3 shadow-[0_24px_70px_rgba(41,73,112,0.10),inset_0_1px_0_rgba(255,255,255,0.92)] backdrop-blur-2xl">
-                        <div>
-                            <Link href="/" className="mb-6 flex justify-center">
+            <div className="relative mx-auto grid max-w-[1480px] gap-5 lg:grid-cols-[104px_minmax(0,1fr)]">
+
+                {/* ── Sidebar ──────────────────────────────────────────────── */}
+                <aside className="hidden lg:fixed lg:left-[max(1.25rem,calc((100vw-1480px)/2+1.25rem))] lg:top-[132px] lg:z-40 lg:block lg:w-[104px]">
+                    <div className="flex max-h-[calc(100vh-152px)] flex-col justify-between overflow-y-auto rounded-[24px] border border-white/[0.88] bg-white/[0.68] p-2.5 shadow-[0_18px_56px_rgba(41,73,112,0.12),inset_0_1px_0_rgba(255,255,255,0.94)] backdrop-blur-2xl">
+                        <div className="flex flex-col items-center gap-2">
+                            <Link href="/" className="mb-1 mt-1 flex justify-center">
                                 <Image
                                     src="/logo_no_backgr.png"
                                     alt="Epitropos"
-                                    width={92}
-                                    height={64}
+                                    width={68}
+                                    height={46}
                                     priority
-                                    className="h-auto w-[78px] object-contain"
+                                    className="h-auto w-14 object-contain"
                                 />
                             </Link>
 
-                            <nav className="space-y-1.5">
-                                {[
-                                    ["Roadmap", "/admin/unit-19-roadmap", "▱"],
-                                    ["Dashboard", "/admin", "□"],
-                                    ["Screenings", "/admin/screening", "♙"],
-                                    ["Cases", "/admin/cases", "▰"],
-                                    ["Reports", "/dashboard/reports", "▤"],
-                                    ["Offers", "/admin/orders", "◇"],
-                                    ["Settings", "/dashboard", "⚙"],
-                                ].map(([label, href, icon]) => {
-                                    const active = label === "Roadmap";
+                            <nav className="flex w-full flex-col gap-1.5" aria-label="Roadmap stage filters">
+                                {SIDEBAR_FILTERS.map(({ mode, label }) => {
+                                    const active = filterMode === mode;
+                                    const Icon =
+                                        mode === "all"
+                                            ? IconMap
+                                            : mode === "current"
+                                                ? IconClock
+                                                : mode === "upcoming"
+                                                    ? IconTrend
+                                                    : IconCheckSquare;
 
                                     return (
-                                        <Link
-                                            key={href}
-                                            href={href}
+                                        <button
+                                            key={mode}
+                                            type="button"
+                                            onClick={() => setFilterMode(mode)}
+                                            aria-pressed={active}
                                             className={[
-                                                "group flex flex-col items-center gap-1.5 rounded-2xl border px-2 py-2.5 text-[10px] font-medium transition duration-300 active:scale-[0.96]",
+                                                "group flex flex-col items-center justify-center gap-1 rounded-2xl border px-2 py-2.5 text-[10px] font-semibold transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f80ed]/40 active:scale-[0.96]",
                                                 active
-                                                    ? "border-white/85 bg-white/72 text-[#2f80ed] shadow-[0_16px_44px_rgba(47,128,237,0.14)]"
-                                                    : "border-transparent text-[#53657d] hover:-translate-y-0.5 hover:border-white/80 hover:bg-white/58 hover:text-[#0f1c2e]",
+                                                    ? "border-[#2f80ed]/[0.36] bg-[#2f80ed] text-white shadow-[0_14px_30px_rgba(47,128,237,0.26)]"
+                                                    : "border-white/[0.72] bg-white/[0.42] text-[#6f849d] shadow-[inset_0_1px_0_rgba(255,255,255,0.82)] hover:-translate-y-0.5 hover:border-[#2f80ed]/[0.26] hover:bg-white/[0.82] hover:text-[#2060cc] hover:shadow-[0_10px_24px_rgba(41,73,112,0.10)]",
                                             ].join(" ")}
                                         >
-                                            <span className="text-[22px] leading-none">{icon}</span>
+                                            <Icon c="h-4 w-4" />
                                             <span>{label}</span>
-                                        </Link>
+                                        </button>
                                     );
                                 })}
                             </nav>
+
+                            <div className="grid w-full grid-cols-1 gap-1.5 pt-1">
+                                <button
+                                    type="button"
+                                    onClick={collapseAll}
+                                    className="flex flex-col items-center justify-center gap-1 rounded-2xl border border-white/[0.74] bg-white/[0.46] px-2 py-2.5 text-[9.5px] font-semibold text-[#6f849d] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#2f80ed]/[0.26] hover:bg-white/[0.86] hover:text-[#2060cc] active:scale-[0.96]"
+                                >
+                                    <IconCollapse c="h-4 w-4" />
+                                    Collapse
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={scrollToTop}
+                                    className="flex flex-col items-center justify-center gap-1 rounded-2xl border border-white/[0.74] bg-white/[0.46] px-2 py-2.5 text-[9.5px] font-semibold text-[#6f849d] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#2f80ed]/[0.26] hover:bg-white/[0.86] hover:text-[#2060cc] active:scale-[0.96]"
+                                >
+                                    <IconArrowUp c="h-4 w-4" />
+                                    Top
+                                </button>
+                            </div>
                         </div>
 
-                        <div className="space-y-3">
-                            <div className="rounded-2xl border border-white/72 bg-white/58 p-3 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
+                        <div className="flex flex-col gap-1.5 pt-3">
+                            <div className="rounded-[15px] border border-white/[0.75] bg-white/[0.65] p-2.5 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
                                 {userAvatarUrl ? (
-                                    // Google profile images are remote URLs. Use a plain img here to avoid
-                                    // requiring lh3.googleusercontent.com in next.config.js image domains.
+                                    // Google profile images are external. Use plain img to avoid configuring
+                                    // lh3.googleusercontent.com in next.config remotePatterns.
                                     // eslint-disable-next-line @next/next/no-img-element
                                     <img
                                         src={userAvatarUrl}
                                         alt={userName || "Admin"}
-                                        className="mx-auto h-11 w-11 rounded-full object-cover shadow-[0_8px_22px_rgba(41,73,112,0.18)]"
                                         referrerPolicy="no-referrer"
+                                        className="mx-auto h-10 w-10 rounded-full object-cover ring-2 ring-white shadow-[0_6px_16px_rgba(41,73,112,0.16)]"
                                     />
                                 ) : (
-                                    <div className="mx-auto h-11 w-11 rounded-full bg-[#0f1c2e]/90" />
+                                    <div className="mx-auto h-10 w-10 rounded-full bg-gradient-to-br from-[#1a3050] to-[#2f80ed]" />
                                 )}
-
-                                <div className="mt-2 truncate text-xs font-semibold">
+                                <div className="mt-1.5 truncate text-[10px] font-semibold text-[#0f1c2e]">
                                     {userName || "summers3t"}
                                 </div>
-                                <div className="text-[11px] text-[#53657d]">Admin</div>
+                                <div className="text-[10px] text-[#7a90a8]">Admin</div>
                             </div>
-
                             <Link
                                 href="/auth/logout"
-                                className="flex items-center justify-center rounded-2xl border border-white/70 bg-white/48 px-3 py-3 text-xs text-[#53657d] transition hover:-translate-y-0.5 hover:bg-white/72 hover:text-[#0f1c2e] active:scale-[0.98]"
+                                className="flex items-center justify-center gap-1.5 rounded-[13px] border border-white/[0.72] bg-white/[0.45] py-2.5 text-[11px] font-medium text-[#7a90a8] transition hover:bg-white/[0.70] hover:text-[#c0392b]"
                             >
+                                <IconLogOut />
                                 Log out
                             </Link>
                         </div>
                     </div>
                 </aside>
 
-                <main className="space-y-7">
-                    <header className="relative overflow-hidden rounded-[34px] border border-white/72 bg-white/48 p-6 shadow-[0_24px_90px_rgba(41,73,112,0.13),inset_0_1px_0_rgba(255,255,255,0.92)] backdrop-blur-2xl md:p-8">
-                        <div className="absolute inset-y-0 right-0 hidden w-[38%] bg-gradient-to-l from-white/10 to-transparent md:block" />
+                {/* ── Main ─────────────────────────────────────────────────── */}
+                <main className="space-y-5">
 
-                        <div className="relative space-y-7">
-                            <div className="max-w-2xl">
-                                <div className="mb-5 flex flex-wrap items-center gap-3">
-                                    <span className="rounded-full border border-[#2f80ed]/20 bg-[#2f80ed]/9 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#2f80ed]">
-                                        Admin Roadmap
-                                    </span>
-                                    <span className="rounded-full border border-[#0f1c2e]/10 bg-white/42 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#53657d]">
-                                        Private Workspace
-                                    </span>
-                                </div>
+                    {/* ── Hero Header ──────────────────────────────────────── */}
+                    <header className="relative overflow-hidden rounded-[28px] border border-white/78 bg-white/[0.55] shadow-[0_24px_90px_rgba(41,73,112,0.11),inset_0_1px_0_rgba(255,255,255,0.96)] backdrop-blur-2xl">
 
-                                <h1 className="font-display text-[42px] leading-[0.98] tracking-tight text-[#0f1c2e] md:text-[62px]">
-                                    Unit 19 Project Roadmap
-                                </h1>
+                        {/* Full-bleed Mediterranean photo layer */}
+                        <div
+                            className="pointer-events-none absolute inset-0 bg-cover bg-center bg-no-repeat opacity-100 saturate-[1.28] contrast-[1.12]"
+                            style={{ backgroundImage: `url('${BACKGROUND_IMAGE}')` }}
+                        />
+                        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-white/[0.50] via-white/[0.16] to-white/[0.00]" />
+                        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/[0.04] via-transparent to-[#edf3fa]/[0.20]" />
+                        <div className="pointer-events-none absolute -left-24 top-1/3 h-72 w-72 rounded-full bg-white/[0.10] blur-3xl" />
+                        <div className="pointer-events-none absolute right-10 top-8 h-56 w-56 rounded-full bg-[#2f80ed]/[0.05] blur-3xl" />
 
-                                <p className="mt-3 text-lg text-[#263957]">
-                                    Thessaloniki · Analipsi
-                                </p>
+                        <div className="relative p-7 md:p-9">
+                            {/* Breadcrumb tags */}
+                            <div className="mb-5 flex flex-wrap items-center gap-2">
+                                <span className="rounded-full border border-[#2f80ed]/22 bg-[#2f80ed]/[0.09] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#2060cc]">
+                                    Admin Roadmap
+                                </span>
+                                <span className="text-[#b8c9d8]">/</span>
+                                <span className="rounded-full border border-black/[0.08] bg-white/[0.52] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#7a90a8]">
+                                    Private Workspace
+                                </span>
                             </div>
 
-                            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                                {unit19KeyMetrics.map((metric, index) => {
-                                    const value =
-                                        metric.label === "Progress"
-                                            ? `${progressPercent}%`
-                                            : metric.label === "Current focus"
-                                                ? "Post-acq."
-                                                : metric.label === "Active blockers"
-                                                    ? `${taskTotals.active}`
-                                                    : metric.value;
+                            {/* Title */}
+                            <h1 className="font-display text-[38px] font-normal leading-[0.98] tracking-[-0.025em] text-[#0b1623] md:text-[54px]">
+                                Unit 19 Project Roadmap
+                            </h1>
+                            <p className="mt-2.5 text-[15px] text-[#3d5270] md:text-[17px]">
+                                Thessaloniki · Analipsi
+                            </p>
+
+                            {/* Metric cards */}
+                            <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+
+                                {/* Overall Progress — spans 2 cols on smallest breakpoint */}
+                                <div className="col-span-2 sm:col-span-1 rounded-[18px] border border-white/[0.85] bg-white/[0.76] p-4 shadow-[0_12px_38px_rgba(41,73,112,0.08),inset_0_1px_0_rgba(255,255,255,1)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_52px_rgba(47,128,237,0.10)]">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-[#2f80ed]/[0.14] bg-[#2f80ed]/[0.09] text-[#2060cc]">
+                                            <IconClock />
+                                        </div>
+                                        <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#7a90a8]">Overall Progress</span>
+                                    </div>
+                                    <div className="text-[26px] font-semibold leading-none text-[#0b1623]">{progressPercent}%</div>
+                                    <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-[#d8e8f6]">
+                                        <div
+                                            className="h-full rounded-full bg-gradient-to-r from-[#2f80ed] to-[#5499f8] transition-all duration-700"
+                                            style={{ width: `${progressPercent}%` }}
+                                        />
+                                    </div>
+                                    <div className="mt-1.5 text-[11px] text-[#7a90a8]">{taskTotals.done} / {taskTotals.total} tasks</div>
+                                </div>
+
+                                {/* Dynamic metric cards from data */}
+                                {unit19KeyMetrics
+                                    .filter((metric) => metric.label !== "Progress")
+                                    .map((metric, i) => {
+                                    const MetricIcons = [IconCalendar, IconTrend, IconCheckSquare];
+                                    const MetricIcon = MetricIcons[i] ?? IconClock;
+                                    const val =
+                                        metric.label === "Current focus"
+                                            ? "Post-acq."
+                                            : metric.label === "Active blockers"
+                                                ? `${taskTotals.active}`
+                                                : metric.value;
 
                                     return (
                                         <div
                                             key={metric.label}
-                                            className="group min-h-[118px] overflow-hidden rounded-[22px] border border-white/80 bg-white/62 p-5 text-left shadow-[0_18px_54px_rgba(41,73,112,0.10),inset_0_1px_0_rgba(255,255,255,0.96)] backdrop-blur-2xl transition duration-300 hover:-translate-y-1 hover:border-[#2f80ed]/30 hover:bg-white/84 hover:shadow-[0_28px_80px_rgba(47,128,237,0.12)]"
+                                            className="rounded-[18px] border border-white/[0.85] bg-white/[0.76] p-4 shadow-[0_12px_38px_rgba(41,73,112,0.08),inset_0_1px_0_rgba(255,255,255,1)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_52px_rgba(47,128,237,0.10)]"
                                         >
-                                            <div className="mb-4 flex h-8 w-8 items-center justify-center rounded-xl border border-[#2f80ed]/15 bg-[#2f80ed]/8 text-[#2f80ed]">
-                                                {["◎", "□", "▱", "▣"][index] ?? "○"}
-                                            </div>
-                                            <div className="text-[11px] uppercase tracking-[0.15em] text-[#687891]">
-                                                {metric.label}
-                                            </div>
-                                            <div className="mt-2 break-words text-[24px] font-semibold leading-tight text-[#0f1c2e]">
-                                                {value}
-                                            </div>
-                                            <div className="mt-3 max-h-10 overflow-hidden text-[11px] leading-5 text-[#53657d]">
-                                                {metric.detail}
-                                            </div>
-
-                                            {metric.label === "Progress" ? (
-                                                <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[#d7e3f2]">
-                                                    <div
-                                                        className="h-full rounded-full bg-[#2f80ed] transition-all duration-700"
-                                                        style={{ width: `${progressPercent}%` }}
-                                                    />
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-[#2f80ed]/[0.14] bg-[#2f80ed]/[0.09] text-[#2060cc]">
+                                                    <MetricIcon />
                                                 </div>
-                                            ) : null}
+                                                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#7a90a8]">{metric.label}</span>
+                                            </div>
+                                            <div className="break-words text-[22px] font-semibold leading-tight text-[#0b1623]">{val}</div>
+                                            <div className="mt-1.5 text-[11px] leading-[1.35] text-[#7a90a8]">{metric.detail}</div>
                                         </div>
                                     );
                                 })}
@@ -440,389 +452,395 @@ export default function Unit19RoadmapWorkspace({
                         </div>
                     </header>
 
-                    <section className="rounded-[30px] border border-white/76 bg-white/58 p-5 shadow-[0_22px_80px_rgba(41,73,112,0.12),inset_0_1px_0_rgba(255,255,255,0.96)] backdrop-blur-2xl">
-                        <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                    {/* ── Project Stages ───────────────────────────────────── */}
+                    <section className="rounded-[26px] border border-white/[0.80] bg-white/[0.62] p-5 shadow-[0_20px_70px_rgba(41,73,112,0.09),inset_0_1px_0_rgba(255,255,255,0.97)] backdrop-blur-2xl sm:p-6">
+
+                        {/* Section header + filters */}
+                        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                             <div>
-                                <h2 className="font-display text-2xl text-[#0f1c2e]">
+                                <h2 className="font-display text-[22px] font-normal tracking-[-0.01em] text-[#0b1623]">
                                     Project Stages
                                 </h2>
-                                <p className="mt-1 text-sm text-[#53657d]">
-                                    Complete journey from motivation to stable ownership.
+                                <p className="mt-0.5 text-[13px] text-[#7a90a8]">
+                                    Complete journey from motivation to stable ownership
                                 </p>
                             </div>
 
-                            <div className="flex flex-wrap gap-2">
-                                {[
-                                    ["all", "Full Journey"],
-                                    ["current", "Current Focus"],
-                                    ["upcoming", "Upcoming"],
-                                    ["completed", "Completed"],
-                                ].map(([mode, label]) => {
+                            <div className="flex flex-wrap items-center gap-2 rounded-[18px] border border-white/[0.78] bg-white/[0.44] p-1.5 shadow-[0_12px_36px_rgba(41,73,112,0.08),inset_0_1px_0_rgba(255,255,255,0.92)] backdrop-blur-2xl">
+                                {TOP_FILTERS.map(({ mode, label }) => {
                                     const active = filterMode === mode;
-
                                     return (
                                         <button
                                             key={mode}
                                             type="button"
-                                            onClick={() => setFilterMode(mode as FilterMode)}
+                                            onClick={() => setFilterMode(mode)}
+                                            aria-pressed={active}
                                             className={[
-                                                "rounded-xl border px-5 py-3 text-xs font-semibold transition duration-300 active:scale-[0.98]",
+                                                "relative overflow-hidden rounded-[13px] border px-4 py-2.5 text-[12px] font-semibold transition-all duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f80ed]/40 active:scale-[0.96]",
                                                 active
-                                                    ? "border-[#2f80ed] bg-[#2f80ed] text-white shadow-[0_14px_34px_rgba(47,128,237,0.22)]"
-                                                    : "border-white/70 bg-white/54 text-[#263957] hover:-translate-y-0.5 hover:border-[#2f80ed]/35 hover:bg-white/82",
+                                                    ? "border-[#2f80ed]/[0.38] bg-[#2f80ed] text-white shadow-[0_12px_28px_rgba(47,128,237,0.28)]"
+                                                    : "border-transparent bg-white/[0.38] text-[#4e6880] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] hover:-translate-y-0.5 hover:border-white/[0.88] hover:bg-white/[0.78] hover:text-[#0f1c2e] hover:shadow-[0_10px_24px_rgba(41,73,112,0.10)]",
                                             ].join(" ")}
                                         >
-                                            {label}
+                                            <span className="relative z-10">{label}</span>
+                                            {active ? (
+                                                <span className="pointer-events-none absolute inset-x-3 bottom-1 h-px rounded-full bg-white/[0.55]" />
+                                            ) : null}
                                         </button>
                                     );
                                 })}
                             </div>
                         </div>
 
-                        <div className="relative space-y-3.5 pl-0 md:pl-[64px]">
-                            <div className="absolute bottom-10 left-[28px] top-7 hidden w-px bg-gradient-to-b from-[#20a76b]/55 via-[#2f80ed]/65 to-[#b8c7d9]/70 md:block" />
-
-                            {visibleStages.map((stage) => {
-                                const selected = stage.id === selectedStageId;
-                                const expanded = expandedStageIds.has(stage.id);
-
-                                return (
-                                    <article
-                                        key={stage.id}
-                                        className={[
-                                            "relative rounded-[22px] border p-4 backdrop-blur-2xl transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_22px_60px_rgba(41,73,112,0.14)]",
-                                            getStageCardClasses(stage.status, selected),
-                                        ].join(" ")}
-                                    >
-                                        <div
-                                            className="grid cursor-pointer gap-4 md:grid-cols-[minmax(0,1fr)_auto_auto]"
-                                            role="button"
-                                            tabIndex={0}
-                                            onClick={(event) => {
-                                                if (isInteractiveField(event.target)) return;
-
-                                                if (expanded && selected) {
-                                                    toggleExpanded(stage.id);
-                                                    return;
-                                                }
-
-                                                selectStage(stage.id);
-                                            }}
-                                            onKeyDown={(event) => {
-                                                if (isInteractiveField(event.target)) return;
-
-                                                if (event.key === "Enter") {
-                                                    event.preventDefault();
-                                                    selectStage(stage.id);
-                                                }
-
-                                                if (event.key === " ") {
-                                                    event.preventDefault();
-
-                                                    if (expanded && selected) {
-                                                        toggleExpanded(stage.id);
-                                                        return;
-                                                    }
-
-                                                    selectStage(stage.id);
-                                                }
-                                            }}
-                                        >
-                                            <div className="hidden md:block">
-                                                <div
-                                                    className={[
-                                                        "absolute -left-[50px] top-5 z-10 flex h-8 w-8 items-center justify-center rounded-full border text-xs font-semibold transition",
-                                                        getStageMarkerClasses(stage.status, selected),
-                                                    ].join(" ")}
-                                                >
-                                                    {getStageIcon(stage.status)}
-                                                </div>
-                                            </div>
-
-                                            <div>
-                                                <div className="flex flex-wrap items-center gap-3">
-                                                    <span className="text-2xl font-semibold text-[#0f1c2e]">
-                                                        {stage.number}
-                                                    </span>
-                                                    <h3 className="text-lg font-semibold text-[#0f1c2e]">
-                                                        {stage.title}
-                                                    </h3>
-                                                </div>
-
-                                                <p className="mt-1 max-w-3xl text-sm leading-6 text-[#53657d]">
-                                                    {stage.summary}
-                                                </p>
-
-                                                {expanded ? (
-                                                    <div className="mt-5 rounded-[20px] border border-[#cbd7e6]/70 bg-white/50 p-4">
-                                                        <div className="mb-4 grid gap-3 md:grid-cols-3">
-                                                            <div className="border-r border-[#cbd7e6]/70 pr-3">
-                                                                <div className="text-[10px] uppercase tracking-[0.15em] text-[#687891]">
-                                                                    Active tasks
-                                                                </div>
-                                                                <div className="mt-1 text-sm font-semibold text-[#0f1c2e]">
-                                                                    {
-                                                                        stage.tasks.filter((task) =>
-                                                                            ["pending", "scheduled", "open"].includes(
-                                                                                task.status,
-                                                                            ),
-                                                                        ).length
-                                                                    }
-                                                                </div>
-                                                            </div>
-
-                                                            <div className="border-r border-[#cbd7e6]/70 pr-3">
-                                                                <div className="text-[10px] uppercase tracking-[0.15em] text-[#687891]">
-                                                                    Stage status
-                                                                </div>
-                                                                <div className="mt-1 text-sm font-semibold text-[#0f1c2e]">
-                                                                    {getStageLabel(stage.status)}
-                                                                </div>
-                                                            </div>
-
-                                                            <div>
-                                                                <div className="text-[10px] uppercase tracking-[0.15em] text-[#687891]">
-                                                                    Lesson
-                                                                </div>
-                                                                <div className="mt-1 text-sm font-semibold text-[#0f1c2e]">
-                                                                    Risk control
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="space-y-3">
-                                                            {stage.tasks.map((task) => {
-                                                                const editing = editingTaskId === task.id;
-
-                                                                return (
-                                                                    <div
-                                                                        key={task.id}
-                                                                        className="rounded-2xl border border-[#d7e3f2] bg-white/54 p-4"
-                                                                    >
-                                                                        {editing ? (
-                                                                            <div className="space-y-3">
-                                                                                <input
-                                                                                    value={task.title}
-                                                                                    onChange={(event) =>
-                                                                                        updateTask(stage.id, task.id, {
-                                                                                            title: event.target.value,
-                                                                                        })
-                                                                                    }
-                                                                                    className="w-full rounded-xl border border-[#cbd7e6] bg-white/80 px-3 py-2 text-sm text-[#0f1c2e] outline-none transition focus:border-[#2f80ed]"
-                                                                                />
-
-                                                                                <textarea
-                                                                                    value={task.note}
-                                                                                    onChange={(event) =>
-                                                                                        updateTask(stage.id, task.id, {
-                                                                                            note: event.target.value,
-                                                                                        })
-                                                                                    }
-                                                                                    rows={3}
-                                                                                    className="w-full rounded-xl border border-[#cbd7e6] bg-white/80 px-3 py-2 text-sm text-[#0f1c2e] outline-none transition focus:border-[#2f80ed]"
-                                                                                />
-
-                                                                                <select
-                                                                                    value={task.status}
-                                                                                    onChange={(event) =>
-                                                                                        updateTask(stage.id, task.id, {
-                                                                                            status: event.target
-                                                                                                .value as RoadmapTaskStatus,
-                                                                                        })
-                                                                                    }
-                                                                                    className="rounded-xl border border-[#cbd7e6] bg-white/80 px-3 py-2 text-sm text-[#0f1c2e] outline-none transition focus:border-[#2f80ed]"
-                                                                                >
-                                                                                    <option value="done">Done</option>
-                                                                                    <option value="pending">
-                                                                                        Pending
-                                                                                    </option>
-                                                                                    <option value="scheduled">
-                                                                                        Scheduled
-                                                                                    </option>
-                                                                                    <option value="open">Todo</option>
-                                                                                    <option value="deferred">
-                                                                                        Deferred
-                                                                                    </option>
-                                                                                </select>
-
-                                                                                <div className="flex justify-end">
-                                                                                    <button
-                                                                                        type="button"
-                                                                                        onClick={() =>
-                                                                                            setEditingTaskId(null)
-                                                                                        }
-                                                                                        className="rounded-xl bg-[#2f80ed] px-4 py-2 text-xs font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#236fcc] active:translate-y-0 active:scale-[0.98]"
-                                                                                    >
-                                                                                        Save
-                                                                                    </button>
-                                                                                </div>
-                                                                            </div>
-                                                                        ) : (
-                                                                            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                                                                                <div>
-                                                                                    <div className="flex flex-wrap items-center gap-2">
-                                                                                        <span
-                                                                                            className={[
-                                                                                                "rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]",
-                                                                                                getTaskBadgeClasses(
-                                                                                                    task.status,
-                                                                                                ),
-                                                                                            ].join(" ")}
-                                                                                        >
-                                                                                            {getTaskLabel(task.status)}
-                                                                                        </span>
-                                                                                    </div>
-
-                                                                                    <h4 className="mt-2 text-sm font-semibold text-[#0f1c2e]">
-                                                                                        {task.title}
-                                                                                    </h4>
-                                                                                    <p className="mt-1 text-xs leading-5 text-[#53657d]">
-                                                                                        {task.note}
-                                                                                    </p>
-                                                                                </div>
-
-                                                                                <div className="flex shrink-0 gap-2">
-                                                                                    <button
-                                                                                        type="button"
-                                                                                        onClick={() =>
-                                                                                            setEditingTaskId(task.id)
-                                                                                        }
-                                                                                        className="rounded-xl border border-[#cbd7e6] bg-white/65 px-3 py-2 text-xs text-[#263957] transition hover:-translate-y-0.5 hover:border-[#2f80ed]/40 hover:bg-white active:translate-y-0 active:scale-[0.98]"
-                                                                                    >
-                                                                                        Edit
-                                                                                    </button>
-
-                                                                                    <button
-                                                                                        type="button"
-                                                                                        onClick={() =>
-                                                                                            removeTask(stage.id, task.id)
-                                                                                        }
-                                                                                        className="rounded-xl border border-[#e0b4a8] bg-[#c78973]/8 px-3 py-2 text-xs text-[#8c5947] transition hover:-translate-y-0.5 hover:bg-[#c78973]/14 active:translate-y-0 active:scale-[0.98]"
-                                                                                    >
-                                                                                        Remove
-                                                                                    </button>
-                                                                                </div>
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                );
-                                                            })}
-                                                        </div>
-
-                                                        <div className="mt-4 rounded-2xl border border-[#2f80ed]/20 bg-[#2f80ed]/7 p-4 text-sm leading-6 text-[#263957]">
-                                                            <span className="font-semibold text-[#165bbb]">
-                                                                Epitropos lesson:
-                                                            </span>{" "}
-                                                            {stage.lesson}
-                                                        </div>
-                                                    </div>
-                                                ) : null}
-                                            </div>
-
-                                            <div className="flex items-start">
-                                                <span
-                                                    className={[
-                                                        "rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]",
-                                                        getStatusBadgeClasses(stage.status),
-                                                    ].join(" ")}
-                                                >
-                                                    {getStageLabel(stage.status)}
-                                                </span>
-                                            </div>
-
-                                            <div className="flex items-start gap-2">
-                                                <button
-                                                    type="button"
-                                                    onClick={(event) => {
-                                                        event.stopPropagation();
-                                                        addTask(stage.id);
-                                                    }}
-                                                    className="rounded-xl border border-[#cbd7e6] bg-white/58 px-3 py-2 text-xs text-[#53657d] transition hover:-translate-y-0.5 hover:border-[#2f80ed]/40 hover:bg-white hover:text-[#0f1c2e] active:translate-y-0 active:scale-[0.98]"
-                                                >
-                                                    + Task
-                                                </button>
-
-                                                <button
-                                                    type="button"
-                                                    onClick={(event) => {
-                                                        event.stopPropagation();
-                                                        toggleExpanded(stage.id);
-                                                    }}
-                                                    className="rounded-xl border border-[#cbd7e6] bg-white/58 px-3 py-2 text-xs text-[#53657d] transition hover:-translate-y-0.5 hover:border-[#2f80ed]/40 hover:bg-white hover:text-[#0f1c2e] active:translate-y-0 active:scale-[0.98]"
-                                                >
-                                                    {expanded ? "Close" : "Open"}
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </article>
-                                );
-                            })}
-                        </div>
-                    </section>
-
-                    <section className="grid gap-5 rounded-[30px] border border-white/72 bg-white/58 p-5 shadow-[0_22px_80px_rgba(41,73,112,0.12),inset_0_1px_0_rgba(255,255,255,0.94)] backdrop-blur-2xl xl:grid-cols-[1fr_1fr_1fr_320px]">
-                        {unit19FocusNotes.map((note, index) => (
+                        {/* Timeline list */}
+                        <div className="relative pl-0 md:pl-[72px]">
+                            {/* Vertical timeline line */}
                             <div
-                                key={note}
-                                className="border-[#cbd7e6]/70 text-sm leading-6 text-[#263957] xl:border-r xl:pr-5"
-                            >
-                                <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.15em] text-[#2f80ed]">
-                                    {index === 0
-                                        ? "Keep documents organized"
-                                        : index === 1
-                                            ? "Track in real time"
-                                            : "Stay ahead of risk"}
-                                </div>
-                                {note}
-                            </div>
-                        ))}
+                                className="absolute bottom-8 left-[17px] top-5 hidden w-[2px] rounded-full md:block"
+                                style={{
+                                    background: "linear-gradient(to bottom, #20a76b 0%, #20a76b 28%, #2f80ed 40%, #2f80ed 58%, #c8d5e2 58%, #c8d5e2 100%)",
+                                }}
+                            />
 
-                        <div className="rounded-[24px] border border-[#2f80ed]/18 bg-white/68 p-4 shadow-[0_14px_44px_rgba(41,73,112,0.08),inset_0_1px_0_rgba(255,255,255,0.94)] backdrop-blur-xl">
-                            <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.15em] text-[#2f80ed]">
-                                <span className="h-1.5 w-1.5 rounded-full bg-[#2f80ed]" />
-                                AI Workspace
-                            </div>
+                            <div className="space-y-3">
+                                {visibleStages.map((stage) => {
+                                    const selected  = stage.id === selectedStageId;
+                                    const expanded  = expandedStageIds.has(stage.id);
+                                    const activeTasks = stage.tasks.filter((t) =>
+                                        ["pending", "scheduled", "open"].includes(t.status),
+                                    );
 
-                            <p className="mt-2 text-sm leading-6 text-[#263957]">
-                                Use the project chat as the working layer for decisions, summaries and
-                                next-step planning.
-                            </p>
+                                    return (
+                                        <article
+                                            key={stage.id}
+                                            className={[
+                                                "relative rounded-[17px] border transition-all duration-300 backdrop-blur-xl",
+                                                stageCard(stage.status, selected),
+                                            ].join(" ")}
+                                        >
+                                            {/* Timeline marker */}
+                                            <div className="absolute -left-[54px] top-4 z-10 hidden h-8 w-8 items-center justify-center rounded-full md:flex transition-all duration-300">
+                                                <div className={["h-8 w-8 rounded-full flex items-center justify-center transition-all duration-300", stageMarker(stage.status, selected)].join(" ")}>
+                                                    {stage.status === "completed" ? (
+                                                        <IconCheck />
+                                                    ) : stage.status === "current" ? (
+                                                        <div className="h-2.5 w-2.5 rounded-full bg-white" />
+                                                    ) : stage.status === "deferred" ? (
+                                                        <span className="text-[11px] font-bold leading-none">!</span>
+                                                    ) : (
+                                                        <div className="h-2 w-2 rounded-full border border-current opacity-45" />
+                                                    )}
+                                                </div>
+                                            </div>
 
-                            <div className="mt-4 space-y-2">
-                                <a
-                                    href="https://chat.openai.com/"
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="flex items-center justify-between rounded-2xl border border-[#2f80ed]/25 bg-[#2f80ed]/8 px-4 py-3 text-sm font-semibold text-[#165bbb] transition hover:-translate-y-0.5 hover:bg-[#2f80ed]/12 active:translate-y-0 active:scale-[0.98]"
-                                >
-                                    <span>Open ChatGPT</span>
-                                    <span>↗</span>
-                                </a>
+                                            {/* Clickable row */}
+                                            <div
+                                                className="flex cursor-pointer items-start gap-3 px-4 py-3.5"
+                                                role="button"
+                                                tabIndex={0}
+                                                onClick={(e) => {
+                                                    if (isInteractiveField(e.target)) return;
+                                                    if (expanded && selected) { toggleExpanded(stage.id); return; }
+                                                    selectStage(stage.id);
+                                                }}
+                                                onKeyDown={(e) => {
+                                                    if (isInteractiveField(e.target)) return;
+                                                    if (e.key === "Enter") { e.preventDefault(); selectStage(stage.id); }
+                                                    if (e.key === " ") {
+                                                        e.preventDefault();
+                                                        if (expanded && selected) { toggleExpanded(stage.id); return; }
+                                                        selectStage(stage.id);
+                                                    }
+                                                }}
+                                            >
+                                                {/* Stage number */}
+                                                <span className={[
+                                                    "hidden min-w-[26px] pt-0.5 text-[13px] font-bold tabular-nums leading-tight md:block",
+                                                    selected || stage.status === "current" ? "text-[#2060cc]" : stage.status === "completed" ? "text-[#8fa8c0]" : "text-[#9ab0c4]",
+                                                ].join(" ")}>
+                                                    {stage.number}
+                                                </span>
 
-                                <button
-                                    type="button"
-                                    disabled
-                                    className="flex w-full cursor-not-allowed items-center justify-between rounded-2xl border border-[#cbd7e6] bg-white/48 px-4 py-3 text-left text-sm text-[#687891]"
-                                >
-                                    <span>Export roadmap context</span>
-                                    <span className="rounded-full border border-[#cbd7e6] px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-[#687891]">
-                                        Soon
-                                    </span>
-                                </button>
+                                                {/* Content area */}
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex flex-wrap items-baseline gap-2">
+                                                        <h3 className="text-[13.5px] font-semibold leading-snug text-[#0b1623]">
+                                                            {stage.title}
+                                                        </h3>
+                                                        {/* Mobile-only number */}
+                                                        <span className="text-[11px] font-semibold text-[#9ab0c4] md:hidden">
+                                                            #{stage.number}
+                                                        </span>
+                                                    </div>
+                                                    <p className="mt-0.5 text-[12px] leading-[1.55] text-[#7a90a8]">
+                                                        {stage.summary}
+                                                    </p>
 
-                                <button
-                                    type="button"
-                                    disabled
-                                    className="flex w-full cursor-not-allowed items-center justify-between rounded-2xl border border-[#cbd7e6] bg-white/48 px-4 py-3 text-left text-sm text-[#687891]"
-                                >
-                                    <span>Epitropos AI Assistant</span>
-                                    <span className="rounded-full border border-[#cbd7e6] px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-[#687891]">
-                                        Planned
-                                    </span>
-                                </button>
+                                                    {/* ── Expanded panel ─────────────────────────────── */}
+                                                    {expanded && (
+                                                        <div className="mt-4 space-y-3">
+                                                            {/* Mini stats */}
+                                                            <div className="grid grid-cols-3 gap-3 rounded-[13px] border border-[#d8e8f6]/[0.75] bg-[#f0f6fd]/[0.70] px-3.5 py-3">
+                                                                <div>
+                                                                    <div className="text-[9.5px] font-semibold uppercase tracking-[0.13em] text-[#7a90a8]">Active Tasks</div>
+                                                                    <div className="mt-1 text-[15px] font-semibold text-[#0b1623]">{activeTasks.length}</div>
+                                                                </div>
+                                                                <div className="border-l border-[#d8e8f6] pl-3">
+                                                                    <div className="text-[9.5px] font-semibold uppercase tracking-[0.13em] text-[#7a90a8]">Stage Status</div>
+                                                                    <div className="mt-1 text-[13px] font-semibold text-[#0b1623]">{getStageLabel(stage.status)}</div>
+                                                                </div>
+                                                                <div className="border-l border-[#d8e8f6] pl-3">
+                                                                    <div className="text-[9.5px] font-semibold uppercase tracking-[0.13em] text-[#7a90a8]">Total Tasks</div>
+                                                                    <div className="mt-1 text-[15px] font-semibold text-[#0b1623]">{stage.tasks.length}</div>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Task list */}
+                                                            {stage.tasks.length > 0 && (
+                                                                <div>
+                                                                    <div className="mb-2 text-[9.5px] font-semibold uppercase tracking-[0.14em] text-[#7a90a8]">
+                                                                        Active Tasks
+                                                                    </div>
+                                                                    <div className="space-y-2">
+                                                                        {stage.tasks.map((task) => {
+                                                                            const editing = editingTaskId === task.id;
+                                                                            return (
+                                                                                <div
+                                                                                    key={task.id}
+                                                                                    className="rounded-[12px] border border-[#d8e8f6]/80 bg-white/72 px-3.5 py-3"
+                                                                                >
+                                                                                    {editing ? (
+                                                                                        <div className="space-y-2.5">
+                                                                                            <input
+                                                                                                value={task.title}
+                                                                                                onChange={(e) => updateTask(stage.id, task.id, { title: e.target.value })}
+                                                                                                className="w-full rounded-[9px] border border-[#ccd9e8] bg-white/[0.92] px-3 py-2 text-[13px] text-[#0b1623] outline-none transition focus:border-[#2f80ed] focus:ring-2 focus:ring-[#2f80ed]/12"
+                                                                                            />
+                                                                                            <textarea
+                                                                                                value={task.note}
+                                                                                                onChange={(e) => updateTask(stage.id, task.id, { note: e.target.value })}
+                                                                                                rows={2}
+                                                                                                className="w-full rounded-[9px] border border-[#ccd9e8] bg-white/[0.92] px-3 py-2 text-[13px] text-[#0b1623] outline-none transition focus:border-[#2f80ed] focus:ring-2 focus:ring-[#2f80ed]/12"
+                                                                                            />
+                                                                                            <select
+                                                                                                value={task.status}
+                                                                                                onChange={(e) => updateTask(stage.id, task.id, { status: e.target.value as RoadmapTaskStatus })}
+                                                                                                className="rounded-[9px] border border-[#ccd9e8] bg-white/[0.92] px-3 py-2 text-[13px] text-[#0b1623] outline-none transition focus:border-[#2f80ed]"
+                                                                                            >
+                                                                                                <option value="done">Done</option>
+                                                                                                <option value="pending">In Progress</option>
+                                                                                                <option value="scheduled">Scheduled</option>
+                                                                                                <option value="open">Todo</option>
+                                                                                                <option value="deferred">Deferred</option>
+                                                                                            </select>
+                                                                                            <div className="flex justify-end">
+                                                                                                <button
+                                                                                                    type="button"
+                                                                                                    onClick={() => setEditingTaskId(null)}
+                                                                                                    className="rounded-[9px] bg-[#2f80ed] px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-[#236fcc] active:scale-[0.97]"
+                                                                                                >
+                                                                                                    Save
+                                                                                                </button>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    ) : (
+                                                                                        <div className="flex items-start gap-3">
+                                                                                            {/* Status circle */}
+                                                                                            <div className={[
+                                                                                                "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full",
+                                                                                                task.status === "done"
+                                                                                                    ? "border-2 border-[#20a76b] bg-[#20a76b]"
+                                                                                                    : task.status === "pending"
+                                                                                                    ? "border-2 border-[#2f80ed] bg-transparent"
+                                                                                                    : "border-2 border-[#c8d5e2] bg-transparent",
+                                                                                            ].join(" ")}>
+                                                                                                {task.status === "done" && <IconCheck c="w-2.5 h-2.5 text-white" />}
+                                                                                                {task.status === "pending" && (
+                                                                                                    <div className="h-1.5 w-1.5 rounded-full bg-[#2f80ed]" />
+                                                                                                )}
+                                                                                            </div>
+
+                                                                                            {/* Text */}
+                                                                                            <div className="min-w-0 flex-1">
+                                                                                                <span className={[
+                                                                                                    "text-[12.5px] font-medium leading-snug",
+                                                                                                    task.status === "done" ? "text-[#9ab0c4] line-through" : "text-[#0b1623]",
+                                                                                                ].join(" ")}>
+                                                                                                    {task.title}
+                                                                                                </span>
+                                                                                                <p className="mt-0.5 text-[11px] leading-[1.45] text-[#7a90a8]">{task.note}</p>
+                                                                                            </div>
+
+                                                                                            {/* Actions */}
+                                                                                            <div className="flex shrink-0 items-center gap-1.5">
+                                                                                                <span className={[
+                                                                                                    "rounded-full border px-2 py-0.5 text-[9.5px] font-semibold uppercase tracking-[0.09em]",
+                                                                                                    taskBadge(task.status),
+                                                                                                ].join(" ")}>
+                                                                                                    {getTaskLabel(task.status)}
+                                                                                                </span>
+                                                                                                <button
+                                                                                                    type="button"
+                                                                                                    onClick={() => setEditingTaskId(task.id)}
+                                                                                                    className="rounded-[7px] border border-[#ccd9e8] bg-white/70 px-2.5 py-1 text-[11px] text-[#4e6880] transition hover:border-[#2f80ed]/[0.38] hover:text-[#2060cc] active:scale-[0.97]"
+                                                                                                >
+                                                                                                    Edit
+                                                                                                </button>
+                                                                                                <button
+                                                                                                    type="button"
+                                                                                                    onClick={() => removeTask(stage.id, task.id)}
+                                                                                                    className="rounded-[7px] border border-[#e2c4bb] bg-[#c78973]/7 px-2.5 py-1 text-[11px] text-[#8c5947] transition hover:bg-[#c78973]/15 active:scale-[0.97]"
+                                                                                                >
+                                                                                                    ×
+                                                                                                </button>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+
+                                                                    {/* "View all" link */}
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={(e) => e.stopPropagation()}
+                                                                        className="mt-3 text-[12px] font-medium text-[#2060cc] transition hover:underline"
+                                                                    >
+                                                                        View all tasks for this stage →
+                                                                    </button>
+                                                                </div>
+                                                            )}
+
+                                                            {/* Lesson callout */}
+                                                            <div className="rounded-[12px] border border-[#d8e8f6]/80 bg-[#f4f8fd]/80 px-4 py-3 text-[12px] leading-[1.6] text-[#3a5272]">
+                                                                <span className="font-semibold text-[#2060cc]">Epitropos lesson: </span>
+                                                                {stage.lesson}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Right column: badge + controls */}
+                                                <div className="flex shrink-0 flex-col items-end gap-2 pt-0.5">
+                                                    <span className={[
+                                                        "rounded-full border px-2.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-[0.10em]",
+                                                        stageBadge(stage.status),
+                                                    ].join(" ")}>
+                                                        {getStageLabel(stage.status)}
+                                                    </span>
+
+                                                    <div className="flex items-center gap-1.5">
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => { e.stopPropagation(); addTask(stage.id); }}
+                                                            className="flex items-center gap-1 rounded-[8px] border border-[#ccd9e8] bg-white/60 px-2.5 py-1.5 text-[11px] font-medium text-[#4e6880] transition hover:border-[#2f80ed]/32 hover:bg-white/[0.85] hover:text-[#2060cc] active:scale-[0.97]"
+                                                        >
+                                                            <IconPlus />
+                                                            Task
+                                                        </button>
+
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => { e.stopPropagation(); toggleExpanded(stage.id); }}
+                                                            aria-label={expanded ? "Collapse stage" : "Expand stage"}
+                                                            className={[
+                                                                "flex h-7 w-7 items-center justify-center rounded-full border transition-all duration-200",
+                                                                expanded
+                                                                    ? "border-[#2f80ed]/30 bg-[#2f80ed]/10 text-[#2060cc]"
+                                                                    : "border-[#ccd9e8] bg-white/60 text-[#7a90a8] hover:border-[#2f80ed]/[0.28] hover:bg-white/[0.85]",
+                                                            ].join(" ")}
+                                                        >
+                                                            <IconChevron c={["w-3.5 h-3.5 transition-transform duration-200", expanded ? "rotate-180" : ""].join(" ")} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </article>
+                                    );
+                                })}
                             </div>
                         </div>
                     </section>
+
+                    {/* ── Notes & AI Workspace ─────────────────────────────── */}
+                    <section className="relative overflow-hidden rounded-[26px] border border-white/[0.80] bg-white/[0.62] shadow-[0_20px_70px_rgba(41,73,112,0.09),inset_0_1px_0_rgba(255,255,255,0.97)] backdrop-blur-2xl">
+                        {/* Background photo on right */}
+                        <div
+                            className="pointer-events-none absolute inset-y-0 right-0 w-[28%] bg-cover bg-center bg-no-repeat opacity-55"
+                            style={{ backgroundImage: `url('${BACKGROUND_IMAGE}')` }}
+                        />
+                        <div className="pointer-events-none absolute inset-y-0 right-0 w-[34%] bg-gradient-to-r from-white/95 via-white/65 to-transparent" />
+
+                        <div className="relative grid gap-5 p-6 xl:grid-cols-[1fr_1fr_1fr_280px] xl:gap-0">
+                            {/* Tips heading label */}
+                            <div className="col-span-full mb-1 flex items-center gap-2 xl:hidden">
+                                <IconBulb c="h-4 w-4 text-[#2060cc]" />
+                                <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">Notes & Tips</span>
+                            </div>
+
+                            {/* Note 1 */}
+                            <div className="xl:border-r xl:border-[#d8e8f6]/70 xl:pr-5">
+                                <div className="mb-1 hidden items-center gap-2 xl:flex">
+                                    <IconBulb c="h-4 w-4 text-[#2060cc]" />
+                                    <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">Notes & Tips</span>
+                                </div>
+                                <div className="mb-1 text-[12.5px] font-semibold text-[#0b1623]">Keep your documents organized</div>
+                                <p className="text-[12px] leading-[1.6] text-[#7a90a8]">{unit19FocusNotes[0]}</p>
+                            </div>
+
+                            {/* Note 2 */}
+                            <div className="xl:border-r xl:border-[#d8e8f6]/70 xl:px-5">
+                                <div className="mb-1 text-[12.5px] font-semibold text-[#0b1623]">Track everything in real time</div>
+                                <p className="text-[12px] leading-[1.6] text-[#7a90a8]">{unit19FocusNotes[1]}</p>
+                            </div>
+
+                            {/* Note 3 */}
+                            <div className="xl:border-r xl:border-[#d8e8f6]/70 xl:px-5">
+                                <div className="mb-1 text-[12.5px] font-semibold text-[#0b1623]">Stay ahead of risks</div>
+                                <p className="text-[12px] leading-[1.6] text-[#7a90a8]">{unit19FocusNotes[2]}</p>
+                            </div>
+
+                            {/* AI Workspace */}
+                            <div className="xl:pl-5">
+                                <div className="mb-2 flex items-center gap-1.5">
+                                    <div className="h-1.5 w-1.5 rounded-full bg-[#2060cc]" />
+                                    <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">AI Workspace</span>
+                                </div>
+                                <p className="mb-3 text-[12px] leading-[1.6] text-[#4e6880]">
+                                    Use the project chat as the working layer for decisions, summaries and next-step planning.
+                                </p>
+                                <div className="space-y-2">
+                                    <a
+                                        href="https://chat.openai.com/"
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="flex items-center justify-between rounded-[11px] border border-[#2f80ed]/24 bg-[#2f80ed]/8 px-3.5 py-2.5 text-[12px] font-semibold text-[#1560bc] transition hover:-translate-y-0.5 hover:bg-[#2f80ed]/13 active:scale-[0.98]"
+                                    >
+                                        <span>Open ChatGPT</span>
+                                        <IconExternal />
+                                    </a>
+                                    <button
+                                        type="button"
+                                        disabled
+                                        className="flex w-full cursor-not-allowed items-center justify-between rounded-[11px] border border-[#ccd9e8] bg-white/[0.52] px-3.5 py-2.5 text-left text-[12px] text-[#9ab0c4]"
+                                    >
+                                        <span>Export roadmap context</span>
+                                        <span className="rounded-full border border-[#ccd9e8] px-1.5 py-0.5 text-[9px] uppercase tracking-[0.12em] text-[#9ab0c4]">Soon</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        disabled
+                                        className="flex w-full cursor-not-allowed items-center justify-between rounded-[11px] border border-[#ccd9e8] bg-white/[0.52] px-3.5 py-2.5 text-left text-[12px] text-[#9ab0c4]"
+                                    >
+                                        <span>Epitropos AI Assistant</span>
+                                        <span className="rounded-full border border-[#ccd9e8] px-1.5 py-0.5 text-[9px] uppercase tracking-[0.12em] text-[#9ab0c4]">Planned</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
                 </main>
             </div>
         </section>
