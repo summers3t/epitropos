@@ -19,6 +19,7 @@ type FilterMode = "all" | "current" | "upcoming" | "completed";
 type FocusStatus = Exclude<FilterMode, "all">;
 
 const BACKGROUND_IMAGE = "/images/unit19-roadmap-bg.jpg";
+const FOOTER_IMAGE = "/images/unit19-roadmap-footer.jpg";
 
 // ─── Label helpers ────────────────────────────────────────────────────────────
 
@@ -370,7 +371,7 @@ export default function Unit19RoadmapWorkspace(props: Props) {
 
                         {/* Full-bleed Mediterranean photo layer */}
                         <div
-                            className="pointer-events-none absolute inset-0 bg-cover bg-center bg-no-repeat opacity-100 saturate-[1.28] contrast-[1.12]"
+                            className="pointer-events-none absolute inset-0 bg-cover bg-center bg-no-repeat opacity-70 saturate-[1.28] contrast-[1.12]"
                             style={{ backgroundImage: `url('${BACKGROUND_IMAGE}')` }}
                         />
                         <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-white/[0.50] via-white/[0.16] to-white/[0.00]" />
@@ -771,15 +772,17 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                     </section>
 
                     {/* ── Notes & AI Workspace ─────────────────────────────── */}
-                    <section className="relative overflow-hidden rounded-[26px] border border-white/[0.80] bg-white/[0.62] shadow-[0_20px_70px_rgba(41,73,112,0.09),inset_0_1px_0_rgba(255,255,255,0.97)] backdrop-blur-2xl">
-                        {/* Background photo on right */}
+                    <section className="relative overflow-hidden rounded-[26px] border border-white/[0.80] bg-white/[0.58] shadow-[0_20px_70px_rgba(41,73,112,0.09),inset_0_1px_0_rgba(255,255,255,0.97)] backdrop-blur-2xl">
+                        {/* Full-bleed background photo, aligned with hero treatment */}
                         <div
-                            className="pointer-events-none absolute inset-y-0 right-0 w-[28%] bg-cover bg-center bg-no-repeat opacity-55"
-                            style={{ backgroundImage: `url('${BACKGROUND_IMAGE}')` }}
+                            className="pointer-events-none absolute inset-0 bg-[length:100%_auto] bg-center bg-no-repeat opacity-[0.51] saturate-[1.68] contrast-[1.58]"
+                            style={{ backgroundImage: `url('${FOOTER_IMAGE}')` }}
                         />
-                        <div className="pointer-events-none absolute inset-y-0 right-0 w-[34%] bg-gradient-to-r from-white/95 via-white/65 to-transparent" />
+                        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-white/[0.76] via-white/[0.78] to-white/[0.46]" />
+                        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/[0.52] via-transparent to-white/[0.66]" />
+                        <div className="pointer-events-none absolute left-0 top-0 h-full w-[62%] bg-white/[0.36] backdrop-blur-[2px]" />
 
-                        <div className="relative grid gap-5 p-6 xl:grid-cols-[1fr_1fr_1fr_280px] xl:gap-0">
+                        <div className="relative grid gap-5 p-6 xl:grid-cols-[1fr_1fr_1fr_320px] xl:gap-0">
                             {/* Tips heading label */}
                             <div className="col-span-full mb-1 flex items-center gap-2 xl:hidden">
                                 <IconBulb c="h-4 w-4 text-[#2060cc]" />
