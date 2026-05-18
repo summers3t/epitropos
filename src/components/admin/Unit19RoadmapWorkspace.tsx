@@ -22,8 +22,6 @@ type FocusStatus = Exclude<FilterMode, "all">;
 const BACKGROUND_IMAGE = "/images/unit19-roadmap-bg.jpg";
 const FOOTER_IMAGE = "/images/unit19-roadmap-footer.jpg";
 
-// ─── Label helpers ────────────────────────────────────────────────────────────
-
 function getStageLabel(status: RoadmapStageStatus) {
     return { completed: "Completed", current: "In Progress", upcoming: "Upcoming", deferred: "Deferred" }[status];
 }
@@ -38,21 +36,27 @@ function isInteractiveField(target: EventTarget | null) {
 }
 
 function createEmptyTask(stageId: string): Unit19RoadmapTask {
-    return { id: `${stageId}-${Date.now()}`, title: "Нова задача", note: "Добави кратка бележка.", status: "open" };
+    return {
+        id: `${stageId}-${Date.now()}`,
+        title: "Нова задача",
+        note: "Добави кратка бележка.",
+        status: "open",
+    };
 }
-
-// ─── SVG Icons ────────────────────────────────────────────────────────────────
 
 const IconCheck = ({ c = "w-3 h-3" }: { c?: string }) => (
     <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
         <polyline points="20 6 9 17 4 12" />
     </svg>
 );
+
 const IconPlus = ({ c = "w-3 h-3" }: { c?: string }) => (
     <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+        <line x1="12" y1="5" x2="12" y2="19" />
+        <line x1="5" y1="12" x2="19" y2="12" />
     </svg>
 );
+
 const IconChevron = ({ c = "w-3.5 h-3.5" }: { c?: string }) => (
     <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
         <polyline points="6 9 12 15 18 9" />
@@ -65,6 +69,7 @@ const IconArrowUp = ({ c = "w-3.5 h-3.5" }: { c?: string }) => (
         <path d="M5 12l7-7 7 7" />
     </svg>
 );
+
 const IconCollapse = ({ c = "w-3.5 h-3.5" }: { c?: string }) => (
     <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M8 3v5H3" />
@@ -81,60 +86,97 @@ const IconCollapse = ({ c = "w-3.5 h-3.5" }: { c?: string }) => (
 const IconExternal = ({ c = "w-3.5 h-3.5" }: { c?: string }) => (
     <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-        <polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
+        <polyline points="15 3 21 3 21 9" />
+        <line x1="10" y1="14" x2="21" y2="3" />
     </svg>
 );
+
 const IconBulb = ({ c = "w-4 h-4" }: { c?: string }) => (
     <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
         <path d="M9 18h6M10 22h4M12 2a7 7 0 0 1 7 7c0 2.5-1.3 4.7-3.3 5.9L15 17H9l-.7-2.1A7 7 0 0 1 5 9a7 7 0 0 1 7-7z" />
     </svg>
 );
 
-// ─── Metric Card Icons ────────────────────────────────────────────────────────
-
 const IconClock = ({ c = "w-3.5 h-3.5" }: { c?: string }) => (
     <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 3" />
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 7v5l3 3" />
     </svg>
 );
+
 const IconCalendar = ({ c = "w-3.5 h-3.5" }: { c?: string }) => (
     <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+        <rect x="3" y="4" width="18" height="18" rx="2" />
+        <line x1="16" y1="2" x2="16" y2="6" />
+        <line x1="8" y1="2" x2="8" y2="6" />
+        <line x1="3" y1="10" x2="21" y2="10" />
     </svg>
 );
+
 const IconTrend = ({ c = "w-3.5 h-3.5" }: { c?: string }) => (
     <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" /><polyline points="16 7 22 7 22 13" />
+        <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
+        <polyline points="16 7 22 7 22 13" />
     </svg>
 );
+
 const IconCheckSquare = ({ c = "w-3.5 h-3.5" }: { c?: string }) => (
     <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="9 11 12 14 22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+        <polyline points="9 11 12 14 22 4" />
+        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
     </svg>
 );
 
-// ─── Style helpers ────────────────────────────────────────────────────────────
-
 function stageCard(status: RoadmapStageStatus, selected: boolean) {
-    if (selected && status === "current")
+    if (selected && status === "current") {
         return "border-[#2f80ed]/[0.38] bg-white/[0.92] shadow-[0_0_0_1.5px_rgba(47,128,237,0.22),0_20px_64px_rgba(47,128,237,0.14),inset_0_1px_0_rgba(255,255,255,1)]";
-    if (selected)
+    }
+
+    if (selected) {
         return "border-[#2f80ed]/[0.28] bg-white/[0.88] shadow-[0_0_0_1.5px_rgba(47,128,237,0.16),0_16px_48px_rgba(47,128,237,0.10),inset_0_1px_0_rgba(255,255,255,1)]";
-    if (status === "completed")
-        return "border-white/[0.62] bg-white/[0.52] opacity-[0.78] hover:opacity-100 hover:bg-white/[0.68] hover:shadow-[0_12px_36px_rgba(41,73,112,0.08)]";
-    if (status === "deferred")
+    }
+
+    if (status === "completed") {
+        return "border-white/[0.62] bg-white/[0.52] opacity-[0.78] hover:bg-white/[0.68] hover:opacity-100 hover:shadow-[0_12px_36px_rgba(41,73,112,0.08)]";
+    }
+
+    if (status === "deferred") {
         return "border-[#e4ccc4]/[0.52] bg-white/[0.38] opacity-[0.68] hover:opacity-95";
-    return "border-white/[0.62] bg-white/[0.54] opacity-[0.82] hover:opacity-100 hover:bg-white/70 hover:shadow-[0_12px_36px_rgba(41,73,112,0.08)]";
+    }
+
+    return "border-white/[0.62] bg-white/[0.54] opacity-[0.82] hover:bg-white/[0.70] hover:opacity-100 hover:shadow-[0_12px_36px_rgba(41,73,112,0.08)]";
 }
 
 function stageMarker(status: RoadmapStageStatus, selected: boolean) {
-    if (selected || status === "current")
+    if (selected || status === "current") {
         return "border-2 border-[#2f80ed] bg-[#2f80ed] text-white shadow-[0_0_0_5px_rgba(47,128,237,0.15),0_8px_22px_rgba(47,128,237,0.32)]";
-    if (status === "completed")
+    }
+
+    if (status === "completed") {
         return "border-2 border-[#20a76b] bg-[#20a76b] text-white shadow-[0_0_0_4px_rgba(32,167,107,0.13)]";
-    if (status === "deferred")
+    }
+
+    if (status === "deferred") {
         return "border-2 border-[#cfa090] bg-white/[0.85] text-[#a06050]";
+    }
+
     return "border-2 border-[#c8d5e2] bg-white/[0.82] text-[#8fa3b8]";
+}
+
+function stageConnector(status: RoadmapStageStatus) {
+    if (status === "completed") {
+        return "bg-[#20a76b] shadow-[0_0_0_1px_rgba(32,167,107,0.10),0_0_16px_rgba(32,167,107,0.22)]";
+    }
+
+    if (status === "current") {
+        return "bg-[#2f80ed] shadow-[0_0_0_1px_rgba(47,128,237,0.10),0_0_16px_rgba(47,128,237,0.26)]";
+    }
+
+    if (status === "deferred") {
+        return "bg-[#cfa090] shadow-[0_0_0_1px_rgba(207,160,144,0.10),0_0_14px_rgba(207,160,144,0.18)]";
+    }
+
+    return "bg-[#c8d5e2] shadow-[0_0_0_1px_rgba(154,176,196,0.08)]";
 }
 
 function stageBadge(status: RoadmapStageStatus) {
@@ -151,8 +193,6 @@ function taskBadge(status: RoadmapTaskStatus) {
     if (status === "deferred") return "border-[#cfa090]/[0.28] bg-[#cfa090]/[0.09] text-[#8c5947]";
     return "border-[#9ab0c4]/[0.26] bg-[#9ab0c4]/[0.09] text-[#4e6880]";
 }
-
-// ─── Component ────────────────────────────────────────────────────────────────
 
 type Props = { userName?: string | null; userAvatarUrl?: string | null };
 
@@ -179,12 +219,13 @@ function matchesFocusedStatus(stageStatus: RoadmapStageStatus, focusedStatus: Fo
 
 export default function Unit19RoadmapWorkspace(props: Props) {
     void props;
+
     const [stages, setStages] = useState<Unit19RoadmapStage[]>(unit19RoadmapStages);
     const [selectedStageId, setSelectedStageId] = useState(
-        unit19RoadmapStages.find((s) => s.status === "current")?.id ?? unit19RoadmapStages[0]?.id,
+        unit19RoadmapStages.find((stage) => stage.status === "current")?.id ?? unit19RoadmapStages[0]?.id,
     );
     const [expandedStageIds, setExpandedStageIds] = useState<Set<string>>(
-        () => new Set(unit19RoadmapStages.filter((s) => s.status === "current").map((s) => s.id)),
+        () => new Set(unit19RoadmapStages.filter((stage) => stage.status === "current").map((stage) => stage.id)),
     );
     const [filterMode, setFilterMode] = useState<FilterMode>("all");
     const [focusedStageStatus, setFocusedStageStatus] = useState<FocusStatus | null>(null);
@@ -193,31 +234,34 @@ export default function Unit19RoadmapWorkspace(props: Props) {
 
     const visibleStages = useMemo(() => {
         if (filterMode === "all") return stages;
-        if (filterMode === "current") return stages.filter((s) => s.status === "current");
-        if (filterMode === "upcoming") return stages.filter((s) => s.status === "upcoming" || s.status === "deferred");
-        return stages.filter((s) => s.status === "completed");
+        if (filterMode === "current") return stages.filter((stage) => stage.status === "current");
+        if (filterMode === "upcoming") return stages.filter((stage) => stage.status === "upcoming" || stage.status === "deferred");
+        return stages.filter((stage) => stage.status === "completed");
     }, [filterMode, stages]);
 
     const taskTotals = useMemo(() => {
-        const all = stages.flatMap((s) => s.tasks);
+        const allTasks = stages.flatMap((stage) => stage.tasks);
+
         return {
-            done: all.filter((t) => t.status === "done").length,
-            active: all.filter((t) => ["pending", "scheduled", "open"].includes(t.status)).length,
-            total: all.length,
+            done: allTasks.filter((task) => task.status === "done").length,
+            active: allTasks.filter((task) => ["pending", "scheduled", "open"].includes(task.status)).length,
+            total: allTasks.length,
         };
     }, [stages]);
 
     const progressPercent = Math.round((taskTotals.done / Math.max(taskTotals.total, 1)) * 100);
 
     function toggleExpanded(id: string) {
-        setExpandedStageIds((cur) => {
-            const n = new Set(cur);
-            if (n.has(id)) {
-                n.delete(id);
+        setExpandedStageIds((current) => {
+            const next = new Set(current);
+
+            if (next.has(id)) {
+                next.delete(id);
             } else {
-                n.add(id);
+                next.add(id);
             }
-            return n;
+
+            return next;
         });
     }
 
@@ -235,25 +279,18 @@ export default function Unit19RoadmapWorkspace(props: Props) {
         setFilterMode("all");
         setFocusedStageStatus(status);
 
-        const matchingStages = stages.filter((stage) =>
-            matchesFocusedStatus(stage.status, status),
-        );
-
+        const matchingStages = stages.filter((stage) => matchesFocusedStatus(stage.status, status));
         const targetStage =
             status === "completed"
                 ? matchingStages[matchingStages.length - 1]
                 : matchingStages[0];
 
-        if (!targetStage) {
-            return;
-        }
+        if (!targetStage) return;
 
         setSelectedStageId(targetStage.id);
 
         window.setTimeout(() => {
-            const element = document.getElementById(`roadmap-stage-${targetStage.id}`);
-
-            element?.scrollIntoView({
+            document.getElementById(`roadmap-stage-${targetStage.id}`)?.scrollIntoView({
                 behavior: "smooth",
                 block: "center",
             });
@@ -262,31 +299,52 @@ export default function Unit19RoadmapWorkspace(props: Props) {
 
     function selectStage(id: string) {
         setSelectedStageId(id);
-        setExpandedStageIds((cur) => { const n = new Set(cur); n.add(id); return n; });
+        setExpandedStageIds((current) => {
+            const next = new Set(current);
+            next.add(id);
+            return next;
+        });
     }
 
     function addTask(stageId: string) {
         const task = createEmptyTask(stageId);
-        setStages((cur) => cur.map((s) => s.id === stageId ? { ...s, tasks: [...s.tasks, task] } : s));
+
+        setStages((current) =>
+            current.map((stage) => (stage.id === stageId ? { ...stage, tasks: [...stage.tasks, task] } : stage)),
+        );
         setEditingTaskId(task.id);
-        setExpandedStageIds((cur) => { const n = new Set(cur); n.add(stageId); return n; });
+        setExpandedStageIds((current) => {
+            const next = new Set(current);
+            next.add(stageId);
+            return next;
+        });
     }
 
     function removeTask(stageId: string, taskId: string) {
-        setStages((cur) => cur.map((s) => s.id === stageId ? { ...s, tasks: s.tasks.filter((t) => t.id !== taskId) } : s));
+        setStages((current) =>
+            current.map((stage) =>
+                stage.id === stageId ? { ...stage, tasks: stage.tasks.filter((task) => task.id !== taskId) } : stage,
+            ),
+        );
+
         if (editingTaskId === taskId) setEditingTaskId(null);
     }
 
     function updateTask(stageId: string, taskId: string, patch: Partial<Unit19RoadmapTask>) {
-        setStages((cur) => cur.map((s) =>
-            s.id === stageId ? { ...s, tasks: s.tasks.map((t) => t.id === taskId ? { ...t, ...patch } : t) } : s,
-        ));
+        setStages((current) =>
+            current.map((stage) =>
+                stage.id === stageId
+                    ? {
+                        ...stage,
+                        tasks: stage.tasks.map((task) => (task.id === taskId ? { ...task, ...patch } : task)),
+                    }
+                    : stage,
+            ),
+        );
     }
 
     return (
         <section className="relative -mx-10 -mb-12 -mt-38 min-h-screen overflow-hidden bg-[#edf3fa] px-4 pb-14 pt-24 text-[#0f1c2e] sm:px-5">
-
-            {/* ── Background ───────────────────────────────────────────────── */}
             <div className="pointer-events-none absolute inset-0">
                 <div
                     className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-60"
@@ -297,8 +355,6 @@ export default function Unit19RoadmapWorkspace(props: Props) {
             </div>
 
             <div className="relative mx-auto grid max-w-[1480px] gap-5 lg:grid-cols-[104px_minmax(0,1fr)]">
-
-                {/* ── Sidebar ──────────────────────────────────────────────── */}
                 <aside className="hidden lg:fixed lg:left-[max(1.25rem,calc((100vw-1480px)/2+1.25rem))] lg:top-[88px] lg:z-40 lg:block lg:w-[104px]">
                     <div className="flex max-h-[calc(100vh-136px)] flex-col justify-between overflow-y-auto rounded-[24px] border border-white/[0.88] bg-white/[0.68] p-2.5 shadow-[0_18px_56px_rgba(41,73,112,0.12),inset_0_1px_0_rgba(255,255,255,0.94)] backdrop-blur-2xl">
                         <div className="flex flex-col items-center gap-2">
@@ -365,13 +421,8 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                     </div>
                 </aside>
 
-                {/* ── Main ─────────────────────────────────────────────────── */}
                 <main className="space-y-5 lg:col-start-2 lg:min-w-0">
-
-                    {/* ── Hero Header ──────────────────────────────────────── */}
-                    <header className="relative overflow-hidden rounded-[28px] border border-white/78 bg-white/[0.55] shadow-[0_24px_90px_rgba(41,73,112,0.11),inset_0_1px_0_rgba(255,255,255,0.96)] backdrop-blur-2xl">
-
-                        {/* Full-bleed Mediterranean photo layer */}
+                    <header className="relative overflow-hidden rounded-[28px] border border-white/[0.78] bg-white/[0.55] shadow-[0_24px_90px_rgba(41,73,112,0.11),inset_0_1px_0_rgba(255,255,255,0.96)] backdrop-blur-2xl">
                         <div
                             className="pointer-events-none absolute inset-0 bg-cover bg-center bg-no-repeat opacity-70 saturate-[1.28] contrast-[1.12]"
                             style={{ backgroundImage: `url('${BACKGROUND_IMAGE}')` }}
@@ -382,9 +433,8 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                         <div className="pointer-events-none absolute right-10 top-8 h-56 w-56 rounded-full bg-[#2f80ed]/[0.05] blur-3xl" />
 
                         <div className="relative p-7 md:p-9">
-                            {/* Breadcrumb tags */}
                             <div className="mb-5 flex flex-wrap items-center gap-2">
-                                <span className="rounded-full border border-[#2f80ed]/22 bg-[#2f80ed]/[0.09] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#2060cc]">
+                                <span className="rounded-full border border-[#2f80ed]/[0.22] bg-[#2f80ed]/[0.09] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#2060cc]">
                                     Admin Roadmap
                                 </span>
                                 <span className="text-[#b8c9d8]">/</span>
@@ -393,7 +443,6 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                                 </span>
                             </div>
 
-                            {/* Title */}
                             <h1 className="font-display text-[38px] font-normal leading-[0.98] tracking-[-0.025em] text-[#0b1623] md:text-[54px]">
                                 Unit 19 Project Roadmap
                             </h1>
@@ -401,12 +450,9 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                                 Thessaloniki · Analipsi
                             </p>
 
-                            {/* Metric cards */}
                             <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-
-                                {/* Overall Progress — spans 2 cols on smallest breakpoint */}
-                                <div className="col-span-2 sm:col-span-1 rounded-[18px] border border-white/[0.85] bg-white/[0.76] p-4 shadow-[0_12px_38px_rgba(41,73,112,0.08),inset_0_1px_0_rgba(255,255,255,1)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_52px_rgba(47,128,237,0.10)]">
-                                    <div className="flex items-center gap-2 mb-2">
+                                <div className="col-span-2 rounded-[18px] border border-white/[0.85] bg-white/[0.76] p-4 shadow-[0_12px_38px_rgba(41,73,112,0.08),inset_0_1px_0_rgba(255,255,255,1)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_52px_rgba(47,128,237,0.10)] sm:col-span-1">
+                                    <div className="mb-2 flex items-center gap-2">
                                         <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-[#2f80ed]/[0.14] bg-[#2f80ed]/[0.09] text-[#2060cc]">
                                             <IconClock />
                                         </div>
@@ -422,13 +468,12 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                                     <div className="mt-1.5 text-[11px] text-[#7a90a8]">{taskTotals.done} / {taskTotals.total} tasks</div>
                                 </div>
 
-                                {/* Dynamic metric cards from data */}
                                 {unit19KeyMetrics
                                     .filter((metric) => metric.label !== "Progress")
-                                    .map((metric, i) => {
-                                        const MetricIcons = [IconCalendar, IconTrend, IconCheckSquare];
-                                        const MetricIcon = MetricIcons[i] ?? IconClock;
-                                        const val =
+                                    .map((metric, index) => {
+                                        const metricIcons = [IconCalendar, IconTrend, IconCheckSquare];
+                                        const MetricIcon = metricIcons[index] ?? IconClock;
+                                        const value =
                                             metric.label === "Current focus"
                                                 ? "Post-acq."
                                                 : metric.label === "Active blockers"
@@ -440,13 +485,13 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                                                 key={metric.label}
                                                 className="rounded-[18px] border border-white/[0.85] bg-white/[0.76] p-4 shadow-[0_12px_38px_rgba(41,73,112,0.08),inset_0_1px_0_rgba(255,255,255,1)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_52px_rgba(47,128,237,0.10)]"
                                             >
-                                                <div className="flex items-center gap-2 mb-2">
+                                                <div className="mb-2 flex items-center gap-2">
                                                     <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-[#2f80ed]/[0.14] bg-[#2f80ed]/[0.09] text-[#2060cc]">
                                                         <MetricIcon />
                                                     </div>
                                                     <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#7a90a8]">{metric.label}</span>
                                                 </div>
-                                                <div className="break-words text-[22px] font-semibold leading-tight text-[#0b1623]">{val}</div>
+                                                <div className="break-words text-[22px] font-semibold leading-tight text-[#0b1623]">{value}</div>
                                                 <div className="mt-1.5 text-[11px] leading-[1.35] text-[#7a90a8]">{metric.detail}</div>
                                             </div>
                                         );
@@ -455,10 +500,7 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                         </div>
                     </header>
 
-                    {/* ── Project Stages ───────────────────────────────────── */}
                     <section className="rounded-[26px] border border-white/[0.80] bg-white/[0.62] p-5 shadow-[0_20px_70px_rgba(41,73,112,0.09),inset_0_1px_0_rgba(255,255,255,0.97)] backdrop-blur-2xl sm:p-6">
-
-                        {/* Section header + filters */}
                         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                             <div>
                                 <h2 className="font-display text-[22px] font-normal tracking-[-0.01em] text-[#0b1623]">
@@ -472,6 +514,7 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                             <div className="flex flex-wrap items-center gap-2 rounded-[18px] border border-white/[0.78] bg-white/[0.44] p-1.5 shadow-[0_12px_36px_rgba(41,73,112,0.08),inset_0_1px_0_rgba(255,255,255,0.92)] backdrop-blur-2xl">
                                 {TOP_FILTERS.map(({ mode, label }) => {
                                     const active = filterMode === mode;
+
                                     return (
                                         <button
                                             key={mode}
@@ -508,22 +551,13 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                             </div>
                         </div>
 
-                        {/* Timeline list */}
                         <div className="relative pl-0 md:pl-[72px]">
-                            {/* Vertical timeline line */}
-                            <div
-                                className="absolute bottom-8 left-[17px] top-5 hidden w-[2px] rounded-full md:block"
-                                style={{
-                                    background: "linear-gradient(to bottom, #20a76b 0%, #20a76b 28%, #2f80ed 40%, #2f80ed 58%, #c8d5e2 58%, #c8d5e2 100%)",
-                                }}
-                            />
-
                             <div className="space-y-3">
-                                {visibleStages.map((stage) => {
+                                {visibleStages.map((stage, index) => {
                                     const selected = stage.id === selectedStageId;
                                     const expanded = expandedStageIds.has(stage.id);
-                                    const activeTasks = stage.tasks.filter((t) =>
-                                        ["pending", "scheduled", "open"].includes(t.status),
+                                    const activeTasks = stage.tasks.filter((task) =>
+                                        ["pending", "scheduled", "open"].includes(task.status),
                                     );
 
                                     return (
@@ -541,9 +575,17 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                                                     : "",
                                             ].join(" ")}
                                         >
-                                            {/* Timeline marker */}
-                                            <div className="absolute -left-[54px] top-4 z-10 hidden h-8 w-8 items-center justify-center rounded-full md:flex transition-all duration-300">
-                                                <div className={["h-8 w-8 rounded-full flex items-center justify-center transition-all duration-300", stageMarker(stage.status, selected)].join(" ")}>
+                                            {index < visibleStages.length - 1 ? (
+                                                <div
+                                                    className={[
+                                                        "pointer-events-none absolute -left-[38px] top-[46px] -bottom-[18px] hidden w-[2px] rounded-full transition-colors duration-500 md:block",
+                                                        stageConnector(stage.status),
+                                                    ].join(" ")}
+                                                />
+                                            ) : null}
+
+                                            <div className="absolute -left-[55px] top-4 z-10 hidden h-9 w-9 items-center justify-center rounded-full bg-white/[0.72] shadow-[0_6px_18px_rgba(41,73,112,0.12)] backdrop-blur-md transition-all duration-300 md:flex">
+                                                <div className={["flex h-8 w-8 items-center justify-center rounded-full transition-all duration-300", stageMarker(stage.status, selected)].join(" ")}>
                                                     {stage.status === "completed" ? (
                                                         <IconCheck />
                                                     ) : stage.status === "current" ? (
@@ -556,41 +598,58 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                                                 </div>
                                             </div>
 
-                                            {/* Clickable row */}
                                             <div
                                                 className="flex cursor-pointer items-start gap-3 px-4 py-3.5"
                                                 role="button"
                                                 tabIndex={0}
-                                                onClick={(e) => {
-                                                    if (isInteractiveField(e.target)) return;
-                                                    if (expanded && selected) { toggleExpanded(stage.id); return; }
+                                                onClick={(event) => {
+                                                    if (isInteractiveField(event.target)) return;
+
+                                                    if (expanded && selected) {
+                                                        toggleExpanded(stage.id);
+                                                        return;
+                                                    }
+
                                                     selectStage(stage.id);
                                                 }}
-                                                onKeyDown={(e) => {
-                                                    if (isInteractiveField(e.target)) return;
-                                                    if (e.key === "Enter") { e.preventDefault(); selectStage(stage.id); }
-                                                    if (e.key === " ") {
-                                                        e.preventDefault();
-                                                        if (expanded && selected) { toggleExpanded(stage.id); return; }
+                                                onKeyDown={(event) => {
+                                                    if (isInteractiveField(event.target)) return;
+
+                                                    if (event.key === "Enter") {
+                                                        event.preventDefault();
+                                                        selectStage(stage.id);
+                                                    }
+
+                                                    if (event.key === " ") {
+                                                        event.preventDefault();
+
+                                                        if (expanded && selected) {
+                                                            toggleExpanded(stage.id);
+                                                            return;
+                                                        }
+
                                                         selectStage(stage.id);
                                                     }
                                                 }}
                                             >
-                                                {/* Stage number */}
-                                                <span className={[
-                                                    "hidden min-w-[26px] pt-0.5 text-[13px] font-bold tabular-nums leading-tight md:block",
-                                                    selected || stage.status === "current" ? "text-[#2060cc]" : stage.status === "completed" ? "text-[#8fa8c0]" : "text-[#9ab0c4]",
-                                                ].join(" ")}>
+                                                <span
+                                                    className={[
+                                                        "hidden min-w-[26px] pt-0.5 text-[13px] font-bold tabular-nums leading-tight md:block",
+                                                        selected || stage.status === "current"
+                                                            ? "text-[#2060cc]"
+                                                            : stage.status === "completed"
+                                                                ? "text-[#8fa8c0]"
+                                                                : "text-[#9ab0c4]",
+                                                    ].join(" ")}
+                                                >
                                                     {stage.number}
                                                 </span>
 
-                                                {/* Content area */}
                                                 <div className="min-w-0 flex-1">
                                                     <div className="flex flex-wrap items-baseline gap-2">
                                                         <h3 className="text-[13.5px] font-semibold leading-snug text-[#0b1623]">
                                                             {stage.title}
                                                         </h3>
-                                                        {/* Mobile-only number */}
                                                         <span className="text-[11px] font-semibold text-[#9ab0c4] md:hidden">
                                                             #{stage.number}
                                                         </span>
@@ -599,10 +658,8 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                                                         {stage.summary}
                                                     </p>
 
-                                                    {/* ── Expanded panel ─────────────────────────────── */}
-                                                    {expanded && (
+                                                    {expanded ? (
                                                         <div className="mt-4 space-y-3">
-                                                            {/* Mini stats */}
                                                             <div className="grid grid-cols-3 gap-3 rounded-[13px] border border-[#d8e8f6]/[0.75] bg-[#f0f6fd]/[0.70] px-3.5 py-3">
                                                                 <div>
                                                                     <div className="text-[9.5px] font-semibold uppercase tracking-[0.13em] text-[#7a90a8]">Active Tasks</div>
@@ -618,8 +675,7 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                                                                 </div>
                                                             </div>
 
-                                                            {/* Task list */}
-                                                            {stage.tasks.length > 0 && (
+                                                            {stage.tasks.length > 0 ? (
                                                                 <div>
                                                                     <div className="mb-2 text-[9.5px] font-semibold uppercase tracking-[0.14em] text-[#7a90a8]">
                                                                         Active Tasks
@@ -627,27 +683,28 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                                                                     <div className="space-y-2">
                                                                         {stage.tasks.map((task) => {
                                                                             const editing = editingTaskId === task.id;
+
                                                                             return (
                                                                                 <div
                                                                                     key={task.id}
-                                                                                    className="rounded-[12px] border border-[#d8e8f6]/80 bg-white/72 px-3.5 py-3"
+                                                                                    className="rounded-[12px] border border-[#d8e8f6]/80 bg-white/[0.72] px-3.5 py-3"
                                                                                 >
                                                                                     {editing ? (
                                                                                         <div className="space-y-2.5">
                                                                                             <input
                                                                                                 value={task.title}
-                                                                                                onChange={(e) => updateTask(stage.id, task.id, { title: e.target.value })}
-                                                                                                className="w-full rounded-[9px] border border-[#ccd9e8] bg-white/[0.92] px-3 py-2 text-[13px] text-[#0b1623] outline-none transition focus:border-[#2f80ed] focus:ring-2 focus:ring-[#2f80ed]/12"
+                                                                                                onChange={(event) => updateTask(stage.id, task.id, { title: event.target.value })}
+                                                                                                className="w-full rounded-[9px] border border-[#ccd9e8] bg-white/[0.92] px-3 py-2 text-[13px] text-[#0b1623] outline-none transition focus:border-[#2f80ed] focus:ring-2 focus:ring-[#2f80ed]/[0.12]"
                                                                                             />
                                                                                             <textarea
                                                                                                 value={task.note}
-                                                                                                onChange={(e) => updateTask(stage.id, task.id, { note: e.target.value })}
+                                                                                                onChange={(event) => updateTask(stage.id, task.id, { note: event.target.value })}
                                                                                                 rows={2}
-                                                                                                className="w-full rounded-[9px] border border-[#ccd9e8] bg-white/[0.92] px-3 py-2 text-[13px] text-[#0b1623] outline-none transition focus:border-[#2f80ed] focus:ring-2 focus:ring-[#2f80ed]/12"
+                                                                                                className="w-full rounded-[9px] border border-[#ccd9e8] bg-white/[0.92] px-3 py-2 text-[13px] text-[#0b1623] outline-none transition focus:border-[#2f80ed] focus:ring-2 focus:ring-[#2f80ed]/[0.12]"
                                                                                             />
                                                                                             <select
                                                                                                 value={task.status}
-                                                                                                onChange={(e) => updateTask(stage.id, task.id, { status: e.target.value as RoadmapTaskStatus })}
+                                                                                                onChange={(event) => updateTask(stage.id, task.id, { status: event.target.value as RoadmapTaskStatus })}
                                                                                                 className="rounded-[9px] border border-[#ccd9e8] bg-white/[0.92] px-3 py-2 text-[13px] text-[#0b1623] outline-none transition focus:border-[#2f80ed]"
                                                                                             >
                                                                                                 <option value="done">Done</option>
@@ -668,51 +725,47 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                                                                                         </div>
                                                                                     ) : (
                                                                                         <div className="flex items-start gap-3">
-                                                                                            {/* Status circle */}
-                                                                                            <div className={[
-                                                                                                "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full",
-                                                                                                task.status === "done"
-                                                                                                    ? "border-2 border-[#20a76b] bg-[#20a76b]"
-                                                                                                    : task.status === "pending"
-                                                                                                        ? "border-2 border-[#2f80ed] bg-transparent"
-                                                                                                        : "border-2 border-[#c8d5e2] bg-transparent",
-                                                                                            ].join(" ")}>
-                                                                                                {task.status === "done" && <IconCheck c="w-2.5 h-2.5 text-white" />}
-                                                                                                {task.status === "pending" && (
-                                                                                                    <div className="h-1.5 w-1.5 rounded-full bg-[#2f80ed]" />
-                                                                                                )}
+                                                                                            <div
+                                                                                                className={[
+                                                                                                    "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full",
+                                                                                                    task.status === "done"
+                                                                                                        ? "border-2 border-[#20a76b] bg-[#20a76b]"
+                                                                                                        : task.status === "pending"
+                                                                                                            ? "border-2 border-[#2f80ed] bg-transparent"
+                                                                                                            : "border-2 border-[#c8d5e2] bg-transparent",
+                                                                                                ].join(" ")}
+                                                                                            >
+                                                                                                {task.status === "done" ? <IconCheck c="h-2.5 w-2.5 text-white" /> : null}
+                                                                                                {task.status === "pending" ? <div className="h-1.5 w-1.5 rounded-full bg-[#2f80ed]" /> : null}
                                                                                             </div>
 
-                                                                                            {/* Text */}
                                                                                             <div className="min-w-0 flex-1">
-                                                                                                <span className={[
-                                                                                                    "text-[12.5px] font-medium leading-snug",
-                                                                                                    task.status === "done" ? "text-[#9ab0c4] line-through" : "text-[#0b1623]",
-                                                                                                ].join(" ")}>
+                                                                                                <span
+                                                                                                    className={[
+                                                                                                        "text-[12.5px] font-medium leading-snug",
+                                                                                                        task.status === "done" ? "text-[#9ab0c4] line-through" : "text-[#0b1623]",
+                                                                                                    ].join(" ")}
+                                                                                                >
                                                                                                     {task.title}
                                                                                                 </span>
                                                                                                 <p className="mt-0.5 text-[11px] leading-[1.45] text-[#7a90a8]">{task.note}</p>
                                                                                             </div>
 
-                                                                                            {/* Actions */}
                                                                                             <div className="flex shrink-0 items-center gap-1.5">
-                                                                                                <span className={[
-                                                                                                    "rounded-full border px-2 py-0.5 text-[9.5px] font-semibold uppercase tracking-[0.09em]",
-                                                                                                    taskBadge(task.status),
-                                                                                                ].join(" ")}>
+                                                                                                <span className={["rounded-full border px-2 py-0.5 text-[9.5px] font-semibold uppercase tracking-[0.09em]", taskBadge(task.status)].join(" ")}>
                                                                                                     {getTaskLabel(task.status)}
                                                                                                 </span>
                                                                                                 <button
                                                                                                     type="button"
                                                                                                     onClick={() => setEditingTaskId(task.id)}
-                                                                                                    className="rounded-[7px] border border-[#ccd9e8] bg-white/70 px-2.5 py-1 text-[11px] text-[#4e6880] transition hover:border-[#2f80ed]/[0.38] hover:text-[#2060cc] active:scale-[0.97]"
+                                                                                                    className="rounded-[7px] border border-[#ccd9e8] bg-white/[0.70] px-2.5 py-1 text-[11px] text-[#4e6880] transition hover:border-[#2f80ed]/[0.38] hover:text-[#2060cc] active:scale-[0.97]"
                                                                                                 >
                                                                                                     Edit
                                                                                                 </button>
                                                                                                 <button
                                                                                                     type="button"
                                                                                                     onClick={() => removeTask(stage.id, task.id)}
-                                                                                                    className="rounded-[7px] border border-[#e2c4bb] bg-[#c78973]/7 px-2.5 py-1 text-[11px] text-[#8c5947] transition hover:bg-[#c78973]/15 active:scale-[0.97]"
+                                                                                                    className="rounded-[7px] border border-[#e2c4bb] bg-[#c78973]/[0.07] px-2.5 py-1 text-[11px] text-[#8c5947] transition hover:bg-[#c78973]/[0.15] active:scale-[0.97]"
                                                                                                 >
                                                                                                     ×
                                                                                                 </button>
@@ -723,41 +776,30 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                                                                             );
                                                                         })}
                                                                     </div>
-
-                                                                    {/* "View all" link */}
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={(e) => e.stopPropagation()}
-                                                                        className="mt-3 text-[12px] font-medium text-[#2060cc] transition hover:underline"
-                                                                    >
-                                                                        View all tasks for this stage →
-                                                                    </button>
                                                                 </div>
-                                                            )}
+                                                            ) : null}
 
-                                                            {/* Lesson callout */}
                                                             <div className="rounded-[12px] border border-[#d8e8f6]/80 bg-[#f4f8fd]/80 px-4 py-3 text-[12px] leading-[1.6] text-[#3a5272]">
                                                                 <span className="font-semibold text-[#2060cc]">Epitropos lesson: </span>
                                                                 {stage.lesson}
                                                             </div>
                                                         </div>
-                                                    )}
+                                                    ) : null}
                                                 </div>
 
-                                                {/* Right column: badge + controls */}
                                                 <div className="flex shrink-0 flex-col items-end gap-2 pt-0.5">
-                                                    <span className={[
-                                                        "rounded-full border px-2.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-[0.10em]",
-                                                        stageBadge(stage.status),
-                                                    ].join(" ")}>
+                                                    <span className={["rounded-full border px-2.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-[0.10em]", stageBadge(stage.status)].join(" ")}>
                                                         {getStageLabel(stage.status)}
                                                     </span>
 
                                                     <div className="flex items-center gap-1.5">
                                                         <button
                                                             type="button"
-                                                            onClick={(e) => { e.stopPropagation(); addTask(stage.id); }}
-                                                            className="flex items-center gap-1 rounded-[8px] border border-[#ccd9e8] bg-white/60 px-2.5 py-1.5 text-[11px] font-medium text-[#4e6880] transition hover:border-[#2f80ed]/32 hover:bg-white/[0.85] hover:text-[#2060cc] active:scale-[0.97]"
+                                                            onClick={(event) => {
+                                                                event.stopPropagation();
+                                                                addTask(stage.id);
+                                                            }}
+                                                            className="flex items-center gap-1 rounded-[8px] border border-[#ccd9e8] bg-white/[0.60] px-2.5 py-1.5 text-[11px] font-medium text-[#4e6880] transition hover:border-[#2f80ed]/[0.32] hover:bg-white/[0.85] hover:text-[#2060cc] active:scale-[0.97]"
                                                         >
                                                             <IconPlus />
                                                             Task
@@ -765,16 +807,19 @@ export default function Unit19RoadmapWorkspace(props: Props) {
 
                                                         <button
                                                             type="button"
-                                                            onClick={(e) => { e.stopPropagation(); toggleExpanded(stage.id); }}
+                                                            onClick={(event) => {
+                                                                event.stopPropagation();
+                                                                toggleExpanded(stage.id);
+                                                            }}
                                                             aria-label={expanded ? "Collapse stage" : "Expand stage"}
                                                             className={[
                                                                 "flex h-7 w-7 items-center justify-center rounded-full border transition-all duration-200",
                                                                 expanded
                                                                     ? "border-[#2f80ed]/30 bg-[#2f80ed]/10 text-[#2060cc]"
-                                                                    : "border-[#ccd9e8] bg-white/60 text-[#7a90a8] hover:border-[#2f80ed]/[0.28] hover:bg-white/[0.85]",
+                                                                    : "border-[#ccd9e8] bg-white/[0.60] text-[#7a90a8] hover:border-[#2f80ed]/[0.28] hover:bg-white/[0.85]",
                                                             ].join(" ")}
                                                         >
-                                                            <IconChevron c={["w-3.5 h-3.5 transition-transform duration-200", expanded ? "rotate-180" : ""].join(" ")} />
+                                                            <IconChevron c={["h-3.5 w-3.5 transition-transform duration-200", expanded ? "rotate-180" : ""].join(" ")} />
                                                         </button>
                                                     </div>
                                                 </div>
@@ -786,9 +831,7 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                         </div>
                     </section>
 
-                    {/* ── Notes & AI Workspace ─────────────────────────────── */}
                     <section className="relative overflow-hidden rounded-[26px] border border-white/[0.80] bg-white/[0.58] shadow-[0_20px_70px_rgba(41,73,112,0.09),inset_0_1px_0_rgba(255,255,255,0.97)] backdrop-blur-2xl">
-                        {/* Full-bleed background photo, aligned with hero treatment */}
                         <div
                             className="pointer-events-none absolute inset-0 bg-[length:100%_auto] bg-center bg-no-repeat opacity-[0.51] saturate-[1.68] contrast-[1.58]"
                             style={{ backgroundImage: `url('${FOOTER_IMAGE}')` }}
@@ -798,13 +841,11 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                         <div className="pointer-events-none absolute left-0 top-0 h-full w-[62%] bg-white/[0.36] backdrop-blur-[2px]" />
 
                         <div className="relative grid gap-5 p-6 xl:grid-cols-[1fr_1fr_1fr_320px] xl:gap-0">
-                            {/* Tips heading label */}
                             <div className="col-span-full mb-1 flex items-center gap-2 xl:hidden">
                                 <IconBulb c="h-4 w-4 text-[#2060cc]" />
                                 <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">Notes & Tips</span>
                             </div>
 
-                            {/* Note 1 */}
                             <div className="xl:border-r xl:border-[#d8e8f6]/70 xl:pr-5">
                                 <div className="mb-1 hidden items-center gap-2 xl:flex">
                                     <IconBulb c="h-4 w-4 text-[#2060cc]" />
@@ -814,19 +855,16 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                                 <p className="text-[12px] leading-[1.6] text-[#7a90a8]">{unit19FocusNotes[0]}</p>
                             </div>
 
-                            {/* Note 2 */}
                             <div className="xl:border-r xl:border-[#d8e8f6]/70 xl:px-5">
                                 <div className="mb-1 text-[12.5px] font-semibold text-[#0b1623]">Track everything in real time</div>
                                 <p className="text-[12px] leading-[1.6] text-[#7a90a8]">{unit19FocusNotes[1]}</p>
                             </div>
 
-                            {/* Note 3 */}
                             <div className="xl:border-r xl:border-[#d8e8f6]/70 xl:px-5">
                                 <div className="mb-1 text-[12.5px] font-semibold text-[#0b1623]">Stay ahead of risks</div>
                                 <p className="text-[12px] leading-[1.6] text-[#7a90a8]">{unit19FocusNotes[2]}</p>
                             </div>
 
-                            {/* AI Workspace */}
                             <div className="xl:pl-5">
                                 <div className="mb-2 flex items-center gap-1.5">
                                     <div className="h-1.5 w-1.5 rounded-full bg-[#2060cc]" />
@@ -840,7 +878,7 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                                         href="https://chat.openai.com/"
                                         target="_blank"
                                         rel="noreferrer"
-                                        className="flex items-center justify-between rounded-[11px] border border-[#2f80ed]/24 bg-[#2f80ed]/8 px-3.5 py-2.5 text-[12px] font-semibold text-[#1560bc] transition hover:-translate-y-0.5 hover:bg-[#2f80ed]/13 active:scale-[0.98]"
+                                        className="flex items-center justify-between rounded-[11px] border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-3.5 py-2.5 text-[12px] font-semibold text-[#1560bc] transition hover:-translate-y-0.5 hover:bg-[#2f80ed]/[0.13] active:scale-[0.98]"
                                     >
                                         <span>Open ChatGPT</span>
                                         <IconExternal />
@@ -865,11 +903,11 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                             </div>
                         </div>
                     </section>
+
                     <Unit19ExpensesModal
                         open={expensesOpen}
                         onClose={() => setExpensesOpen(false)}
                     />
-
                 </main>
             </div>
         </section>

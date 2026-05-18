@@ -212,7 +212,7 @@ export default function Unit19ExpensesModal({ open, onClose }: Props) {
     if (!open) return null;
 
     return (
-        <div className="fixed inset-0 z-[90] overflow-hidden px-4 py-4 sm:px-6">
+        <div className="fixed inset-0 z-[90] overflow-hidden px-3 py-3 sm:px-5">
             <button
                 type="button"
                 aria-label="Close expenses modal"
@@ -220,18 +220,18 @@ export default function Unit19ExpensesModal({ open, onClose }: Props) {
                 onClick={onClose}
             />
 
-            <div className="relative mx-auto flex h-[calc(100dvh-32px)] max-h-[calc(100dvh-32px)] w-[calc(100vw-40px)] max-w-[1540px] flex-col overflow-hidden rounded-[28px] border border-white/[0.72] bg-white/[0.74] shadow-[0_30px_120px_rgba(6,16,29,0.38),inset_0_1px_0_rgba(255,255,255,0.96)] backdrop-blur-2xl">
+            <div className="relative mx-auto flex h-[calc(100dvh-24px)] max-h-[calc(100dvh-24px)] w-[calc(100vw-32px)] max-w-[1600px] flex-col overflow-hidden rounded-[26px] border border-white/[0.72] bg-white/[0.74] shadow-[0_30px_120px_rgba(6,16,29,0.38),inset_0_1px_0_rgba(255,255,255,0.96)] backdrop-blur-2xl">
                 <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_10%,rgba(47,128,237,0.13),transparent_28%),radial-gradient(circle_at_82%_18%,rgba(166,139,74,0.16),transparent_24%)]" />
-                <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-white/[0.62] to-transparent" />
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-white/[0.62] to-transparent" />
 
-                <div className="relative shrink-0 border-b border-white/[0.72] px-5 py-4 sm:px-6">
+                <div className="relative shrink-0 border-b border-white/[0.72] px-5 py-3 sm:px-6">
                     <div className="flex items-start justify-between gap-4">
                         <div>
-                            <div className="mb-1.5 inline-flex items-center gap-2 rounded-full border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#2060cc]">
+                            <div className="mb-1 inline-flex items-center gap-2 rounded-full border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-3 py-1 text-[9.5px] font-semibold uppercase tracking-[0.18em] text-[#2060cc]">
                                 <IconExpense />
                                 Expense cockpit
                             </div>
-                            <h2 className="font-display text-[32px] font-normal leading-tight tracking-[-0.03em] text-[#0b1623] sm:text-[38px]">
+                            <h2 className="font-display text-[28px] font-normal leading-tight tracking-[-0.03em] text-[#0b1623] sm:text-[34px]">
                                 Unit 19 Expense Tracker
                             </h2>
                         </div>
@@ -245,40 +245,40 @@ export default function Unit19ExpensesModal({ open, onClose }: Props) {
                         </button>
                     </div>
 
-                    <div className="mt-3 grid gap-2.5 sm:grid-cols-2 xl:grid-cols-5">
-                        <div className="rounded-[18px] border border-white/[0.80] bg-white/[0.62] px-4 py-3 shadow-[0_12px_34px_rgba(41,73,112,0.08)]">
-                            <div className="text-[9.5px] font-semibold uppercase tracking-[0.14em] text-[#7a90a8]">Total tracked</div>
-                            <div className="mt-1.5 text-[23px] font-semibold leading-none text-[#0b1623]">{formatEur(stats.total)}</div>
-                            <div className="mt-1 text-[10.5px] text-[#7a90a8]">{stats.trackedCount} active rows</div>
+                    <div className="mt-2.5 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+                        <div className="rounded-[16px] border border-white/[0.80] bg-white/[0.62] px-3.5 py-2.5 shadow-[0_10px_28px_rgba(41,73,112,0.07)]">
+                            <div className="text-[9px] font-semibold uppercase tracking-[0.13em] text-[#7a90a8]">Total tracked</div>
+                            <div className="mt-1 text-[21px] font-semibold leading-none text-[#0b1623]">{formatEur(stats.total)}</div>
+                            <div className="mt-1 text-[10px] text-[#7a90a8]">{stats.trackedCount} active rows</div>
                         </div>
-                        <div className="rounded-[18px] border border-white/[0.80] bg-white/[0.62] px-4 py-3 shadow-[0_12px_34px_rgba(41,73,112,0.08)]">
-                            <div className="text-[9.5px] font-semibold uppercase tracking-[0.14em] text-[#7a90a8]">Greek closing</div>
-                            <div className="mt-1.5 text-[23px] font-semibold leading-none text-[#0b1623]">{formatEur(stats.greekClosing)}</div>
-                            <div className="mt-1 text-[10.5px] text-[#7a90a8]">tax, notary, broker</div>
+                        <div className="rounded-[16px] border border-white/[0.80] bg-white/[0.62] px-3.5 py-2.5 shadow-[0_10px_28px_rgba(41,73,112,0.07)]">
+                            <div className="text-[9px] font-semibold uppercase tracking-[0.13em] text-[#7a90a8]">Greek closing</div>
+                            <div className="mt-1 text-[21px] font-semibold leading-none text-[#0b1623]">{formatEur(stats.greekClosing)}</div>
+                            <div className="mt-1 text-[10px] text-[#7a90a8]">tax, notary, broker</div>
                         </div>
-                        <div className="rounded-[18px] border border-white/[0.80] bg-white/[0.62] px-4 py-3 shadow-[0_12px_34px_rgba(41,73,112,0.08)]">
-                            <div className="text-[9.5px] font-semibold uppercase tracking-[0.14em] text-[#7a90a8]">Credit / DSK</div>
-                            <div className="mt-1.5 text-[23px] font-semibold leading-none text-[#0b1623]">{formatEur(stats.credit)}</div>
-                            <div className="mt-1 text-[10.5px] text-[#7a90a8]">loan path costs</div>
+                        <div className="rounded-[16px] border border-white/[0.80] bg-white/[0.62] px-3.5 py-2.5 shadow-[0_10px_28px_rgba(41,73,112,0.07)]">
+                            <div className="text-[9px] font-semibold uppercase tracking-[0.13em] text-[#7a90a8]">Credit / DSK</div>
+                            <div className="mt-1 text-[21px] font-semibold leading-none text-[#0b1623]">{formatEur(stats.credit)}</div>
+                            <div className="mt-1 text-[10px] text-[#7a90a8]">loan path costs</div>
                         </div>
-                        <div className="rounded-[18px] border border-[#cfa090]/[0.24] bg-[#cfa090]/[0.08] px-4 py-3 shadow-[0_12px_34px_rgba(41,73,112,0.06)]">
-                            <div className="text-[9.5px] font-semibold uppercase tracking-[0.14em] text-[#8c5947]">Need clarification</div>
-                            <div className="mt-1.5 text-[23px] font-semibold leading-none text-[#0b1623]">{formatEur(stats.clarifyAmount)}</div>
-                            <div className="mt-1 text-[10.5px] text-[#8c5947]">{stats.clarifyCount} rows to verify</div>
+                        <div className="rounded-[16px] border border-[#cfa090]/[0.24] bg-[#cfa090]/[0.08] px-3.5 py-2.5 shadow-[0_10px_28px_rgba(41,73,112,0.06)]">
+                            <div className="text-[9px] font-semibold uppercase tracking-[0.13em] text-[#8c5947]">Need clarification</div>
+                            <div className="mt-1 text-[21px] font-semibold leading-none text-[#0b1623]">{formatEur(stats.clarifyAmount)}</div>
+                            <div className="mt-1 text-[10px] text-[#8c5947]">{stats.clarifyCount} rows to verify</div>
                         </div>
-                        <div className="rounded-[18px] border border-white/[0.80] bg-white/[0.62] px-4 py-3 shadow-[0_12px_34px_rgba(41,73,112,0.08)]">
-                            <div className="text-[9.5px] font-semibold uppercase tracking-[0.14em] text-[#7a90a8]">BGN equivalent</div>
-                            <div className="mt-1.5 text-[23px] font-semibold leading-none text-[#0b1623]">{formatBgn(stats.total * EUR_TO_BGN)}</div>
-                            <div className="mt-1 text-[10.5px] text-[#7a90a8]">fixed 1.95583</div>
+                        <div className="rounded-[16px] border border-white/[0.80] bg-white/[0.62] px-3.5 py-2.5 shadow-[0_10px_28px_rgba(41,73,112,0.07)]">
+                            <div className="text-[9px] font-semibold uppercase tracking-[0.13em] text-[#7a90a8]">BGN equivalent</div>
+                            <div className="mt-1 text-[21px] font-semibold leading-none text-[#0b1623]">{formatBgn(stats.total * EUR_TO_BGN)}</div>
+                            <div className="mt-1 text-[10px] text-[#7a90a8]">fixed 1.95583</div>
                         </div>
                     </div>
                 </div>
 
-                <div className="relative grid min-h-0 flex-1 overflow-hidden lg:grid-cols-[280px_minmax(0,1fr)]">
-                    <aside className="h-full min-h-0 overflow-y-auto overscroll-contain border-b border-white/[0.65] bg-white/[0.42] p-4 lg:border-b-0 lg:border-r">
-                        <div className="rounded-[18px] border border-white/[0.78] bg-white/[0.58] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
-                            <div className="mb-2.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">Cost composition</div>
-                            <div className="space-y-2.5">
+                <div className="relative grid min-h-0 flex-1 overflow-hidden lg:grid-cols-[260px_minmax(0,1fr)]">
+                    <aside className="h-full min-h-0 overflow-y-auto overscroll-contain border-b border-white/[0.65] bg-white/[0.42] p-3.5 lg:border-b-0 lg:border-r">
+                        <div className="rounded-[16px] border border-white/[0.78] bg-white/[0.58] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                            <div className="mb-2 text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">Cost composition</div>
+                            <div className="space-y-2">
                                 {categoryTotals
                                     .filter((item) => item.category !== "Vehicle / excluded")
                                     .map((item) => (
@@ -286,13 +286,13 @@ export default function Unit19ExpensesModal({ open, onClose }: Props) {
                                             key={item.category}
                                             type="button"
                                             onClick={() => setCategoryFilter(item.category)}
-                                            className="w-full rounded-2xl border border-transparent p-2 text-left transition hover:-translate-y-0.5 hover:border-[#2f80ed]/[0.20] hover:bg-white/[0.55] active:scale-[0.98]"
+                                            className="w-full rounded-xl border border-transparent p-2 text-left transition hover:-translate-y-0.5 hover:border-[#2f80ed]/[0.20] hover:bg-white/[0.55] active:scale-[0.98]"
                                         >
-                                            <div className="flex items-center justify-between gap-3 text-[12px] font-semibold text-[#0b1623]">
+                                            <div className="flex items-center justify-between gap-3 text-[11.5px] font-semibold text-[#0b1623]">
                                                 <span>{categoryLabels[item.category]}</span>
                                                 <span>{formatEur(item.total)}</span>
                                             </div>
-                                            <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-[#d8e8f6]/[0.9]">
+                                            <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[#d8e8f6]/[0.9]">
                                                 <div
                                                     className="h-full rounded-full bg-gradient-to-r from-[#2f80ed] to-[#74aef8] transition-all duration-700"
                                                     style={{ width: `${item.percent}%` }}
@@ -303,13 +303,13 @@ export default function Unit19ExpensesModal({ open, onClose }: Props) {
                             </div>
                         </div>
 
-                        <div className="mt-3 rounded-[18px] border border-white/[0.78] bg-white/[0.58] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
-                            <div className="mb-2.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">Filters</div>
-                            <div className="space-y-2">
+                        <div className="mt-2.5 rounded-[16px] border border-white/[0.78] bg-white/[0.58] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                            <div className="mb-2 text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">Filters</div>
+                            <div className="space-y-1.5">
                                 <select
                                     value={categoryFilter}
                                     onChange={(event) => setCategoryFilter(event.target.value as ExpenseFilter)}
-                                    className="w-full rounded-2xl border border-[#ccd9e8] bg-white/[0.76] px-3 py-2 text-[13px] text-[#0b1623] outline-none transition focus:border-[#2f80ed] focus:ring-2 focus:ring-[#2f80ed]/[0.12]"
+                                    className="w-full rounded-xl border border-[#ccd9e8] bg-white/[0.76] px-3 py-1.5 text-[12.5px] text-[#0b1623] outline-none transition focus:border-[#2f80ed] focus:ring-2 focus:ring-[#2f80ed]/[0.12]"
                                 >
                                     <option value="all">All categories</option>
                                     {categoryOrder.map((category) => (
@@ -322,7 +322,7 @@ export default function Unit19ExpensesModal({ open, onClose }: Props) {
                                 <select
                                     value={statusFilter}
                                     onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
-                                    className="w-full rounded-2xl border border-[#ccd9e8] bg-white/[0.76] px-3 py-2 text-[13px] text-[#0b1623] outline-none transition focus:border-[#2f80ed] focus:ring-2 focus:ring-[#2f80ed]/[0.12]"
+                                    className="w-full rounded-xl border border-[#ccd9e8] bg-white/[0.76] px-3 py-1.5 text-[12.5px] text-[#0b1623] outline-none transition focus:border-[#2f80ed] focus:ring-2 focus:ring-[#2f80ed]/[0.12]"
                                 >
                                     <option value="active">Active only</option>
                                     <option value="all">All rows</option>
@@ -339,31 +339,17 @@ export default function Unit19ExpensesModal({ open, onClose }: Props) {
                                         value={query}
                                         onChange={(event) => setQuery(event.target.value)}
                                         placeholder="Search costs, issuer, notes..."
-                                        className="w-full rounded-2xl border border-[#ccd9e8] bg-white/[0.76] py-2 pl-8 pr-3 text-[13px] text-[#0b1623] outline-none transition placeholder:text-[#9ab0c4] focus:border-[#2f80ed] focus:ring-2 focus:ring-[#2f80ed]/[0.12]"
+                                        className="w-full rounded-xl border border-[#ccd9e8] bg-white/[0.76] py-1.5 pl-8 pr-3 text-[12.5px] text-[#0b1623] outline-none transition placeholder:text-[#9ab0c4] focus:border-[#2f80ed] focus:ring-2 focus:ring-[#2f80ed]/[0.12]"
                                     />
                                 </div>
                             </div>
                         </div>
                     </aside>
 
-                    <div className="h-full min-h-0 overflow-y-auto overscroll-contain p-4">
-                        <div className="mb-3 flex items-center justify-between gap-3">
-                            <div>
-                                <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">Editable ledger</div>
-                                <div className="text-[13px] text-[#607993]">Changes are local in this version.</div>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => setExpenses(unit19Expenses)}
-                                className="rounded-2xl border border-white/[0.78] bg-white/[0.58] px-3 py-2 text-xs font-semibold text-[#4e6880] transition hover:-translate-y-0.5 hover:border-[#2f80ed]/[0.24] hover:bg-white/[0.82] hover:text-[#2060cc] active:scale-[0.97]"
-                            >
-                                Reset local edits
-                            </button>
-                        </div>
-
-                        <div className="overflow-x-auto rounded-[20px] border border-white/[0.78] bg-white/[0.58] shadow-[0_16px_46px_rgba(41,73,112,0.08),inset_0_1px_0_rgba(255,255,255,0.92)]">
-                            <div className="min-w-[840px]">
-                                <div className="grid grid-cols-[minmax(250px,1.7fr)_130px_90px_95px_110px] gap-0 border-b border-[#d8e8f6]/[0.82] bg-white/[0.70] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#7a90a8]">
+                    <div className="h-full min-h-0 overflow-y-auto overscroll-contain p-3.5">
+                        <div className="overflow-x-auto rounded-[18px] border border-white/[0.78] bg-white/[0.58] shadow-[0_14px_40px_rgba(41,73,112,0.08),inset_0_1px_0_rgba(255,255,255,0.92)]">
+                            <div className="min-w-[820px]">
+                                <div className="grid grid-cols-[minmax(250px,1.75fr)_125px_85px_90px_105px] gap-0 border-b border-[#d8e8f6]/[0.82] bg-white/[0.70] px-3.5 py-2 text-[9.5px] font-semibold uppercase tracking-[0.12em] text-[#7a90a8]">
                                     <div>Cost</div>
                                     <div>Category</div>
                                     <div>EUR</div>
@@ -379,7 +365,7 @@ export default function Unit19ExpensesModal({ open, onClose }: Props) {
                                             <div
                                                 key={expense.id}
                                                 className={[
-                                                    "grid grid-cols-[minmax(250px,1.7fr)_130px_90px_95px_110px] gap-0 px-4 py-2.5 transition hover:bg-white/[0.55]",
+                                                    "grid grid-cols-[minmax(250px,1.75fr)_125px_85px_90px_105px] gap-0 px-3.5 py-2 transition hover:bg-white/[0.55]",
                                                     expense.status === "excluded" ? "opacity-55" : "",
                                                 ].join(" ")}
                                             >
@@ -389,25 +375,25 @@ export default function Unit19ExpensesModal({ open, onClose }: Props) {
                                                             <input
                                                                 value={expense.title}
                                                                 onChange={(event) => patchExpense(expense.id, { title: event.target.value })}
-                                                                className="w-full rounded-xl border border-[#ccd9e8] bg-white/[0.86] px-3 py-1.5 text-[13px] font-semibold text-[#0b1623] outline-none focus:border-[#2f80ed]"
+                                                                className="w-full rounded-lg border border-[#ccd9e8] bg-white/[0.86] px-2.5 py-1.5 text-[12.5px] font-semibold text-[#0b1623] outline-none focus:border-[#2f80ed]"
                                                             />
                                                             <input
                                                                 value={expense.issuer}
                                                                 onChange={(event) => patchExpense(expense.id, { issuer: event.target.value })}
-                                                                className="w-full rounded-xl border border-[#ccd9e8] bg-white/[0.86] px-3 py-1.5 text-[11px] text-[#4e6880] outline-none focus:border-[#2f80ed]"
+                                                                className="w-full rounded-lg border border-[#ccd9e8] bg-white/[0.86] px-2.5 py-1.5 text-[10.5px] text-[#4e6880] outline-none focus:border-[#2f80ed]"
                                                             />
                                                             <textarea
                                                                 value={expense.note}
                                                                 onChange={(event) => patchExpense(expense.id, { note: event.target.value })}
                                                                 rows={2}
-                                                                className="w-full rounded-xl border border-[#ccd9e8] bg-white/[0.86] px-3 py-1.5 text-[11px] text-[#4e6880] outline-none focus:border-[#2f80ed]"
+                                                                className="w-full rounded-lg border border-[#ccd9e8] bg-white/[0.86] px-2.5 py-1.5 text-[10.5px] text-[#4e6880] outline-none focus:border-[#2f80ed]"
                                                             />
                                                         </div>
                                                     ) : (
                                                         <>
-                                                            <div className="truncate text-[13px] font-semibold leading-tight text-[#0b1623]">{expense.title}</div>
-                                                            <div className="mt-0.5 truncate text-[11px] leading-snug text-[#607993]">{expense.issuer || "—"}</div>
-                                                            <div className="mt-0.5 max-h-8 overflow-hidden text-[11px] leading-4 text-[#7a90a8]">{expense.note || "No notes"}</div>
+                                                            <div className="truncate text-[12.5px] font-semibold leading-tight text-[#0b1623]">{expense.title}</div>
+                                                            <div className="mt-0.5 truncate text-[10.5px] leading-snug text-[#607993]">{expense.issuer || "—"}</div>
+                                                            <div className="mt-0.5 max-h-7 overflow-hidden text-[10.5px] leading-3.5 text-[#7a90a8]">{expense.note || "No notes"}</div>
                                                         </>
                                                     )}
                                                 </div>
@@ -417,7 +403,7 @@ export default function Unit19ExpensesModal({ open, onClose }: Props) {
                                                         <select
                                                             value={expense.category}
                                                             onChange={(event) => patchExpense(expense.id, { category: event.target.value as Unit19ExpenseCategory })}
-                                                            className="w-full rounded-xl border border-[#ccd9e8] bg-white/[0.86] px-2 py-1.5 text-[11px] text-[#0b1623] outline-none focus:border-[#2f80ed]"
+                                                            className="w-full rounded-lg border border-[#ccd9e8] bg-white/[0.86] px-2 py-1.5 text-[10.5px] text-[#0b1623] outline-none focus:border-[#2f80ed]"
                                                         >
                                                             {categoryOrder.map((category) => (
                                                                 <option key={category} value={category}>
@@ -426,7 +412,7 @@ export default function Unit19ExpensesModal({ open, onClose }: Props) {
                                                             ))}
                                                         </select>
                                                     ) : (
-                                                        <span className="rounded-full border border-[#ccd9e8] bg-white/[0.58] px-2 py-1 text-[10px] font-semibold text-[#4e6880]">
+                                                        <span className="rounded-full border border-[#ccd9e8] bg-white/[0.58] px-2 py-0.5 text-[9.5px] font-semibold text-[#4e6880]">
                                                             {categoryLabels[expense.category]}
                                                         </span>
                                                     )}
@@ -443,7 +429,7 @@ export default function Unit19ExpensesModal({ open, onClose }: Props) {
                                                                     const eur = Number(event.target.value || 0);
                                                                     patchExpense(expense.id, { eur, bgn: recalcFromEur(eur) });
                                                                 }}
-                                                                className="w-full rounded-xl border border-[#ccd9e8] bg-white/[0.86] px-2 py-1.5 text-[11px] text-[#0b1623] outline-none focus:border-[#2f80ed]"
+                                                                className="w-full rounded-lg border border-[#ccd9e8] bg-white/[0.86] px-2 py-1.5 text-[10.5px] text-[#0b1623] outline-none focus:border-[#2f80ed]"
                                                             />
                                                             <input
                                                                 value={expense.bgn}
@@ -453,13 +439,13 @@ export default function Unit19ExpensesModal({ open, onClose }: Props) {
                                                                     const bgn = Number(event.target.value || 0);
                                                                     patchExpense(expense.id, { bgn, eur: recalcFromBgn(bgn) });
                                                                 }}
-                                                                className="w-full rounded-xl border border-[#ccd9e8] bg-white/[0.86] px-2 py-1.5 text-[11px] text-[#0b1623] outline-none focus:border-[#2f80ed]"
+                                                                className="w-full rounded-lg border border-[#ccd9e8] bg-white/[0.86] px-2 py-1.5 text-[10.5px] text-[#0b1623] outline-none focus:border-[#2f80ed]"
                                                             />
                                                         </div>
                                                     ) : (
                                                         <>
-                                                            <div className="text-[13px] font-semibold text-[#0b1623]">{formatEur(expense.eur)}</div>
-                                                            <div className="mt-0.5 text-[10.5px] text-[#7a90a8]">{formatBgn(expense.bgn)}</div>
+                                                            <div className="text-[12.5px] font-semibold text-[#0b1623]">{formatEur(expense.eur)}</div>
+                                                            <div className="mt-0.5 text-[10px] text-[#7a90a8]">{formatBgn(expense.bgn)}</div>
                                                         </>
                                                     )}
                                                 </div>
@@ -469,14 +455,14 @@ export default function Unit19ExpensesModal({ open, onClose }: Props) {
                                                         <select
                                                             value={expense.status}
                                                             onChange={(event) => patchExpense(expense.id, { status: event.target.value as Unit19ExpenseStatus })}
-                                                            className="w-full rounded-xl border border-[#ccd9e8] bg-white/[0.86] px-2 py-1.5 text-[11px] text-[#0b1623] outline-none focus:border-[#2f80ed]"
+                                                            className="w-full rounded-lg border border-[#ccd9e8] bg-white/[0.86] px-2 py-1.5 text-[10.5px] text-[#0b1623] outline-none focus:border-[#2f80ed]"
                                                         >
                                                             <option value="paid">Paid</option>
                                                             <option value="clarify">Clarify</option>
                                                             <option value="excluded">Excluded</option>
                                                         </select>
                                                     ) : (
-                                                        <span className={["rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.10em]", getStatusClasses(expense.status)].join(" ")}>
+                                                        <span className={["rounded-full border px-2 py-0.5 text-[9.5px] font-semibold uppercase tracking-[0.10em]", getStatusClasses(expense.status)].join(" ")}>
                                                             {statusLabels[expense.status]}
                                                         </span>
                                                     )}
@@ -486,7 +472,7 @@ export default function Unit19ExpensesModal({ open, onClose }: Props) {
                                                     <button
                                                         type="button"
                                                         onClick={() => setEditingId(editing ? null : expense.id)}
-                                                        className="rounded-xl border border-[#ccd9e8] bg-white/[0.62] px-2.5 py-1.5 text-[11px] font-semibold text-[#4e6880] transition hover:border-[#2f80ed]/[0.32] hover:bg-white/[0.88] hover:text-[#2060cc] active:scale-[0.97]"
+                                                        className="rounded-lg border border-[#ccd9e8] bg-white/[0.62] px-2 py-1 text-[10.5px] font-semibold text-[#4e6880] transition hover:border-[#2f80ed]/[0.32] hover:bg-white/[0.88] hover:text-[#2060cc] active:scale-[0.97]"
                                                     >
                                                         {editing ? "Done" : "Edit"}
                                                     </button>
@@ -497,7 +483,7 @@ export default function Unit19ExpensesModal({ open, onClose }: Props) {
                                                                 status: expense.status === "excluded" ? "paid" : "excluded",
                                                             })
                                                         }
-                                                        className="rounded-xl border border-[#ccd9e8] bg-white/[0.45] px-2.5 py-1.5 text-[11px] font-semibold text-[#7a90a8] transition hover:bg-white/[0.82] active:scale-[0.97]"
+                                                        className="rounded-lg border border-[#ccd9e8] bg-white/[0.45] px-2 py-1 text-[10.5px] font-semibold text-[#7a90a8] transition hover:bg-white/[0.82] active:scale-[0.97]"
                                                     >
                                                         {expense.status === "excluded" ? "Include" : "Exclude"}
                                                     </button>
