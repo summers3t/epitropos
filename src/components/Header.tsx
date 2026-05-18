@@ -205,13 +205,55 @@ export default function Header({
           </Link>
 
           <div className="flex min-w-0 items-center gap-6">
-            <nav className="hidden items-center gap-8 text-[12px] uppercase tracking-[0.18em] text-white/62 md:flex">
+            <nav className="hidden items-center gap-3 text-[12px] uppercase tracking-[0.16em] text-white/62 lg:flex">
+              {isLoggedIn && isAdmin ? (
+                <>
+                  <span className="mr-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/38">
+                    Admin workspace
+                  </span>
+
+                  <Link
+                    href="/admin/screening"
+                    className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/[0.03] px-3 py-1.5 text-[11px] normal-case tracking-normal text-white/68 transition hover:-translate-y-0.5 hover:border-stone/30 hover:bg-white/[0.07] hover:text-white active:translate-y-0 active:scale-[0.985]"
+                  >
+                    <span>Screening</span>
+                    <Badge count={adminCounts.screening} />
+                  </Link>
+
+                  <Link
+                    href="/admin/orders"
+                    className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/[0.03] px-3 py-1.5 text-[11px] normal-case tracking-normal text-white/68 transition hover:-translate-y-0.5 hover:border-stone/30 hover:bg-white/[0.07] hover:text-white active:translate-y-0 active:scale-[0.985]"
+                  >
+                    <span>Orders</span>
+                    <Badge count={adminCounts.orders} />
+                  </Link>
+
+                  <Link
+                    href="/admin/cases"
+                    className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/[0.03] px-3 py-1.5 text-[11px] normal-case tracking-normal text-white/68 transition hover:-translate-y-0.5 hover:border-stone/30 hover:bg-white/[0.07] hover:text-white active:translate-y-0 active:scale-[0.985]"
+                  >
+                    <span>Cases</span>
+                    <Badge count={adminCounts.cases} />
+                  </Link>
+
+                  <Link
+                    href="/admin/unit-19-roadmap"
+                    className="inline-flex items-center gap-2 rounded-xl border border-stone/30 bg-stone/10 px-3 py-1.5 text-[11px] normal-case tracking-normal text-stone transition hover:-translate-y-0.5 hover:border-stone/45 hover:bg-stone/15 hover:text-white active:translate-y-0 active:scale-[0.985]"
+                  >
+                    <span>Unit 19</span>
+                  </Link>
+
+                  <span className="mx-2 h-5 w-px bg-white/12" />
+                </>
+              ) : null}
+
               <Link
                 href="/plans"
                 className="relative transition duration-300 hover:text-white after:absolute after:-bottom-1.5 after:left-0 after:h-px after:w-0 after:bg-stone/80 after:transition-all after:duration-300 hover:after:w-full"
               >
                 Plans
               </Link>
+
               <Link
                 href="/how-it-works"
                 className="relative transition duration-300 hover:text-white after:absolute after:-bottom-1.5 after:left-0 after:h-px after:w-0 after:bg-stone/80 after:transition-all after:duration-300 hover:after:w-full"
@@ -220,7 +262,7 @@ export default function Header({
               </Link>
             </nav>
 
-            <div className="ml-2 flex shrink-0 items-center gap-3">
+            <div className="ml-2 flex shrink-0 items-center gap-2">
               {isLoggedIn ? (
                 <>
                   <Link
@@ -284,44 +326,7 @@ export default function Header({
           </div>
         </div>
 
-        {isLoggedIn && isAdmin ? (
-          <div className="mt-3 flex items-center gap-3 border-t border-white/10 pt-3">
-            <span className="text-[10px] uppercase tracking-[0.16em] text-white/40">
-              Admin workspace
-            </span>
 
-            <Link
-              href="/admin/screening"
-              className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-3 py-1.5 text-xs transition hover:bg-white/5"
-            >
-              <span>Screening</span>
-              <Badge count={adminCounts.screening} />
-            </Link>
-
-            <Link
-              href="/admin/orders"
-              className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-3 py-1.5 text-xs transition hover:bg-white/5"
-            >
-              <span>Orders</span>
-              <Badge count={adminCounts.orders} />
-            </Link>
-
-            <Link
-              href="/admin/cases"
-              className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-3 py-1.5 text-xs transition hover:-translate-y-0.5 hover:border-stone/30 hover:bg-white/5 active:translate-y-0 active:scale-[0.985]"
-            >
-              <span>Cases</span>
-              <Badge count={adminCounts.cases} />
-            </Link>
-
-            <Link
-              href="/admin/unit-19-roadmap"
-              className="inline-flex items-center gap-2 rounded-xl border border-stone/25 bg-stone/10 px-3 py-1.5 text-xs text-stone transition hover:-translate-y-0.5 hover:border-stone/45 hover:bg-stone/15 hover:text-white active:translate-y-0 active:scale-[0.985]"
-            >
-              <span>Unit 19</span>
-            </Link>
-          </div>
-        ) : null}
       </div>
     </header>
   );

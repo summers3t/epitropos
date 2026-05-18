@@ -250,7 +250,7 @@ export default function Unit19RoadmapWorkspace({ userName, userAvatarUrl }: Prop
     }
 
     return (
-        <section className="relative -mx-6 -mb-12 -mt-36 min-h-screen overflow-hidden bg-[#edf3fa] px-4 pb-14 pt-36 text-[#0f1c2e] sm:px-5">
+        <section className="relative -mx-10 -mb-12 -mt-38 min-h-screen overflow-hidden bg-[#edf3fa] px-4 pb-14 pt-24 text-[#0f1c2e] sm:px-5">
 
             {/* ── Background ───────────────────────────────────────────────── */}
             <div className="pointer-events-none absolute inset-0">
@@ -265,8 +265,8 @@ export default function Unit19RoadmapWorkspace({ userName, userAvatarUrl }: Prop
             <div className="relative mx-auto grid max-w-[1480px] gap-5 lg:grid-cols-[104px_minmax(0,1fr)]">
 
                 {/* ── Sidebar ──────────────────────────────────────────────── */}
-                <aside className="hidden lg:fixed lg:left-[max(1.25rem,calc((100vw-1480px)/2+1.25rem))] lg:top-[132px] lg:z-40 lg:block lg:w-[104px]">
-                    <div className="flex max-h-[calc(100vh-152px)] flex-col justify-between overflow-y-auto rounded-[24px] border border-white/[0.88] bg-white/[0.68] p-2.5 shadow-[0_18px_56px_rgba(41,73,112,0.12),inset_0_1px_0_rgba(255,255,255,0.94)] backdrop-blur-2xl">
+                <aside className="hidden lg:fixed lg:left-[max(1.25rem,calc((100vw-1480px)/2+1.25rem))] lg:top-[88px] lg:z-40 lg:block lg:w-[104px]">
+                    <div className="flex max-h-[calc(100vh-136px)] flex-col justify-between overflow-y-auto rounded-[24px] border border-white/[0.88] bg-white/[0.68] p-2.5 shadow-[0_18px_56px_rgba(41,73,112,0.12),inset_0_1px_0_rgba(255,255,255,0.94)] backdrop-blur-2xl">
                         <div className="flex flex-col items-center gap-2">
                             <Link href="/" className="mb-1 mt-1 flex justify-center">
                                 <Image
