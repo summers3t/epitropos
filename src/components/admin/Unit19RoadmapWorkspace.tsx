@@ -14,6 +14,7 @@ import {
     unit19KeyMetrics,
     unit19RoadmapStages,
 } from "@/lib/admin/unit19RoadmapData";
+import Unit19ExpensesModal from "@/components/admin/Unit19ExpensesModal";
 
 type FilterMode = "all" | "current" | "upcoming" | "completed";
 type FocusStatus = Exclude<FilterMode, "all">;
@@ -188,6 +189,7 @@ export default function Unit19RoadmapWorkspace(props: Props) {
     const [filterMode, setFilterMode] = useState<FilterMode>("all");
     const [focusedStageStatus, setFocusedStageStatus] = useState<FocusStatus | null>(null);
     const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+    const [expensesOpen, setExpensesOpen] = useState(false);
 
     const visibleStages = useMemo(() => {
         if (filterMode === "all") return stages;
@@ -474,7 +476,10 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                                         <button
                                             key={mode}
                                             type="button"
-                                            onClick={() => setFilterMode(mode)}
+                                            onClick={() => {
+                                                setFocusedStageStatus(null);
+                                                setFilterMode(mode);
+                                            }}
                                             aria-pressed={active}
                                             className={[
                                                 "relative overflow-hidden rounded-[13px] border px-4 py-2.5 text-[12px] font-semibold transition-all duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f80ed]/40 active:scale-[0.96]",
@@ -490,6 +495,16 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                                         </button>
                                     );
                                 })}
+
+                                <span className="mx-1 hidden h-7 w-px bg-[#ccd9e8]/80 sm:block" />
+
+                                <button
+                                    type="button"
+                                    onClick={() => setExpensesOpen(true)}
+                                    className="relative overflow-hidden rounded-[13px] border border-[#a68b4a]/[0.28] bg-[#a68b4a]/[0.10] px-4 py-2.5 text-[12px] font-semibold text-[#7a6228] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-[#a68b4a]/[0.42] hover:bg-[#a68b4a]/[0.16] hover:text-[#0f1c2e] hover:shadow-[0_12px_30px_rgba(166,139,74,0.18)] active:scale-[0.96]"
+                                >
+                                    Expenses
+                                </button>
                             </div>
                         </div>
 
@@ -850,6 +865,10 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                             </div>
                         </div>
                     </section>
+                    <Unit19ExpensesModal
+                        open={expensesOpen}
+                        onClose={() => setExpensesOpen(false)}
+                    />
 
                 </main>
             </div>
