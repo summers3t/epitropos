@@ -41,17 +41,6 @@ function createEmptyTask(stageId: string): Unit19RoadmapTask {
 
 // ─── SVG Icons ────────────────────────────────────────────────────────────────
 
-const IconMap = ({ c = "w-[18px] h-[18px]" }: { c?: string }) => (
-    <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
-        <circle cx="12" cy="9" r="2.5" />
-    </svg>
-);
-const IconLogOut = ({ c = "w-3.5 h-3.5" }: { c?: string }) => (
-    <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
-    </svg>
-);
 const IconCheck = ({ c = "w-3 h-3" }: { c?: string }) => (
     <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
         <polyline points="20 6 9 17 4 12" />
@@ -186,7 +175,8 @@ function matchesFocusedStatus(stageStatus: RoadmapStageStatus, focusedStatus: Fo
     return stageStatus === focusedStatus;
 }
 
-export default function Unit19RoadmapWorkspace({ userName, userAvatarUrl }: Props) {
+export default function Unit19RoadmapWorkspace(props: Props) {
+    void props;
     const [stages, setStages] = useState<Unit19RoadmapStage[]>(unit19RoadmapStages);
     const [selectedStageId, setSelectedStageId] = useState(
         unit19RoadmapStages.find((s) => s.status === "current")?.id ?? unit19RoadmapStages[0]?.id,
@@ -246,7 +236,10 @@ export default function Unit19RoadmapWorkspace({ userName, userAvatarUrl }: Prop
             matchesFocusedStatus(stage.status, status),
         );
 
-        const targetStage = matchingStages[matchingStages.length - 1];
+        const targetStage =
+            status === "completed"
+                ? matchingStages[matchingStages.length - 1]
+                : matchingStages[0];
 
         if (!targetStage) {
             return;
