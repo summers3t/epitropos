@@ -16,6 +16,8 @@ import {
 } from "@/lib/admin/unit19RoadmapData";
 
 type FilterMode = "all" | "current" | "upcoming" | "completed";
+type FocusStatus = Exclude<FilterMode, "all">;
+
 const BACKGROUND_IMAGE = "/images/unit19-roadmap-bg.jpg";
 
 // ─── Label helpers ────────────────────────────────────────────────────────────
@@ -146,16 +148,16 @@ function stageMarker(status: RoadmapStageStatus, selected: boolean) {
 
 function stageBadge(status: RoadmapStageStatus) {
     if (status === "completed") return "border-[#20a76b]/[0.22] bg-[#20a76b]/[0.09] text-[#0f7448]";
-    if (status === "current")   return "border-[#2f80ed]/[0.26] bg-[#2f80ed]/[0.09] text-[#1560bc]";
-    if (status === "deferred")  return "border-[#cfa090]/[0.28] bg-[#cfa090]/[0.09] text-[#8c5947]";
+    if (status === "current") return "border-[#2f80ed]/[0.26] bg-[#2f80ed]/[0.09] text-[#1560bc]";
+    if (status === "deferred") return "border-[#cfa090]/[0.28] bg-[#cfa090]/[0.09] text-[#8c5947]";
     return "border-[#9ab0c4]/[0.26] bg-[#9ab0c4]/[0.09] text-[#4e6880]";
 }
 
 function taskBadge(status: RoadmapTaskStatus) {
-    if (status === "done")      return "border-[#20a76b]/[0.22] bg-[#20a76b]/[0.09] text-[#0f7448]";
-    if (status === "pending")   return "border-[#2f80ed]/[0.26] bg-[#2f80ed]/[0.09] text-[#1560bc]";
+    if (status === "done") return "border-[#20a76b]/[0.22] bg-[#20a76b]/[0.09] text-[#0f7448]";
+    if (status === "pending") return "border-[#2f80ed]/[0.26] bg-[#2f80ed]/[0.09] text-[#1560bc]";
     if (status === "scheduled") return "border-[#8a65cc]/[0.26] bg-[#8a65cc]/[0.09] text-[#5e38a0]";
-    if (status === "deferred")  return "border-[#cfa090]/[0.28] bg-[#cfa090]/[0.09] text-[#8c5947]";
+    if (status === "deferred") return "border-[#cfa090]/[0.28] bg-[#cfa090]/[0.09] text-[#8c5947]";
     return "border-[#9ab0c4]/[0.26] bg-[#9ab0c4]/[0.09] text-[#4e6880]";
 }
 
@@ -170,12 +172,19 @@ const TOP_FILTERS: { mode: FilterMode; label: string }[] = [
     { mode: "completed", label: "Completed" },
 ];
 
-const SIDEBAR_FILTERS: { mode: FilterMode; label: string }[] = [
-    { mode: "all", label: "Full" },
+const SIDEBAR_FILTERS: { mode: FocusStatus; label: string }[] = [
     { mode: "current", label: "Current" },
     { mode: "upcoming", label: "Upcoming" },
     { mode: "completed", label: "Completed" },
 ];
+
+function matchesFocusedStatus(stageStatus: RoadmapStageStatus, focusedStatus: FocusStatus) {
+    if (focusedStatus === "upcoming") {
+        return stageStatus === "upcoming" || stageStatus === "deferred";
+    }
+
+    return stageStatus === focusedStatus;
+}
 
 export default function Unit19RoadmapWorkspace({ userName, userAvatarUrl }: Props) {
     const [stages, setStages] = useState<Unit19RoadmapStage[]>(unit19RoadmapStages);
@@ -186,6 +195,7 @@ export default function Unit19RoadmapWorkspace({ userName, userAvatarUrl }: Prop
         () => new Set(unit19RoadmapStages.filter((s) => s.status === "current").map((s) => s.id)),
     );
     const [filterMode, setFilterMode] = useState<FilterMode>("all");
+    const [focusedStageStatus, setFocusedStageStatus] = useState<FocusStatus | null>(null);
     const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
 
     const visibleStages = useMemo(() => {
@@ -198,9 +208,9 @@ export default function Unit19RoadmapWorkspace({ userName, userAvatarUrl }: Prop
     const taskTotals = useMemo(() => {
         const all = stages.flatMap((s) => s.tasks);
         return {
-            done:   all.filter((t) => t.status === "done").length,
-            active: all.filter((t) => ["pending","scheduled","open"].includes(t.status)).length,
-            total:  all.length,
+            done: all.filter((t) => t.status === "done").length,
+            active: all.filter((t) => ["pending", "scheduled", "open"].includes(t.status)).length,
+            total: all.length,
         };
     }, [stages]);
 
@@ -219,11 +229,39 @@ export default function Unit19RoadmapWorkspace({ userName, userAvatarUrl }: Prop
     }
 
     function collapseAll() {
+        setFocusedStageStatus(null);
         setExpandedStageIds(new Set());
     }
 
     function scrollToTop() {
+        setFocusedStageStatus(null);
         window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function focusStageStatus(status: FocusStatus) {
+        setFilterMode("all");
+        setFocusedStageStatus(status);
+
+        const matchingStages = stages.filter((stage) =>
+            matchesFocusedStatus(stage.status, status),
+        );
+
+        const targetStage = matchingStages[matchingStages.length - 1];
+
+        if (!targetStage) {
+            return;
+        }
+
+        setSelectedStageId(targetStage.id);
+
+        window.setTimeout(() => {
+            const element = document.getElementById(`roadmap-stage-${targetStage.id}`);
+
+            element?.scrollIntoView({
+                behavior: "smooth",
+                block: "center",
+            });
+        }, 40);
     }
 
     function selectStage(id: string) {
@@ -279,23 +317,21 @@ export default function Unit19RoadmapWorkspace({ userName, userAvatarUrl }: Prop
                                 />
                             </Link>
 
-                            <nav className="flex w-full flex-col gap-1.5" aria-label="Roadmap stage filters">
+                            <nav className="flex w-full flex-col gap-1.5" aria-label="Roadmap stage focus navigation">
                                 {SIDEBAR_FILTERS.map(({ mode, label }) => {
-                                    const active = filterMode === mode;
+                                    const active = focusedStageStatus === mode;
                                     const Icon =
-                                        mode === "all"
-                                            ? IconMap
-                                            : mode === "current"
-                                                ? IconClock
-                                                : mode === "upcoming"
-                                                    ? IconTrend
-                                                    : IconCheckSquare;
+                                        mode === "current"
+                                            ? IconClock
+                                            : mode === "upcoming"
+                                                ? IconTrend
+                                                : IconCheckSquare;
 
                                     return (
                                         <button
                                             key={mode}
                                             type="button"
-                                            onClick={() => setFilterMode(mode)}
+                                            onClick={() => focusStageStatus(mode)}
                                             aria-pressed={active}
                                             className={[
                                                 "group flex flex-col items-center justify-center gap-1 rounded-2xl border px-2 py-2.5 text-[10px] font-semibold transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f80ed]/40 active:scale-[0.96]",
@@ -329,35 +365,6 @@ export default function Unit19RoadmapWorkspace({ userName, userAvatarUrl }: Prop
                                     Top
                                 </button>
                             </div>
-                        </div>
-
-                        <div className="flex flex-col gap-1.5 pt-3">
-                            <div className="rounded-[15px] border border-white/[0.75] bg-white/[0.65] p-2.5 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
-                                {userAvatarUrl ? (
-                                    // Google profile images are external. Use plain img to avoid configuring
-                                    // lh3.googleusercontent.com in next.config remotePatterns.
-                                    // eslint-disable-next-line @next/next/no-img-element
-                                    <img
-                                        src={userAvatarUrl}
-                                        alt={userName || "Admin"}
-                                        referrerPolicy="no-referrer"
-                                        className="mx-auto h-10 w-10 rounded-full object-cover ring-2 ring-white shadow-[0_6px_16px_rgba(41,73,112,0.16)]"
-                                    />
-                                ) : (
-                                    <div className="mx-auto h-10 w-10 rounded-full bg-gradient-to-br from-[#1a3050] to-[#2f80ed]" />
-                                )}
-                                <div className="mt-1.5 truncate text-[10px] font-semibold text-[#0f1c2e]">
-                                    {userName || "summers3t"}
-                                </div>
-                                <div className="text-[10px] text-[#7a90a8]">Admin</div>
-                            </div>
-                            <Link
-                                href="/auth/logout"
-                                className="flex items-center justify-center gap-1.5 rounded-[13px] border border-white/[0.72] bg-white/[0.45] py-2.5 text-[11px] font-medium text-[#7a90a8] transition hover:bg-white/[0.70] hover:text-[#c0392b]"
-                            >
-                                <IconLogOut />
-                                Log out
-                            </Link>
                         </div>
                     </div>
                 </aside>
@@ -423,31 +430,31 @@ export default function Unit19RoadmapWorkspace({ userName, userAvatarUrl }: Prop
                                 {unit19KeyMetrics
                                     .filter((metric) => metric.label !== "Progress")
                                     .map((metric, i) => {
-                                    const MetricIcons = [IconCalendar, IconTrend, IconCheckSquare];
-                                    const MetricIcon = MetricIcons[i] ?? IconClock;
-                                    const val =
-                                        metric.label === "Current focus"
-                                            ? "Post-acq."
-                                            : metric.label === "Active blockers"
-                                                ? `${taskTotals.active}`
-                                                : metric.value;
+                                        const MetricIcons = [IconCalendar, IconTrend, IconCheckSquare];
+                                        const MetricIcon = MetricIcons[i] ?? IconClock;
+                                        const val =
+                                            metric.label === "Current focus"
+                                                ? "Post-acq."
+                                                : metric.label === "Active blockers"
+                                                    ? `${taskTotals.active}`
+                                                    : metric.value;
 
-                                    return (
-                                        <div
-                                            key={metric.label}
-                                            className="rounded-[18px] border border-white/[0.85] bg-white/[0.76] p-4 shadow-[0_12px_38px_rgba(41,73,112,0.08),inset_0_1px_0_rgba(255,255,255,1)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_52px_rgba(47,128,237,0.10)]"
-                                        >
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-[#2f80ed]/[0.14] bg-[#2f80ed]/[0.09] text-[#2060cc]">
-                                                    <MetricIcon />
+                                        return (
+                                            <div
+                                                key={metric.label}
+                                                className="rounded-[18px] border border-white/[0.85] bg-white/[0.76] p-4 shadow-[0_12px_38px_rgba(41,73,112,0.08),inset_0_1px_0_rgba(255,255,255,1)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_52px_rgba(47,128,237,0.10)]"
+                                            >
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-[#2f80ed]/[0.14] bg-[#2f80ed]/[0.09] text-[#2060cc]">
+                                                        <MetricIcon />
+                                                    </div>
+                                                    <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#7a90a8]">{metric.label}</span>
                                                 </div>
-                                                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#7a90a8]">{metric.label}</span>
+                                                <div className="break-words text-[22px] font-semibold leading-tight text-[#0b1623]">{val}</div>
+                                                <div className="mt-1.5 text-[11px] leading-[1.35] text-[#7a90a8]">{metric.detail}</div>
                                             </div>
-                                            <div className="break-words text-[22px] font-semibold leading-tight text-[#0b1623]">{val}</div>
-                                            <div className="mt-1.5 text-[11px] leading-[1.35] text-[#7a90a8]">{metric.detail}</div>
-                                        </div>
-                                    );
-                                })}
+                                        );
+                                    })}
                             </div>
                         </div>
                     </header>
@@ -504,18 +511,25 @@ export default function Unit19RoadmapWorkspace({ userName, userAvatarUrl }: Prop
 
                             <div className="space-y-3">
                                 {visibleStages.map((stage) => {
-                                    const selected  = stage.id === selectedStageId;
-                                    const expanded  = expandedStageIds.has(stage.id);
+                                    const selected = stage.id === selectedStageId;
+                                    const expanded = expandedStageIds.has(stage.id);
                                     const activeTasks = stage.tasks.filter((t) =>
                                         ["pending", "scheduled", "open"].includes(t.status),
                                     );
 
                                     return (
                                         <article
+                                            id={`roadmap-stage-${stage.id}`}
                                             key={stage.id}
                                             className={[
                                                 "relative rounded-[17px] border transition-all duration-300 backdrop-blur-xl",
                                                 stageCard(stage.status, selected),
+                                                focusedStageStatus && !matchesFocusedStatus(stage.status, focusedStageStatus)
+                                                    ? "opacity-[0.34] saturate-[0.55] blur-[0.2px]"
+                                                    : "",
+                                                focusedStageStatus && matchesFocusedStatus(stage.status, focusedStageStatus)
+                                                    ? "ring-1 ring-[#2f80ed]/[0.24]"
+                                                    : "",
                                             ].join(" ")}
                                         >
                                             {/* Timeline marker */}
@@ -651,8 +665,8 @@ export default function Unit19RoadmapWorkspace({ userName, userAvatarUrl }: Prop
                                                                                                 task.status === "done"
                                                                                                     ? "border-2 border-[#20a76b] bg-[#20a76b]"
                                                                                                     : task.status === "pending"
-                                                                                                    ? "border-2 border-[#2f80ed] bg-transparent"
-                                                                                                    : "border-2 border-[#c8d5e2] bg-transparent",
+                                                                                                        ? "border-2 border-[#2f80ed] bg-transparent"
+                                                                                                        : "border-2 border-[#c8d5e2] bg-transparent",
                                                                                             ].join(" ")}>
                                                                                                 {task.status === "done" && <IconCheck c="w-2.5 h-2.5 text-white" />}
                                                                                                 {task.status === "pending" && (
