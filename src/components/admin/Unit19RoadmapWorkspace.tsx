@@ -15,6 +15,7 @@ import {
     unit19RoadmapStages,
 } from "@/lib/admin/unit19RoadmapData";
 import Unit19ExpensesModal from "@/components/admin/Unit19ExpensesModal";
+import Unit19DocumentsModal from "@/components/admin/Unit19DocumentsModal";
 
 type FilterMode = "all" | "current" | "upcoming" | "completed";
 type FocusStatus = Exclude<FilterMode, "all">;
@@ -231,6 +232,7 @@ export default function Unit19RoadmapWorkspace(props: Props) {
     const [focusedStageStatus, setFocusedStageStatus] = useState<FocusStatus | null>(null);
     const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
     const [expensesOpen, setExpensesOpen] = useState(false);
+    const [documentsOpen, setDocumentsOpen] = useState(false);
 
     const visibleStages = useMemo(() => {
         if (filterMode === "all") return stages;
@@ -547,6 +549,14 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                                     className="relative overflow-hidden rounded-[13px] border border-[#a68b4a]/[0.28] bg-[#a68b4a]/[0.10] px-4 py-2.5 text-[12px] font-semibold text-[#7a6228] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-[#a68b4a]/[0.42] hover:bg-[#a68b4a]/[0.16] hover:text-[#0f1c2e] hover:shadow-[0_12px_30px_rgba(166,139,74,0.18)] active:scale-[0.96]"
                                 >
                                     Expenses
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => setDocumentsOpen(true)}
+                                    className="relative overflow-hidden rounded-[13px] border border-[#2f80ed]/[0.26] bg-[#2f80ed]/[0.09] px-4 py-2.5 text-[12px] font-semibold text-[#1560bc] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-[#2f80ed]/[0.40] hover:bg-[#2f80ed]/[0.14] hover:text-[#0f1c2e] hover:shadow-[0_12px_30px_rgba(47,128,237,0.16)] active:scale-[0.96]"
+                                >
+                                    Documents
                                 </button>
                             </div>
                         </div>
@@ -907,6 +917,11 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                     <Unit19ExpensesModal
                         open={expensesOpen}
                         onClose={() => setExpensesOpen(false)}
+                    />
+
+                    <Unit19DocumentsModal
+                        open={documentsOpen}
+                        onClose={() => setDocumentsOpen(false)}
                     />
                 </main>
             </div>
