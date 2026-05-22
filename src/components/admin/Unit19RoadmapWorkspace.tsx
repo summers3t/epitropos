@@ -16,6 +16,7 @@ import {
 } from "@/lib/admin/unit19RoadmapData";
 import Unit19ExpensesModal from "@/components/admin/Unit19ExpensesModal";
 import Unit19DocumentsModal from "@/components/admin/Unit19DocumentsModal";
+import Unit19IncomeModal from "@/components/admin/Unit19IncomeModal";
 import Unit19CalendarModal from "@/components/admin/Unit19CalendarModal";
 
 type FilterMode = "all" | "current" | "upcoming" | "completed";
@@ -234,6 +235,7 @@ export default function Unit19RoadmapWorkspace(props: Props) {
     const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
     const [expensesOpen, setExpensesOpen] = useState(false);
     const [documentsOpen, setDocumentsOpen] = useState(false);
+    const [incomeOpen, setIncomeOpen] = useState(false);
     const [calendarOpen, setCalendarOpen] = useState(false);
 
     const visibleStages = useMemo(() => {
@@ -563,8 +565,16 @@ export default function Unit19RoadmapWorkspace(props: Props) {
 
                                 <button
                                     type="button"
-                                    onClick={() => setCalendarOpen(true)}
+                                    onClick={() => setIncomeOpen(true)}
                                     className="relative overflow-hidden rounded-[13px] border border-[#20a76b]/[0.24] bg-[#20a76b]/[0.08] px-4 py-2.5 text-[12px] font-semibold text-[#0f7448] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-[#20a76b]/[0.34] hover:bg-[#20a76b]/[0.13] hover:text-[#0f1c2e] hover:shadow-[0_12px_30px_rgba(32,167,107,0.14)] active:scale-[0.96]"
+                                >
+                                    Income
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => setCalendarOpen(true)}
+                                    className="relative overflow-hidden rounded-[13px] border border-[#8a65cc]/[0.24] bg-[#8a65cc]/[0.08] px-4 py-2.5 text-[12px] font-semibold text-[#5e38a0] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-[#8a65cc]/[0.34] hover:bg-[#8a65cc]/[0.13] hover:text-[#0f1c2e] hover:shadow-[0_12px_30px_rgba(138,101,204,0.14)] active:scale-[0.96]"
                                 >
                                     Calendar
                                 </button>
@@ -932,6 +942,11 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                     <Unit19DocumentsModal
                         open={documentsOpen}
                         onClose={() => setDocumentsOpen(false)}
+                    />
+
+                    <Unit19IncomeModal
+                        open={incomeOpen}
+                        onClose={() => setIncomeOpen(false)}
                     />
 
                     <Unit19CalendarModal
