@@ -113,18 +113,15 @@ export default function AdminDatePicker({ value, onChange, className }: AdminDat
     }, [open]);
 
     useEffect(() => {
-        if (value) setVisibleMonth(startOfMonth(parseLocalDate(value)));
-    }, [value]);
-
-    useEffect(() => {
         if (!open) return;
 
-        updatePopoverPosition();
+        const frame = window.requestAnimationFrame(updatePopoverPosition);
 
         window.addEventListener("resize", updatePopoverPosition);
         window.addEventListener("scroll", updatePopoverPosition, true);
 
         return () => {
+            window.cancelAnimationFrame(frame);
             window.removeEventListener("resize", updatePopoverPosition);
             window.removeEventListener("scroll", updatePopoverPosition, true);
         };
@@ -146,7 +143,15 @@ export default function AdminDatePicker({ value, onChange, className }: AdminDat
             <button
                 ref={buttonRef}
                 type="button"
-                onClick={() => setOpen((current) => !current)}
+                onClick={() => {
+                    const nextOpen = !open;
+
+                    if (nextOpen) {
+                        setVisibleMonth(startOfMonth(value ? parseLocalDate(value) : new Date()));
+                    }
+
+                    setOpen(nextOpen);
+                }}
                 className={[
                     "flex w-full items-center justify-between rounded-xl border border-[#ccd9e8] bg-white/[0.82] px-3 py-2 text-left text-[13px] text-[#0b1623] outline-none transition focus:border-[#2f80ed] focus:ring-2 focus:ring-[#2f80ed]/[0.12]",
                     className ?? "",
