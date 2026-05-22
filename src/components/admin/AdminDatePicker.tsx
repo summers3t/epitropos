@@ -63,9 +63,32 @@ function isSameDay(a: Date, b: Date) {
 
 export default function AdminDatePicker({ value, onChange, className }: AdminDatePickerProps) {
     const wrapperRef = useRef<HTMLDivElement | null>(null);
+    const buttonRef = useRef<HTMLButtonElement | null>(null);
     const selectedDate = value ? parseLocalDate(value) : new Date();
     const [open, setOpen] = useState(false);
     const [visibleMonth, setVisibleMonth] = useState(() => startOfMonth(selectedDate));
+    const [popoverPosition, setPopoverPosition] = useState({ left: 0, top: 0 });
+
+    function updatePopoverPosition() {
+        const rect = buttonRef.current?.getBoundingClientRect();
+        if (!rect || typeof window === "undefined") return;
+
+        const popoverWidth = 286;
+        const popoverHeight = 388;
+        const viewportPadding = 12;
+
+        const left = Math.min(
+            Math.max(viewportPadding, rect.left),
+            window.innerWidth - popoverWidth - viewportPadding,
+        );
+
+        const canOpenBelow = rect.bottom + 6 + popoverHeight <= window.innerHeight - viewportPadding;
+        const top = canOpenBelow
+            ? rect.bottom + 6
+            : Math.max(viewportPadding, rect.top - popoverHeight - 6);
+
+        setPopoverPosition({ left, top });
+    }
 
     useEffect(() => {
         if (!open) return;
@@ -93,6 +116,20 @@ export default function AdminDatePicker({ value, onChange, className }: AdminDat
         if (value) setVisibleMonth(startOfMonth(parseLocalDate(value)));
     }, [value]);
 
+    useEffect(() => {
+        if (!open) return;
+
+        updatePopoverPosition();
+
+        window.addEventListener("resize", updatePopoverPosition);
+        window.addEventListener("scroll", updatePopoverPosition, true);
+
+        return () => {
+            window.removeEventListener("resize", updatePopoverPosition);
+            window.removeEventListener("scroll", updatePopoverPosition, true);
+        };
+    }, [open]);
+
     const days = useMemo(() => {
         const calendarStart = startOfWeek(startOfMonth(visibleMonth));
         return Array.from({ length: 42 }, (_, index) => addDays(calendarStart, index));
@@ -107,6 +144,7 @@ export default function AdminDatePicker({ value, onChange, className }: AdminDat
     return (
         <div ref={wrapperRef} className="relative">
             <button
+                ref={buttonRef}
                 type="button"
                 onClick={() => setOpen((current) => !current)}
                 className={[
@@ -121,7 +159,13 @@ export default function AdminDatePicker({ value, onChange, className }: AdminDat
             </button>
 
             {open ? (
-                <div className="absolute left-0 top-[calc(100%+6px)] z-50 w-[286px] rounded-[18px] border border-[#ccd9e8] bg-white/[0.98] p-3 shadow-[0_22px_70px_rgba(6,16,29,0.20)] backdrop-blur-2xl">
+                <div
+                    className="fixed z-[9999] w-[286px] rounded-[18px] border border-[#ccd9e8] bg-white/[0.98] p-3 shadow-[0_22px_70px_rgba(6,16,29,0.20)] backdrop-blur-2xl"
+                    style={{
+                        left: popoverPosition.left,
+                        top: popoverPosition.top,
+                    }}
+                >
                     <div className="mb-3 flex items-center justify-between gap-2">
                         <button
                             type="button"
