@@ -9,6 +9,7 @@ import {
     type Unit19CalendarItemType,
     type Unit19CalendarLinkedRecord,
 } from "@/lib/admin/unit19CalendarData";
+import AdminDatePicker from "@/components/admin/AdminDatePicker";
 
 type Props = {
     open: boolean;
@@ -44,6 +45,8 @@ const priorityLabels: Record<Unit19CalendarItemPriority, string> = {
 };
 
 const typeOrder: Unit19CalendarItemType[] = ["task", "deadline", "appointment", "payment", "document_followup", "reminder"];
+
+const weekDayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 function todayStart() {
     const value = new Date();
@@ -716,7 +719,7 @@ function WeekView({
                             type="button"
                             onClick={() => onSelectDate(dayIso)}
                             className={[
-                                "rounded-[16px] border p-2 text-left transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.72] active:scale-[0.99]",
+                                "flex min-h-[160px] flex-col items-stretch justify-start rounded-[16px] border p-2 text-left transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.72] active:scale-[0.99]",
                                 selected ? "border-[#2f80ed]/[0.34] bg-[#2f80ed]/[0.07]" : "border-[#d8e8f6]/[0.82] bg-white/[0.42]",
                             ].join(" ")}
                         >
@@ -777,6 +780,17 @@ function MonthView({
                     Next
                 </button>
             </div>
+            <div className="mb-1.5 hidden grid-cols-7 gap-1.5 md:grid">
+                {weekDayLabels.map((label) => (
+                    <div
+                        key={label}
+                        className="px-2 py-1 text-left text-[9.5px] font-semibold uppercase tracking-[0.14em] text-[#7a90a8]"
+                    >
+                        {label}
+                    </div>
+                ))}
+            </div>
+
             <div className="grid gap-1.5 md:grid-cols-7">
                 {days.map((day) => {
                     const dayIso = toIsoDate(day);
@@ -790,7 +804,7 @@ function MonthView({
                             type="button"
                             onClick={() => onSelectDate(dayIso)}
                             className={[
-                                "min-h-[92px] rounded-[14px] border p-2 text-left transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.76] active:scale-[0.99]",
+                                "flex min-h-[92px] flex-col items-stretch justify-start rounded-[14px] border p-2 text-left transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.76] active:scale-[0.99]",
                                 selected ? "border-[#2f80ed]/[0.34] bg-[#2f80ed]/[0.07]" : "border-[#d8e8f6]/[0.82] bg-white/[0.42]",
                                 inMonth ? "" : "opacity-45",
                             ].join(" ")}
@@ -935,7 +949,10 @@ function CalendarEditor({
 
                     <label>
                         <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.12em] text-[#7a90a8]">Date</span>
-                        <input type="date" value={item.date} onChange={(event) => onChange({ ...item, date: event.target.value })} className="w-full rounded-xl border border-[#ccd9e8] bg-white/[0.82] px-3 py-2 text-[13px] text-[#0b1623] outline-none focus:border-[#2f80ed]" />
+                        <AdminDatePicker
+                            value={item.date}
+                            onChange={(date) => onChange({ ...item, date })}
+                        />
                     </label>
 
                     <label>
