@@ -1,15 +1,20 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import {
-    unit19CalendarItemsSeed,
-    type Unit19CalendarItem,
-    type Unit19CalendarItemPriority,
-    type Unit19CalendarItemStatus,
-    type Unit19CalendarItemType,
-    type Unit19CalendarLinkedRecord,
-} from "@/lib/admin/unit19CalendarData";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import AdminDatePicker from "@/components/admin/AdminDatePicker";
+import {
+    createManagedPropertyCalendarItem,
+    deleteManagedPropertyCalendarItem,
+    getManagedPropertyBySlug,
+    getManagedPropertyCalendarItems,
+    updateManagedPropertyCalendarItem,
+    type ManagedPropertyCalendarItem,
+    type ManagedPropertyCalendarItemInsert,
+    type ManagedPropertyCalendarItemPriority as Unit19CalendarItemPriority,
+    type ManagedPropertyCalendarItemStatus as Unit19CalendarItemStatus,
+    type ManagedPropertyCalendarItemType as Unit19CalendarItemType,
+    type ManagedPropertyCalendarLinkedRecord as Unit19CalendarLinkedRecord,
+} from "@/lib/admin/managedPropertiesApi";
 
 type Props = {
     open: boolean;
@@ -18,9 +23,21 @@ type Props = {
 
 type CalendarView = "agenda" | "week" | "month";
 type QuickFilter = "all" | "open" | "overdue" | "critical" | "done";
-type DraftCalendarItem = Omit<Unit19CalendarItem, "linkedRecords"> & { linkedText: string };
 
-const STORAGE_KEY = "epitropos.unit19.calendar.v1";
+type Unit19CalendarItem = {
+    id: string;
+    title: string;
+    date: string;
+    time?: string;
+    type: Unit19CalendarItemType;
+    status: Unit19CalendarItemStatus;
+    priority: Unit19CalendarItemPriority;
+    note?: string;
+    location?: string;
+    linkedRecords?: Unit19CalendarLinkedRecord[];
+};
+
+type DraftCalendarItem = Omit<Unit19CalendarItem, "linkedRecords"> & { linkedText: string };
 
 const typeLabels: Record<Unit19CalendarItemType, string> = {
     task: "Task",
@@ -45,8 +62,6 @@ const priorityLabels: Record<Unit19CalendarItemPriority, string> = {
 };
 
 const typeOrder: Unit19CalendarItemType[] = ["task", "deadline", "appointment", "payment", "document_followup", "reminder"];
-
-const weekDayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 function todayStart() {
     const value = new Date();
@@ -163,18 +178,36 @@ function textToLinkedRecords(value: string): Unit19CalendarLinkedRecord[] {
         });
 }
 
-function loadCalendarItems() {
-    if (typeof window === "undefined") return unit19CalendarItemsSeed;
-
-    try {
-        const saved = window.localStorage.getItem(STORAGE_KEY);
-        if (!saved) return unit19CalendarItemsSeed;
-        const parsed = JSON.parse(saved) as Unit19CalendarItem[];
-        return parsed.length ? parsed : unit19CalendarItemsSeed;
-    } catch {
-        return unit19CalendarItemsSeed;
-    }
+function dbItemToUi(item: ManagedPropertyCalendarItem): Unit19CalendarItem {
+    return {
+        id: item.id,
+        title: item.title,
+        date: item.item_date,
+        time: item.item_time ?? undefined,
+        type: item.type,
+        status: item.status,
+        priority: item.priority,
+        note: item.note ?? undefined,
+        location: item.location ?? undefined,
+        linkedRecords: Array.isArray(item.linked_records) ? item.linked_records : [],
+    };
 }
+
+function draftToDbPayload(managedPropertyId: string, item: DraftCalendarItem): ManagedPropertyCalendarItemInsert {
+    return {
+        managed_property_id: managedPropertyId,
+        title: item.title.trim(),
+        item_date: item.date,
+        item_time: item.time?.trim() || null,
+        type: item.type,
+        status: item.status,
+        priority: item.priority,
+        location: item.location?.trim() || null,
+        note: item.note?.trim() || null,
+        linked_records: textToLinkedRecords(item.linkedText),
+    };
+}
+
 
 function IconClose() {
     return (
@@ -205,7 +238,8 @@ function IconSearch() {
 }
 
 export default function Unit19CalendarModal({ open, onClose }: Props) {
-    const [items, setItems] = useState<Unit19CalendarItem[]>(() => loadCalendarItems());
+    const [managedPropertyId, setManagedPropertyId] = useState<string | null>(null);
+    const [items, setItems] = useState<Unit19CalendarItem[]>([]);
     const [view, setView] = useState<CalendarView>("agenda");
     const [quickFilter, setQuickFilter] = useState<QuickFilter>("open");
     const [typeFilter, setTypeFilter] = useState<Unit19CalendarItemType | "all">("all");
@@ -213,6 +247,25 @@ export default function Unit19CalendarModal({ open, onClose }: Props) {
     const [selectedDate, setSelectedDate] = useState(() => toIsoDate(new Date()));
     const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
     const [draftItem, setDraftItem] = useState<DraftCalendarItem | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const loadCalendar = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+
+        try {
+            const property = await getManagedPropertyBySlug("unit-19");
+            const calendarItems = await getManagedPropertyCalendarItems(property.id);
+            setManagedPropertyId(property.id);
+            setItems(calendarItems.map(dbItemToUi));
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to load calendar data");
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
     useEffect(() => {
         if (!open) return;
@@ -223,17 +276,13 @@ export default function Unit19CalendarModal({ open, onClose }: Props) {
 
         document.addEventListener("keydown", handleKeyDown);
         document.body.style.overflow = "hidden";
+        void loadCalendar();
 
         return () => {
             document.removeEventListener("keydown", handleKeyDown);
             document.body.style.overflow = "";
         };
-    }, [open, onClose]);
-
-    useEffect(() => {
-        if (typeof window === "undefined") return;
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-    }, [items]);
+    }, [loadCalendar, open, onClose]);
 
     const orderedItems = useMemo(() => {
         return [...items].sort((a, b) => `${a.date} ${a.time ?? ""}`.localeCompare(`${b.date} ${b.time ?? ""}`));
@@ -293,25 +342,32 @@ export default function Unit19CalendarModal({ open, onClose }: Props) {
         return filteredItems.filter((item) => item.date === selectedDate);
     }, [filteredItems, selectedDate]);
 
-    function saveDraft() {
-        if (!draftItem?.title.trim()) return;
+    async function saveDraft() {
+        if (!draftItem?.title.trim() || !managedPropertyId) return;
 
-        const cleanItem: Unit19CalendarItem = {
-            ...draftItem,
-            title: draftItem.title.trim(),
-            time: draftItem.time?.trim() || undefined,
-            note: draftItem.note?.trim() || undefined,
-            location: draftItem.location?.trim() || undefined,
-            linkedRecords: textToLinkedRecords(draftItem.linkedText),
-        };
+        setSaving(true);
+        setError(null);
 
-        setItems((current) => {
-            const exists = current.some((item) => item.id === cleanItem.id);
-            if (exists) return current.map((item) => (item.id === cleanItem.id ? cleanItem : item));
-            return [...current, cleanItem];
-        });
-        setSelectedItemId(cleanItem.id);
-        setDraftItem(null);
+        try {
+            const payload = draftToDbPayload(managedPropertyId, draftItem);
+            const existing = items.some((item) => item.id === draftItem.id);
+            const saved = existing
+                ? await updateManagedPropertyCalendarItem(draftItem.id, payload)
+                : await createManagedPropertyCalendarItem(payload);
+
+            const cleanItem = dbItemToUi(saved);
+            setItems((current) => {
+                const exists = current.some((item) => item.id === cleanItem.id);
+                if (exists) return current.map((item) => (item.id === cleanItem.id ? cleanItem : item));
+                return [...current, cleanItem];
+            });
+            setSelectedItemId(cleanItem.id);
+            setDraftItem(null);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to save calendar item");
+        } finally {
+            setSaving(false);
+        }
     }
 
     function startEdit(item: Unit19CalendarItem) {
@@ -324,29 +380,45 @@ export default function Unit19CalendarModal({ open, onClose }: Props) {
         });
     }
 
-    function markDone(item: Unit19CalendarItem) {
-        setItems((current) =>
-            current.map((currentItem) =>
-                currentItem.id === item.id
-                    ? { ...currentItem, status: currentItem.status === "done" ? "open" : "done" }
-                    : currentItem,
-            ),
-        );
+    async function markDone(item: Unit19CalendarItem) {
+        const nextStatus: Unit19CalendarItemStatus = item.status === "done" ? "open" : "done";
+        setSaving(true);
+        setError(null);
+
+        try {
+            const saved = await updateManagedPropertyCalendarItem(item.id, { status: nextStatus });
+            const cleanItem = dbItemToUi(saved);
+            setItems((current) => current.map((currentItem) => (currentItem.id === item.id ? cleanItem : currentItem)));
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to update calendar item");
+        } finally {
+            setSaving(false);
+        }
     }
 
-    function deleteItem(id: string) {
-        setItems((current) => current.filter((item) => item.id !== id));
-        if (selectedItemId === id) setSelectedItemId(null);
-        setDraftItem(null);
+    async function deleteItem(id: string) {
+        setSaving(true);
+        setError(null);
+
+        try {
+            await deleteManagedPropertyCalendarItem(id);
+            setItems((current) => current.filter((item) => item.id !== id));
+            if (selectedItemId === id) setSelectedItemId(null);
+            setDraftItem(null);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to delete calendar item");
+        } finally {
+            setSaving(false);
+        }
     }
 
-    function resetSeed() {
-        setItems(unit19CalendarItemsSeed);
+    function reloadData() {
         setQuickFilter("open");
         setTypeFilter("all");
         setQuery("");
         setSelectedItemId(null);
         setDraftItem(null);
+        void loadCalendar();
     }
 
     if (!open) return null;
@@ -369,7 +441,7 @@ export default function Unit19CalendarModal({ open, onClose }: Props) {
                         <div>
                             <div className="mb-1 inline-flex items-center gap-2 rounded-full border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-3 py-1 text-[9.5px] font-semibold uppercase tracking-[0.18em] text-[#2060cc]">
                                 <IconCalendar />
-                                Calendar cockpit
+                                Calendar cockpit · DB live
                             </div>
                             <h2 className="font-display text-[28px] font-normal leading-tight tracking-[-0.03em] text-[#0b1623] sm:text-[34px]">
                                 Unit 19 Activity Planner
@@ -386,10 +458,10 @@ export default function Unit19CalendarModal({ open, onClose }: Props) {
                             </button>
                             <button
                                 type="button"
-                                onClick={resetSeed}
+                                onClick={reloadData}
                                 className="rounded-[13px] border border-white/[0.78] bg-white/[0.52] px-4 py-2.5 text-[12px] font-semibold text-[#6f849d] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#2f80ed]/[0.28] hover:bg-white/[0.86] hover:text-[#2060cc] active:scale-[0.96]"
                             >
-                                Reset
+                                Reload
                             </button>
                             <button
                                 type="button"
@@ -495,7 +567,19 @@ export default function Unit19CalendarModal({ open, onClose }: Props) {
                     </aside>
 
                     <main className="h-full min-h-0 overflow-y-auto overscroll-contain p-3.5">
-                        {view === "agenda" ? (
+                        {error ? (
+                            <div className="mb-3 rounded-[14px] border border-[#d96969]/[0.26] bg-[#d96969]/[0.08] px-3 py-2 text-[12px] font-semibold text-[#9d2f2f]">
+                                {error}
+                            </div>
+                        ) : null}
+
+                        {loading ? (
+                            <div className="rounded-[18px] border border-white/[0.78] bg-white/[0.58] p-6 text-[13px] font-semibold text-[#607993] shadow-[0_14px_40px_rgba(41,73,112,0.08)]">
+                                Loading calendar from database...
+                            </div>
+                        ) : null}
+
+                        {!loading && view === "agenda" ? (
                             <AgendaView
                                 items={filteredItems}
                                 selectedItemId={selectedItem?.id ?? null}
@@ -504,7 +588,7 @@ export default function Unit19CalendarModal({ open, onClose }: Props) {
                             />
                         ) : null}
 
-                        {view === "week" ? (
+                        {!loading && view === "week" ? (
                             <WeekView
                                 items={filteredItems}
                                 selectedDate={selectedDate}
@@ -513,7 +597,7 @@ export default function Unit19CalendarModal({ open, onClose }: Props) {
                             />
                         ) : null}
 
-                        {view === "month" ? (
+                        {!loading && view === "month" ? (
                             <MonthView
                                 items={filteredItems}
                                 selectedDate={selectedDate}
@@ -539,6 +623,7 @@ export default function Unit19CalendarModal({ open, onClose }: Props) {
                     <CalendarEditor
                         item={draftItem}
                         onChange={setDraftItem}
+                        saving={saving}
                         onSave={saveDraft}
                         onCancel={() => setDraftItem(null)}
                         onDelete={() => deleteItem(draftItem.id)}
@@ -719,7 +804,7 @@ function WeekView({
                             type="button"
                             onClick={() => onSelectDate(dayIso)}
                             className={[
-                                "flex min-h-[160px] flex-col items-stretch justify-start rounded-[16px] border p-2 text-left transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.72] active:scale-[0.99]",
+                                "rounded-[16px] border p-2 text-left transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.72] active:scale-[0.99]",
                                 selected ? "border-[#2f80ed]/[0.34] bg-[#2f80ed]/[0.07]" : "border-[#d8e8f6]/[0.82] bg-white/[0.42]",
                             ].join(" ")}
                         >
@@ -780,17 +865,6 @@ function MonthView({
                     Next
                 </button>
             </div>
-            <div className="mb-1.5 hidden grid-cols-7 gap-1.5 md:grid">
-                {weekDayLabels.map((label) => (
-                    <div
-                        key={label}
-                        className="px-2 py-1 text-left text-[9.5px] font-semibold uppercase tracking-[0.14em] text-[#7a90a8]"
-                    >
-                        {label}
-                    </div>
-                ))}
-            </div>
-
             <div className="grid gap-1.5 md:grid-cols-7">
                 {days.map((day) => {
                     const dayIso = toIsoDate(day);
@@ -804,7 +878,7 @@ function MonthView({
                             type="button"
                             onClick={() => onSelectDate(dayIso)}
                             className={[
-                                "flex min-h-[92px] flex-col items-stretch justify-start rounded-[14px] border p-2 text-left transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.76] active:scale-[0.99]",
+                                "min-h-[92px] rounded-[14px] border p-2 text-left transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.76] active:scale-[0.99]",
                                 selected ? "border-[#2f80ed]/[0.34] bg-[#2f80ed]/[0.07]" : "border-[#d8e8f6]/[0.82] bg-white/[0.42]",
                                 inMonth ? "" : "opacity-45",
                             ].join(" ")}
@@ -917,12 +991,14 @@ function SelectedPanel({
 
 function CalendarEditor({
     item,
+    saving,
     onChange,
     onSave,
     onCancel,
     onDelete,
 }: {
     item: DraftCalendarItem;
+    saving: boolean;
     onChange: (item: DraftCalendarItem) => void;
     onSave: () => void;
     onCancel: () => void;
@@ -949,10 +1025,7 @@ function CalendarEditor({
 
                     <label>
                         <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.12em] text-[#7a90a8]">Date</span>
-                        <AdminDatePicker
-                            value={item.date}
-                            onChange={(date) => onChange({ ...item, date })}
-                        />
+                        <AdminDatePicker value={item.date} onChange={(date) => onChange({ ...item, date })} />
                     </label>
 
                     <label>
@@ -1016,8 +1089,8 @@ function CalendarEditor({
                         <button type="button" onClick={onCancel} className="rounded-xl border border-[#ccd9e8] bg-white/[0.62] px-3 py-2 text-[12px] font-semibold text-[#607993] transition hover:bg-white">
                             Cancel
                         </button>
-                        <button type="button" onClick={onSave} className="rounded-xl border border-[#2f80ed]/[0.30] bg-[#2f80ed]/[0.10] px-3 py-2 text-[12px] font-semibold text-[#1560bc] transition hover:bg-[#2f80ed]/[0.15]">
-                            Save item
+                        <button type="button" onClick={onSave} disabled={saving} className="rounded-xl border border-[#2f80ed]/[0.30] bg-[#2f80ed]/[0.10] px-3 py-2 text-[12px] font-semibold text-[#1560bc] transition hover:bg-[#2f80ed]/[0.15] disabled:cursor-not-allowed disabled:opacity-60">
+                            {saving ? "Saving..." : "Save item"}
                         </button>
                     </div>
                 </div>

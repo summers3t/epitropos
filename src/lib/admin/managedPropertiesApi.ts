@@ -533,3 +533,114 @@ export async function updateManagedPropertyTaxReserve(
 
     return data as ManagedPropertyTaxReserve;
 }
+
+export type ManagedPropertyCalendarItemType =
+    | "task"
+    | "deadline"
+    | "appointment"
+    | "payment"
+    | "document_followup"
+    | "reminder";
+
+export type ManagedPropertyCalendarItemStatus = "open" | "done" | "deferred";
+export type ManagedPropertyCalendarItemPriority = "critical" | "high" | "normal" | "low";
+
+export type ManagedPropertyCalendarLinkedRecord = {
+    label: string;
+    kind: "Task" | "Document" | "Expense" | "Stage" | "Contact";
+};
+
+export type ManagedPropertyCalendarItem = {
+    id: string;
+    managed_property_id: string;
+    title: string;
+    item_date: string;
+    item_time: string | null;
+    type: ManagedPropertyCalendarItemType;
+    priority: ManagedPropertyCalendarItemPriority;
+    status: ManagedPropertyCalendarItemStatus;
+    location: string | null;
+    note: string | null;
+    linked_records: ManagedPropertyCalendarLinkedRecord[];
+    created_at: string;
+    updated_at: string;
+};
+
+export type ManagedPropertyCalendarItemInsert = Omit<
+    ManagedPropertyCalendarItem,
+    "id" | "created_at" | "updated_at"
+>;
+
+export type ManagedPropertyCalendarItemPatch = Partial<
+    Pick<
+        ManagedPropertyCalendarItem,
+        | "title"
+        | "item_date"
+        | "item_time"
+        | "type"
+        | "priority"
+        | "status"
+        | "location"
+        | "note"
+        | "linked_records"
+    >
+>;
+
+export async function getManagedPropertyCalendarItems(managedPropertyId: string) {
+    const supabase = createClient();
+
+    const { data, error } = await supabase
+        .from("managed_property_calendar_items")
+        .select("*")
+        .eq("managed_property_id", managedPropertyId)
+        .order("item_date", { ascending: true })
+        .order("item_time", { ascending: true, nullsFirst: false })
+        .order("created_at", { ascending: true });
+
+    if (error) throwIfError(error, "Failed to load managed property calendar items");
+
+    return (data ?? []) as ManagedPropertyCalendarItem[];
+}
+
+export async function createManagedPropertyCalendarItem(payload: ManagedPropertyCalendarItemInsert) {
+    const supabase = createClient();
+
+    const { data, error } = await supabase
+        .from("managed_property_calendar_items")
+        .insert(payload)
+        .select("*")
+        .single();
+
+    if (error) throwIfError(error, "Failed to create managed property calendar item");
+
+    return data as ManagedPropertyCalendarItem;
+}
+
+export async function updateManagedPropertyCalendarItem(
+    id: string,
+    patch: ManagedPropertyCalendarItemPatch,
+) {
+    const supabase = createClient();
+
+    const { data, error } = await supabase
+        .from("managed_property_calendar_items")
+        .update(patch)
+        .eq("id", id)
+        .select("*")
+        .single();
+
+    if (error) throwIfError(error, "Failed to update managed property calendar item");
+
+    return data as ManagedPropertyCalendarItem;
+}
+
+export async function deleteManagedPropertyCalendarItem(id: string) {
+    const supabase = createClient();
+
+    const { error } = await supabase
+        .from("managed_property_calendar_items")
+        .delete()
+        .eq("id", id);
+
+    if (error) throwIfError(error, "Failed to delete managed property calendar item");
+}
