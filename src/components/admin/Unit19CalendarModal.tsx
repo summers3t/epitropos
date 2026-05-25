@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type DragEvent } from "react";
 import AdminDatePicker from "@/components/admin/AdminDatePicker";
 import {
     createManagedPropertyCalendarItem,
@@ -35,6 +35,7 @@ type Unit19CalendarItem = {
     note?: string;
     location?: string;
     linkedRecords?: Unit19CalendarLinkedRecord[];
+    sortOrder?: number | null;
 };
 
 type DraftCalendarItem = Omit<Unit19CalendarItem, "linkedRecords"> & { linkedText: string };
@@ -77,6 +78,50 @@ function getIsoWeekNumber(date: Date) {
 
     const yearStart = new Date(Date.UTC(target.getUTCFullYear(), 0, 1));
     return Math.ceil((((target.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+}
+
+function formatWeekRange(weekStart: Date) {
+    const weekEnd = addDays(weekStart, 6);
+    const startMonth = new Intl.DateTimeFormat("en-GB", { month: "short" }).format(weekStart);
+    const endMonth = new Intl.DateTimeFormat("en-GB", { month: "short" }).format(weekEnd);
+    const year = weekStart.getFullYear();
+
+    if (startMonth === endMonth) {
+        return `${weekStart.getDate()}-${weekEnd.getDate()} ${endMonth} · ${year}`;
+    }
+
+    return `${weekStart.getDate()} ${startMonth}-${weekEnd.getDate()} ${endMonth} · ${year}`;
+}
+
+function isTodayDate(date: Date) {
+    return toIsoDate(date) === toIsoDate(new Date());
+}
+
+function getTimeSortValue(item: Unit19CalendarItem) {
+    return item.time?.trim() || "99:99";
+}
+
+function sortCalendarItemsForDay(items: Unit19CalendarItem[]) {
+    const hasManualOrder = items.some((item) => typeof item.sortOrder === "number");
+
+    return [...items].sort((a, b) => {
+        if (hasManualOrder) {
+            const orderDiff = (a.sortOrder ?? 999999) - (b.sortOrder ?? 999999);
+            if (orderDiff !== 0) return orderDiff;
+        }
+
+        const timeDiff = getTimeSortValue(a).localeCompare(getTimeSortValue(b));
+        if (timeDiff !== 0) return timeDiff;
+
+        return a.title.localeCompare(b.title);
+    });
+}
+
+function getNextSortOrderForDate(items: Unit19CalendarItem[], date: string) {
+    const sameDateItems = items.filter((item) => item.date === date);
+    const maxSortOrder = Math.max(0, ...sameDateItems.map((item) => item.sortOrder ?? 0));
+
+    return maxSortOrder + 1000;
 }
 
 function todayStart() {
@@ -206,6 +251,7 @@ function dbItemToUi(item: ManagedPropertyCalendarItem): Unit19CalendarItem {
         note: item.note ?? undefined,
         location: item.location ?? undefined,
         linkedRecords: Array.isArray(item.linked_records) ? item.linked_records : [],
+        sortOrder: typeof (item as unknown as { sort_order?: unknown }).sort_order === "number" ? (item as unknown as { sort_order: number }).sort_order : null,
     };
 }
 
@@ -263,6 +309,7 @@ export default function Unit19CalendarModal({ open, onClose }: Props) {
     const [selectedDate, setSelectedDate] = useState(() => toIsoDate(new Date()));
     const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
     const [draftItem, setDraftItem] = useState<DraftCalendarItem | null>(null);
+    const [draggingItemId, setDraggingItemId] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -355,7 +402,7 @@ export default function Unit19CalendarModal({ open, onClose }: Props) {
     }, [filteredItems, items, selectedItemId]);
 
     const selectedDateItems = useMemo(() => {
-        return filteredItems.filter((item) => item.date === selectedDate);
+        return sortCalendarItemsForDay(filteredItems.filter((item) => item.date === selectedDate));
     }, [filteredItems, selectedDate]);
 
     async function saveDraft() {
@@ -366,10 +413,17 @@ export default function Unit19CalendarModal({ open, onClose }: Props) {
 
         try {
             const payload = draftToDbPayload(managedPropertyId, draftItem);
-            const existing = items.some((item) => item.id === draftItem.id);
+            const existingItem = items.find((item) => item.id === draftItem.id);
+            const existing = Boolean(existingItem);
+            const sortOrder =
+                !existingItem || existingItem.date !== draftItem.date
+                    ? getNextSortOrderForDate(items, draftItem.date)
+                    : existingItem.sortOrder ?? getNextSortOrderForDate(items, draftItem.date);
+            const payloadWithSortOrder = { ...payload, sort_order: sortOrder };
+
             const saved = existing
-                ? await updateManagedPropertyCalendarItem(draftItem.id, payload)
-                : await createManagedPropertyCalendarItem(payload);
+                ? await updateManagedPropertyCalendarItem(draftItem.id, payloadWithSortOrder as Parameters<typeof updateManagedPropertyCalendarItem>[1])
+                : await createManagedPropertyCalendarItem(payloadWithSortOrder as ManagedPropertyCalendarItemInsert);
 
             const cleanItem = dbItemToUi(saved);
             setItems((current) => {
@@ -394,6 +448,97 @@ export default function Unit19CalendarModal({ open, onClose }: Props) {
             location: item.location ?? "",
             linkedText: linkedRecordsToText(item.linkedRecords),
         });
+    }
+
+    function handleItemDragStart(item: Unit19CalendarItem, event: DragEvent<HTMLDivElement>) {
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/plain", item.id);
+        setDraggingItemId(item.id);
+        setSelectedItemId(item.id);
+    }
+
+    function handleItemDragEnd() {
+        setDraggingItemId(null);
+    }
+
+    async function moveItemToDate(
+        itemId: string,
+        date: string,
+        targetItemId?: string,
+        placement: "before" | "after" | "end" = "end",
+    ) {
+        const movedItem = items.find((currentItem) => currentItem.id === itemId);
+        if (!movedItem) {
+            setDraggingItemId(null);
+            return;
+        }
+
+        const sourceDate = movedItem.date;
+        const targetDate = date;
+
+        const targetDayItems = sortCalendarItemsForDay(
+            items
+                .filter((item) => item.date === targetDate && item.id !== itemId)
+                .map((item) => ({ ...item, date: targetDate })),
+        );
+
+        const insertIndex =
+            targetItemId && placement !== "end"
+                ? Math.max(
+                      0,
+                      targetDayItems.findIndex((item) => item.id === targetItemId) + (placement === "after" ? 1 : 0),
+                  )
+                : targetDayItems.length;
+
+        const movedForTargetDate = { ...movedItem, date: targetDate };
+        const nextTargetDayItems = [
+            ...targetDayItems.slice(0, insertIndex),
+            movedForTargetDate,
+            ...targetDayItems.slice(insertIndex),
+        ].map((item, index) => ({
+            ...item,
+            sortOrder: (index + 1) * 1000,
+        }));
+
+        const sourceDayItems =
+            sourceDate === targetDate
+                ? []
+                : sortCalendarItemsForDay(items.filter((item) => item.date === sourceDate && item.id !== itemId)).map(
+                      (item, index) => ({
+                          ...item,
+                          sortOrder: (index + 1) * 1000,
+                      }),
+                  );
+
+        const updates = [...nextTargetDayItems, ...sourceDayItems];
+
+        setSaving(true);
+        setError(null);
+
+        try {
+            const savedItems = await Promise.all(
+                updates.map((item) =>
+                    updateManagedPropertyCalendarItem(item.id, {
+                        item_date: item.date,
+                        sort_order: item.sortOrder,
+                    } as Parameters<typeof updateManagedPropertyCalendarItem>[1]),
+                ),
+            );
+
+            const savedUiItems = savedItems.map(dbItemToUi);
+            const savedMap = new Map(savedUiItems.map((item) => [item.id, item]));
+
+            setItems((current) =>
+                current.map((currentItem) => savedMap.get(currentItem.id) ?? currentItem),
+            );
+            setSelectedDate(targetDate);
+            setSelectedItemId(itemId);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to move calendar item");
+        } finally {
+            setSaving(false);
+            setDraggingItemId(null);
+        }
     }
 
     async function markDone(item: Unit19CalendarItem) {
@@ -434,6 +579,7 @@ export default function Unit19CalendarModal({ open, onClose }: Props) {
         setQuery("");
         setSelectedItemId(null);
         setDraftItem(null);
+        setDraggingItemId(null);
         void loadCalendar();
     }
 
@@ -608,9 +754,14 @@ export default function Unit19CalendarModal({ open, onClose }: Props) {
                             <WeekView
                                 items={filteredItems}
                                 selectedDate={selectedDate}
+                                draggingItemId={draggingItemId}
                                 onSelectDate={setSelectedDate}
                                 onSelectItem={(item) => setSelectedItemId(item.id)}
+                                onEditItem={startEdit}
                                 onAddItem={(date) => setDraftItem(blankItem(date))}
+                                onMoveItem={moveItemToDate}
+                                onDragStart={handleItemDragStart}
+                                onDragEnd={handleItemDragEnd}
                             />
                         ) : null}
 
@@ -618,9 +769,14 @@ export default function Unit19CalendarModal({ open, onClose }: Props) {
                             <MonthView
                                 items={filteredItems}
                                 selectedDate={selectedDate}
+                                draggingItemId={draggingItemId}
                                 onSelectDate={setSelectedDate}
                                 onSelectItem={(item) => setSelectedItemId(item.id)}
+                                onEditItem={startEdit}
                                 onAddItem={(date) => setDraftItem(blankItem(date))}
+                                onMoveItem={moveItemToDate}
+                                onDragStart={handleItemDragStart}
+                                onDragEnd={handleItemDragEnd}
                             />
                         ) : null}
                     </main>
@@ -788,15 +944,25 @@ function CalendarRow({ item, selected, onSelect, onDone }: { item: Unit19Calenda
 function WeekView({
     items,
     selectedDate,
+    draggingItemId,
     onSelectDate,
     onSelectItem,
+    onEditItem,
     onAddItem,
+    onMoveItem,
+    onDragStart,
+    onDragEnd,
 }: {
     items: Unit19CalendarItem[];
     selectedDate: string;
+    draggingItemId: string | null;
     onSelectDate: (date: string) => void;
     onSelectItem: (item: Unit19CalendarItem) => void;
+    onEditItem: (item: Unit19CalendarItem) => void;
     onAddItem: (date: string) => void;
+    onMoveItem: (itemId: string, date: string, targetItemId?: string, placement?: "before" | "after" | "end") => void;
+    onDragStart: (item: Unit19CalendarItem, event: DragEvent<HTMLDivElement>) => void;
+    onDragEnd: () => void;
 }) {
     const weekStart = startOfWeek(parseLocalDate(selectedDate));
     const days = Array.from({ length: 7 }, (_, index) => addDays(weekStart, index));
@@ -805,10 +971,17 @@ function WeekView({
     return (
         <div className="rounded-[18px] border border-white/[0.78] bg-white/[0.58] p-3 shadow-[0_14px_40px_rgba(41,73,112,0.08),inset_0_1px_0_rgba(255,255,255,0.92)]">
             <div className="mb-3 flex items-center justify-between gap-3">
-                <button type="button" onClick={() => onSelectDate(toIsoDate(addDays(weekStart, -7)))} className="rounded-xl border border-[#ccd9e8] bg-white/[0.58] px-3 py-1.5 text-[12px] font-semibold text-[#607993] transition hover:bg-white/[0.86]">
-                    Previous
-                </button>
-                <div className="text-[13px] font-semibold text-[#0b1623]">Week {weekNumber} · Week of {formatDay(weekStart)}</div>
+                <div className="flex items-center gap-2">
+                    <button type="button" onClick={() => onSelectDate(toIsoDate(addDays(weekStart, -7)))} className="rounded-xl border border-[#ccd9e8] bg-white/[0.58] px-3 py-1.5 text-[12px] font-semibold text-[#607993] transition hover:bg-white/[0.86]">
+                        Previous
+                    </button>
+                    <button type="button" onClick={() => onSelectDate(toIsoDate(new Date()))} className="rounded-xl border border-[#20a76b]/[0.24] bg-[#20a76b]/[0.08] px-3 py-1.5 text-[12px] font-semibold text-[#0f7448] transition hover:bg-[#20a76b]/[0.13]">
+                        Today
+                    </button>
+                </div>
+                <div className="text-[13px] font-semibold text-[#0b1623]">
+                    Week {weekNumber} · {formatWeekRange(weekStart)}
+                </div>
                 <button type="button" onClick={() => onSelectDate(toIsoDate(addDays(weekStart, 7)))} className="rounded-xl border border-[#ccd9e8] bg-white/[0.58] px-3 py-1.5 text-[12px] font-semibold text-[#607993] transition hover:bg-white/[0.86]">
                     Next
                 </button>
@@ -816,53 +989,100 @@ function WeekView({
             <div className="grid min-h-[520px] gap-2 md:grid-cols-7">
                 {days.map((day) => {
                     const dayIso = toIsoDate(day);
-                    const dayItems = items.filter((item) => item.date === dayIso);
+                    const dayItems = sortCalendarItemsForDay(items.filter((item) => item.date === dayIso));
                     const selected = selectedDate === dayIso;
                     const weekend = isWeekend(day);
+                    const today = isTodayDate(day);
 
                     return (
-                        <button
+                        <div
                             key={dayIso}
-                            type="button"
+                            role="button"
+                            tabIndex={0}
                             onClick={() => onSelectDate(dayIso)}
                             onDoubleClick={() => onAddItem(dayIso)}
+                            onDragOver={(event) => {
+                                event.preventDefault();
+                                event.dataTransfer.dropEffect = "move";
+                            }}
+                            onDrop={(event) => {
+                                event.preventDefault();
+                                const itemId = event.dataTransfer.getData("text/plain");
+                                if (itemId) void onMoveItem(itemId, dayIso);
+                            }}
+                            onKeyDown={(event) => {
+                                if (event.key === "Enter") onSelectDate(dayIso);
+                            }}
                             className={[
                                 "flex min-h-[520px] flex-col justify-start rounded-[16px] border p-2 text-left transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.72] active:scale-[0.99]",
                                 selected
                                     ? "border-[#2f80ed]/[0.34] bg-[#2f80ed]/[0.07]"
-                                    : weekend
-                                        ? "border-[#cfa090]/[0.26] bg-[#cfa090]/[0.08]"
-                                        : "border-[#d8e8f6]/[0.82] bg-white/[0.42]",
+                                    : today
+                                        ? "border-[#20a76b]/[0.32] bg-[#20a76b]/[0.10] ring-2 ring-[#20a76b]/[0.16]"
+                                        : weekend
+                                            ? "border-[#cfa090]/[0.26] bg-[#cfa090]/[0.08]"
+                                            : "border-[#d8e8f6]/[0.82] bg-white/[0.42]",
                             ].join(" ")}
                         >
                             <div className="mb-2 flex items-start justify-between gap-2">
                                 <span className={[
                                     "text-[11px] font-semibold uppercase tracking-[0.10em]",
-                                    weekend ? "text-[#8c5947]" : "text-[#7a90a8]",
+                                    today ? "text-[#0f7448]" : weekend ? "text-[#8c5947]" : "text-[#7a90a8]",
                                 ].join(" ")}>{formatShortDay(day)}</span>
                                 <span className="rounded-full border border-[#ccd9e8] bg-white/[0.58] px-1.5 py-0.5 text-[9px] text-[#607993]">{dayItems.length}</span>
                             </div>
-                            <div className="space-y-1.5">
+                            <div className="mt-3 space-y-1.5">
                                 {dayItems.slice(0, 4).map((item) => (
                                     <div
                                         key={item.id}
                                         role="button"
                                         tabIndex={0}
+                                        draggable
                                         onClick={(event) => {
                                             event.stopPropagation();
                                             onSelectItem(item);
                                         }}
-                                        onDoubleClick={(event) => event.stopPropagation()}
+                                        onDoubleClick={(event) => {
+                                            event.stopPropagation();
+                                            onEditItem(item);
+                                        }}
+                                        onDragStart={(event) => {
+                                            event.stopPropagation();
+                                            onDragStart(item, event);
+                                        }}
+                                        onDragOver={(event) => {
+                                            event.preventDefault();
+                                            event.stopPropagation();
+                                            event.dataTransfer.dropEffect = "move";
+                                        }}
+                                        onDrop={(event) => {
+                                            event.preventDefault();
+                                            event.stopPropagation();
+                                            const draggedItemId = event.dataTransfer.getData("text/plain");
+                                            if (!draggedItemId || draggedItemId === item.id) return;
+
+                                            const rect = event.currentTarget.getBoundingClientRect();
+                                            const placement = event.clientY < rect.top + rect.height / 2 ? "before" : "after";
+                                            void onMoveItem(draggedItemId, item.date, item.id, placement);
+                                        }}
+                                        onDragEnd={(event) => {
+                                            event.stopPropagation();
+                                            onDragEnd();
+                                        }}
                                         onKeyDown={(event) => {
                                             if (event.key === "Enter") onSelectItem(item);
                                         }}
-                                        className={["rounded-xl border px-2 py-1.5 text-[10.5px] font-semibold leading-tight transition hover:bg-white/[0.72]", typeClasses(item.type)].join(" ")}
+                                        className={[
+                                            "cursor-grab rounded-xl border px-2 py-1.5 text-[10.5px] font-semibold leading-tight transition hover:bg-white/[0.72] active:cursor-grabbing",
+                                            draggingItemId === item.id ? "opacity-55 ring-2 ring-[#2f80ed]/[0.20]" : "",
+                                            typeClasses(item.type),
+                                        ].join(" ")}
                                     >
                                         <span className="block truncate">{item.time ? `${item.time} · ` : ""}{item.title}</span>
                                     </div>
                                 ))}
                             </div>
-                        </button>
+                        </div>
                     );
                 })}
             </div>
@@ -873,15 +1093,25 @@ function WeekView({
 function MonthView({
     items,
     selectedDate,
+    draggingItemId,
     onSelectDate,
     onSelectItem,
+    onEditItem,
     onAddItem,
+    onMoveItem,
+    onDragStart,
+    onDragEnd,
 }: {
     items: Unit19CalendarItem[];
     selectedDate: string;
+    draggingItemId: string | null;
     onSelectDate: (date: string) => void;
     onSelectItem: (item: Unit19CalendarItem) => void;
+    onEditItem: (item: Unit19CalendarItem) => void;
     onAddItem: (date: string) => void;
+    onMoveItem: (itemId: string, date: string, targetItemId?: string, placement?: "before" | "after" | "end") => void;
+    onDragStart: (item: Unit19CalendarItem, event: DragEvent<HTMLDivElement>) => void;
+    onDragEnd: () => void;
 }) {
     const monthStart = startOfMonth(parseLocalDate(selectedDate));
     const calendarStart = startOfWeek(monthStart);
@@ -890,9 +1120,14 @@ function MonthView({
     return (
         <div className="rounded-[18px] border border-white/[0.78] bg-white/[0.58] p-3 shadow-[0_14px_40px_rgba(41,73,112,0.08),inset_0_1px_0_rgba(255,255,255,0.92)]">
             <div className="mb-3 flex items-center justify-between gap-3">
-                <button type="button" onClick={() => onSelectDate(toIsoDate(new Date(monthStart.getFullYear(), monthStart.getMonth() - 1, 1)))} className="rounded-xl border border-[#ccd9e8] bg-white/[0.58] px-3 py-1.5 text-[12px] font-semibold text-[#607993] transition hover:bg-white/[0.86]">
-                    Previous
-                </button>
+                <div className="flex items-center gap-2">
+                    <button type="button" onClick={() => onSelectDate(toIsoDate(new Date(monthStart.getFullYear(), monthStart.getMonth() - 1, 1)))} className="rounded-xl border border-[#ccd9e8] bg-white/[0.58] px-3 py-1.5 text-[12px] font-semibold text-[#607993] transition hover:bg-white/[0.86]">
+                        Previous
+                    </button>
+                    <button type="button" onClick={() => onSelectDate(toIsoDate(new Date()))} className="rounded-xl border border-[#20a76b]/[0.24] bg-[#20a76b]/[0.08] px-3 py-1.5 text-[12px] font-semibold text-[#0f7448] transition hover:bg-[#20a76b]/[0.13]">
+                        Today
+                    </button>
+                </div>
                 <div className="text-[14px] font-semibold text-[#0b1623]">{formatMonthTitle(monthStart)}</div>
                 <button type="button" onClick={() => onSelectDate(toIsoDate(new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1)))} className="rounded-xl border border-[#ccd9e8] bg-white/[0.58] px-3 py-1.5 text-[12px] font-semibold text-[#607993] transition hover:bg-white/[0.86]">
                     Next
@@ -920,56 +1155,102 @@ function MonthView({
             <div className="grid gap-1.5 md:grid-cols-7">
                 {days.map((day) => {
                     const dayIso = toIsoDate(day);
-                    const dayItems = items.filter((item) => item.date === dayIso);
+                    const dayItems = sortCalendarItemsForDay(items.filter((item) => item.date === dayIso));
                     const inMonth = day >= monthStart && day <= endOfMonth(monthStart);
                     const selected = selectedDate === dayIso;
                     const weekend = isWeekend(day);
+                    const today = isTodayDate(day);
 
                     return (
-                        <button
+                        <div
                             key={dayIso}
-                            type="button"
+                            role="button"
+                            tabIndex={0}
                             onClick={() => onSelectDate(dayIso)}
                             onDoubleClick={() => onAddItem(dayIso)}
+                            onDragOver={(event) => {
+                                event.preventDefault();
+                                event.dataTransfer.dropEffect = "move";
+                            }}
+                            onDrop={(event) => {
+                                event.preventDefault();
+                                const itemId = event.dataTransfer.getData("text/plain");
+                                if (itemId) void onMoveItem(itemId, dayIso);
+                            }}
+                            onKeyDown={(event) => {
+                                if (event.key === "Enter") onSelectDate(dayIso);
+                            }}
                             className={[
                                 "flex min-h-[92px] flex-col justify-start rounded-[14px] border p-2 text-left transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.76] active:scale-[0.99]",
                                 selected
                                     ? "border-[#2f80ed]/[0.34] bg-[#2f80ed]/[0.07]"
-                                    : weekend
-                                        ? "border-[#cfa090]/[0.24] bg-[#cfa090]/[0.07]"
-                                        : "border-[#d8e8f6]/[0.82] bg-white/[0.42]",
+                                    : today
+                                        ? "border-[#20a76b]/[0.32] bg-[#20a76b]/[0.10] ring-2 ring-[#20a76b]/[0.16]"
+                                        : weekend
+                                            ? "border-[#cfa090]/[0.24] bg-[#cfa090]/[0.07]"
+                                            : "border-[#d8e8f6]/[0.82] bg-white/[0.42]",
                                 inMonth ? "" : "opacity-45",
                             ].join(" ")}
                         >
-                            <div className="mb-2 flex items-start justify-between gap-2">
+                            <div className="mb-1 flex items-start justify-between gap-2">
                                 <span className={[
                                     "text-[11px] font-semibold",
-                                    weekend ? "text-[#8c5947]" : "text-[#0b1623]",
+                                    today ? "text-[#0f7448]" : weekend ? "text-[#8c5947]" : "text-[#0b1623]",
                                 ].join(" ")}>{day.getDate()}</span>
                                 {dayItems.length ? <span className="h-1.5 w-1.5 rounded-full bg-[#2f80ed]" /> : null}
                             </div>
-                            <div className="space-y-1">
+                            <div className="space-y-0.5">
                                 {dayItems.slice(0, 2).map((item) => (
                                     <div
                                         key={item.id}
                                         role="button"
                                         tabIndex={0}
+                                        draggable
                                         onClick={(event) => {
                                             event.stopPropagation();
                                             onSelectItem(item);
                                         }}
-                                        onDoubleClick={(event) => event.stopPropagation()}
+                                        onDoubleClick={(event) => {
+                                            event.stopPropagation();
+                                            onEditItem(item);
+                                        }}
+                                        onDragStart={(event) => {
+                                            event.stopPropagation();
+                                            onDragStart(item, event);
+                                        }}
+                                        onDragOver={(event) => {
+                                            event.preventDefault();
+                                            event.stopPropagation();
+                                            event.dataTransfer.dropEffect = "move";
+                                        }}
+                                        onDrop={(event) => {
+                                            event.preventDefault();
+                                            event.stopPropagation();
+                                            const draggedItemId = event.dataTransfer.getData("text/plain");
+                                            if (!draggedItemId || draggedItemId === item.id) return;
+
+                                            const rect = event.currentTarget.getBoundingClientRect();
+                                            const placement = event.clientY < rect.top + rect.height / 2 ? "before" : "after";
+                                            void onMoveItem(draggedItemId, item.date, item.id, placement);
+                                        }}
+                                        onDragEnd={(event) => {
+                                            event.stopPropagation();
+                                            onDragEnd();
+                                        }}
                                         onKeyDown={(event) => {
                                             if (event.key === "Enter") onSelectItem(item);
                                         }}
-                                        className="truncate rounded-lg bg-white/[0.62] px-1.5 py-1 text-[9.5px] font-semibold text-[#4e6880]"
+                                        className={[
+                                            "truncate rounded-lg bg-white/[0.62] px-1.5 py-1 text-[9.5px] font-semibold text-[#4e6880] cursor-grab active:cursor-grabbing",
+                                            draggingItemId === item.id ? "opacity-55 ring-2 ring-[#2f80ed]/[0.20]" : "",
+                                        ].join(" ")}
                                     >
                                         {item.title}
                                     </div>
                                 ))}
                                 {dayItems.length > 2 ? <div className="text-[9px] text-[#7a90a8]">+{dayItems.length - 2} more</div> : null}
                             </div>
-                        </button>
+                        </div>
                     );
                 })}
             </div>
