@@ -353,3 +353,183 @@ export async function deleteManagedPropertyDocumentCategory(id: string) {
 
     if (error) throwIfError(error, "Failed to delete managed property document category");
 }
+
+export type ManagedPropertyIncomeMonthStatus = "no_rent" | "unpaid" | "partial" | "paid";
+
+export type ManagedPropertyIncomeMonth = {
+    id: string;
+    managed_property_id: string;
+    year: number;
+    month: number;
+    rent_expected_eur: number;
+    rent_paid_eur: number;
+    rent_paid_date: string | null;
+    rent_status: ManagedPropertyIncomeMonthStatus;
+    electricity_confirmed: boolean;
+    water_confirmed: boolean;
+    gas_confirmed: boolean;
+    building_fees_confirmed: boolean;
+    note: string | null;
+    created_at: string;
+    updated_at: string;
+};
+
+export type ManagedPropertyIncomeMonthPatch = Partial<
+    Pick<
+        ManagedPropertyIncomeMonth,
+        | "rent_expected_eur"
+        | "rent_paid_eur"
+        | "rent_paid_date"
+        | "rent_status"
+        | "electricity_confirmed"
+        | "water_confirmed"
+        | "gas_confirmed"
+        | "building_fees_confirmed"
+        | "note"
+    >
+>;
+
+export type ManagedPropertyIncomeOwnerExpense = {
+    id: string;
+    managed_property_id: string;
+    income_month_id: string | null;
+    title: string;
+    amount_eur: number;
+    expense_date: string | null;
+    note: string | null;
+    created_at: string;
+    updated_at: string;
+};
+
+export type ManagedPropertyIncomeOwnerExpenseInsert = Omit<
+    ManagedPropertyIncomeOwnerExpense,
+    "id" | "created_at" | "updated_at"
+>;
+
+export type ManagedPropertyTaxReserve = {
+    id: string;
+    managed_property_id: string;
+    year: number;
+    tax_rate_percent: number;
+    estimated_tax_eur: number;
+    due_date: string | null;
+    paid: boolean;
+    paid_date: string | null;
+    note: string | null;
+    created_at: string;
+    updated_at: string;
+};
+
+export type ManagedPropertyTaxReservePatch = Partial<
+    Pick<ManagedPropertyTaxReserve, "tax_rate_percent" | "estimated_tax_eur" | "due_date" | "paid" | "paid_date" | "note">
+>;
+
+export async function getManagedPropertyIncome(managedPropertyId: string, year: number) {
+    const supabase = createClient();
+
+    const [monthsResult, ownerExpensesResult, taxReserveResult] = await Promise.all([
+        supabase
+            .from("managed_property_income_months")
+            .select("*")
+            .eq("managed_property_id", managedPropertyId)
+            .eq("year", year)
+            .order("month", { ascending: true }),
+        supabase
+            .from("managed_property_income_owner_expenses")
+            .select("*")
+            .eq("managed_property_id", managedPropertyId)
+            .order("expense_date", { ascending: false, nullsFirst: false })
+            .order("created_at", { ascending: false }),
+        supabase
+            .from("managed_property_tax_reserve")
+            .select("*")
+            .eq("managed_property_id", managedPropertyId)
+            .eq("year", year)
+            .maybeSingle(),
+    ]);
+
+    if (monthsResult.error) throwIfError(monthsResult.error, "Failed to load managed property income months");
+    if (ownerExpensesResult.error) throwIfError(ownerExpensesResult.error, "Failed to load managed property owner expenses");
+    if (taxReserveResult.error) throwIfError(taxReserveResult.error, "Failed to load managed property tax reserve");
+
+    return {
+        months: (monthsResult.data ?? []) as ManagedPropertyIncomeMonth[],
+        ownerExpenses: (ownerExpensesResult.data ?? []) as ManagedPropertyIncomeOwnerExpense[],
+        taxReserve: taxReserveResult.data as ManagedPropertyTaxReserve | null,
+    };
+}
+
+export async function updateManagedPropertyIncomeMonth(
+    id: string,
+    patch: ManagedPropertyIncomeMonthPatch,
+) {
+    const supabase = createClient();
+
+    const { data, error } = await supabase
+        .from("managed_property_income_months")
+        .update(patch)
+        .eq("id", id)
+        .select("*")
+        .single();
+
+    if (error) throwIfError(error, "Failed to update managed property income month");
+
+    return data as ManagedPropertyIncomeMonth;
+}
+
+export async function updateManagedPropertyIncomeMonths(
+    patches: Array<{ id: string; patch: ManagedPropertyIncomeMonthPatch }>,
+) {
+    const updated: ManagedPropertyIncomeMonth[] = [];
+
+    for (const item of patches) {
+        updated.push(await updateManagedPropertyIncomeMonth(item.id, item.patch));
+    }
+
+    return updated;
+}
+
+export async function createManagedPropertyIncomeOwnerExpense(
+    payload: ManagedPropertyIncomeOwnerExpenseInsert,
+) {
+    const supabase = createClient();
+
+    const { data, error } = await supabase
+        .from("managed_property_income_owner_expenses")
+        .insert(payload)
+        .select("*")
+        .single();
+
+    if (error) throwIfError(error, "Failed to create managed property owner expense");
+
+    return data as ManagedPropertyIncomeOwnerExpense;
+}
+
+export async function deleteManagedPropertyIncomeOwnerExpense(id: string) {
+    const supabase = createClient();
+
+    const { error } = await supabase
+        .from("managed_property_income_owner_expenses")
+        .delete()
+        .eq("id", id);
+
+    if (error) throwIfError(error, "Failed to delete managed property owner expense");
+}
+
+export async function updateManagedPropertyTaxReserve(
+    id: string,
+    patch: ManagedPropertyTaxReservePatch,
+) {
+    const supabase = createClient();
+
+    const { data, error } = await supabase
+        .from("managed_property_tax_reserve")
+        .update(patch)
+        .eq("id", id)
+        .select("*")
+        .single();
+
+    if (error) throwIfError(error, "Failed to update managed property tax reserve");
+
+    return data as ManagedPropertyTaxReserve;
+}

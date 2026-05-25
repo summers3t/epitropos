@@ -3,16 +3,18 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import AdminDatePicker from "@/components/admin/AdminDatePicker";
 import {
-    createIncomeMonths,
-    unit19IncomeSeed,
-    unit19MonthLabels,
-    unit19UtilityLabels,
-    type Unit19IncomeMonth,
-    type Unit19IncomeSettings,
-    type Unit19IncomeState,
-    type Unit19OwnerExpense,
-    type Unit19UtilityKey,
-} from "@/lib/admin/unit19IncomeData";
+    createManagedPropertyIncomeOwnerExpense,
+    deleteManagedPropertyIncomeOwnerExpense,
+    getManagedPropertyBySlug,
+    getManagedPropertyIncome,
+    updateManagedPropertyIncomeMonth,
+    updateManagedPropertyIncomeMonths,
+    updateManagedPropertyTaxReserve,
+    type ManagedPropertyIncomeMonth,
+    type ManagedPropertyIncomeMonthPatch,
+    type ManagedPropertyIncomeOwnerExpense,
+    type ManagedPropertyTaxReserve,
+} from "@/lib/admin/managedPropertiesApi";
 
 type Props = {
     open: boolean;
@@ -20,13 +22,38 @@ type Props = {
 };
 
 type ExpenseDraft = {
-    month: number;
+    monthId: string;
     title: string;
     amountEur: number;
 };
 
-const STORAGE_KEY = "epitropos.unit19.income.v1";
-const utilityOrder: Unit19UtilityKey[] = ["electricity", "water", "gas", "building_fees"];
+type UtilityKey = "electricity_confirmed" | "water_confirmed" | "gas_confirmed" | "building_fees_confirmed";
+
+const PROPERTY_SLUG = "unit-19";
+const DEFAULT_YEAR = 2026;
+const utilityOrder: UtilityKey[] = ["electricity_confirmed", "water_confirmed", "gas_confirmed", "building_fees_confirmed"];
+
+const utilityLabels: Record<UtilityKey, string> = {
+    electricity_confirmed: "Electricity",
+    water_confirmed: "Water",
+    gas_confirmed: "Gas",
+    building_fees_confirmed: "Building fees",
+};
+
+const monthLabels = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+];
 
 const inputClass = "w-full rounded-xl border border-[#ccd9e8] bg-white/[0.76] px-3 py-1.5 text-[12.5px] text-[#0b1623] outline-none transition focus:border-[#2f80ed] focus:ring-2 focus:ring-[#2f80ed]/[0.12]";
 
@@ -37,7 +64,7 @@ const euroFormatter = new Intl.NumberFormat("en-US", {
 });
 
 function formatEur(value: number) {
-    return euroFormatter.format(value);
+    return euroFormatter.format(Number.isFinite(value) ? value : 0);
 }
 
 function todayIso() {
@@ -46,27 +73,24 @@ function todayIso() {
     return value.toISOString().slice(0, 10);
 }
 
-function parseDate(value: string) {
+function parseDate(value: string | null | undefined) {
+    if (!value) return null;
     const [year, month, day] = value.split("-").map(Number);
     return new Date(year, (month ?? 1) - 1, day ?? 1);
 }
 
-function isTaxDue(settings: Unit19IncomeSettings) {
-    if (settings.taxPaid) return false;
-    return parseDate(settings.taxDueDate) <= parseDate(todayIso());
+function isTaxDue(taxReserve: ManagedPropertyTaxReserve | null) {
+    if (!taxReserve || taxReserve.paid) return false;
+    const due = parseDate(taxReserve.due_date);
+    if (!due) return false;
+    return due <= (parseDate(todayIso()) ?? new Date());
 }
 
-function loadIncomeState(): Unit19IncomeState {
-    if (typeof window === "undefined") return unit19IncomeSeed;
-
-    try {
-        const saved = window.localStorage.getItem(STORAGE_KEY);
-        if (!saved) return unit19IncomeSeed;
-        const parsed = JSON.parse(saved) as Unit19IncomeState;
-        return parsed?.months?.length === 12 ? parsed : unit19IncomeSeed;
-    } catch {
-        return unit19IncomeSeed;
-    }
+function deriveRentStatus(expected: number, paid: number) {
+    if (expected <= 0) return "no_rent" as const;
+    if (paid <= 0) return "unpaid" as const;
+    if (paid < expected) return "partial" as const;
+    return "paid" as const;
 }
 
 function IconClose() {
@@ -91,9 +115,45 @@ function IconIncome() {
 }
 
 export default function Unit19IncomeModal({ open, onClose }: Props) {
-    const [state, setState] = useState<Unit19IncomeState>(() => loadIncomeState());
+    const [managedPropertyId, setManagedPropertyId] = useState<string | null>(null);
+    const [year, setYear] = useState(DEFAULT_YEAR);
+    const [months, setMonths] = useState<ManagedPropertyIncomeMonth[]>([]);
+    const [ownerExpenses, setOwnerExpenses] = useState<ManagedPropertyIncomeOwnerExpense[]>([]);
+    const [taxReserve, setTaxReserve] = useState<ManagedPropertyTaxReserve | null>(null);
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
     const [expenseDraft, setExpenseDraft] = useState<ExpenseDraft | null>(null);
+    const [monthlyRentEur, setMonthlyRentEur] = useState(450);
+    const [rentStartMonth, setRentStartMonth] = useState(5);
+    const [rentEndMonth, setRentEndMonth] = useState(9);
+    const [loading, setLoading] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    async function loadIncome(targetYear = year) {
+        try {
+            setLoading(true);
+            setError(null);
+
+            const property = await getManagedPropertyBySlug(PROPERTY_SLUG);
+            const result = await getManagedPropertyIncome(property.id, targetYear);
+
+            setManagedPropertyId(property.id);
+            setMonths(result.months);
+            setOwnerExpenses(result.ownerExpenses);
+            setTaxReserve(result.taxReserve);
+
+            const activeMonths = result.months.filter((month) => month.rent_expected_eur > 0);
+            if (activeMonths.length > 0) {
+                setMonthlyRentEur(activeMonths[0].rent_expected_eur);
+                setRentStartMonth(Math.min(...activeMonths.map((month) => month.month)));
+                setRentEndMonth(Math.max(...activeMonths.map((month) => month.month)));
+            }
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to load income data");
+        } finally {
+            setLoading(false);
+        }
+    }
 
     useEffect(() => {
         if (!open) return;
@@ -104,6 +164,7 @@ export default function Unit19IncomeModal({ open, onClose }: Props) {
 
         document.addEventListener("keydown", handleKeyDown);
         document.body.style.overflow = "hidden";
+        void loadIncome(year);
 
         return () => {
             document.removeEventListener("keydown", handleKeyDown);
@@ -111,124 +172,149 @@ export default function Unit19IncomeModal({ open, onClose }: Props) {
         };
     }, [open, onClose]);
 
-    useEffect(() => {
-        if (typeof window === "undefined") return;
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    }, [state]);
+    const selected = months.find((month) => month.month === selectedMonth) ?? months[0];
+
+    const expensesByMonthId = useMemo(() => {
+        const map = new Map<string, ManagedPropertyIncomeOwnerExpense[]>();
+        for (const expense of ownerExpenses) {
+            if (!expense.income_month_id) continue;
+            map.set(expense.income_month_id, [...(map.get(expense.income_month_id) ?? []), expense]);
+        }
+        return map;
+    }, [ownerExpenses]);
 
     const stats = useMemo(() => {
-        const expectedRent = state.months.reduce((sum, month) => sum + month.expectedRentEur, 0);
-        const collectedRent = state.months.reduce((sum, month) => sum + month.paidRentEur, 0);
-        const ownerExpenses = state.months.reduce(
-            (sum, month) => sum + month.ownerExpenses.reduce((monthSum, expense) => monthSum + expense.amountEur, 0),
-            0,
-        );
-        const unpaidMonths = state.months.filter((month) => month.expectedRentEur > 0 && !month.rentPaid).length;
-        const estimatedTax = Math.round((collectedRent * state.settings.taxRatePercent) / 100);
+        const expectedRent = months.reduce((sum, month) => sum + month.rent_expected_eur, 0);
+        const collectedRent = months.reduce((sum, month) => sum + month.rent_paid_eur, 0);
+        const ownerCostTotal = ownerExpenses.reduce((sum, expense) => sum + expense.amount_eur, 0);
+        const unpaidMonths = months.filter((month) => month.rent_expected_eur > 0 && month.rent_status !== "paid").length;
+        const taxRate = taxReserve?.tax_rate_percent ?? 15;
+        const estimatedTax = Math.round((collectedRent * taxRate) / 100);
 
         return {
             expectedRent,
             collectedRent,
             outstanding: Math.max(expectedRent - collectedRent, 0),
-            ownerExpenses,
+            ownerExpenses: ownerCostTotal,
             estimatedTax,
-            netAfterOwnerCosts: collectedRent - ownerExpenses - estimatedTax,
+            netAfterOwnerCosts: collectedRent - ownerCostTotal - estimatedTax,
             unpaidMonths,
         };
-    }, [state]);
+    }, [months, ownerExpenses, taxReserve]);
 
-    const selected = state.months.find((month) => month.month === selectedMonth) ?? state.months[0];
+    async function patchMonth(month: ManagedPropertyIncomeMonth, patch: ManagedPropertyIncomeMonthPatch) {
+        try {
+            setSaving(true);
+            setError(null);
 
-    function patchSettings(patch: Partial<Unit19IncomeSettings>) {
-        setState((current) => ({
-            ...current,
-            settings: { ...current.settings, ...patch },
-        }));
+            const updated = await updateManagedPropertyIncomeMonth(month.id, patch);
+            setMonths((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to save month");
+        } finally {
+            setSaving(false);
+        }
     }
 
-    function patchMonth(monthNumber: number, patch: Partial<Unit19IncomeMonth>) {
-        setState((current) => ({
-            ...current,
-            months: current.months.map((month) => (month.month === monthNumber ? { ...month, ...patch } : month)),
-        }));
+    async function toggleUtility(month: ManagedPropertyIncomeMonth, key: UtilityKey) {
+        await patchMonth(month, { [key]: !month[key] } as ManagedPropertyIncomeMonthPatch);
     }
 
-    function toggleUtility(monthNumber: number, key: Unit19UtilityKey) {
-        setState((current) => ({
-            ...current,
-            months: current.months.map((month) =>
-                month.month === monthNumber
-                    ? { ...month, utilities: { ...month.utilities, [key]: !month.utilities[key] } }
-                    : month,
-            ),
-        }));
+    async function applyRentSchedule() {
+        try {
+            setSaving(true);
+            setError(null);
+
+            const patches = months.map((month) => {
+                const expected = month.month >= rentStartMonth && month.month <= rentEndMonth ? monthlyRentEur : 0;
+                const paid = expected > 0 ? month.rent_paid_eur : 0;
+                return {
+                    id: month.id,
+                    patch: {
+                        rent_expected_eur: expected,
+                        rent_paid_eur: paid,
+                        rent_status: deriveRentStatus(expected, paid),
+                    },
+                };
+            });
+
+            const updated = await updateManagedPropertyIncomeMonths(patches);
+            setMonths((current) => current.map((month) => updated.find((item) => item.id === month.id) ?? month));
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to apply rent schedule");
+        } finally {
+            setSaving(false);
+        }
     }
 
-    function applyRentSchedule() {
-        setState((current) => ({
-            ...current,
-            months: current.months.map((month) => ({
-                ...month,
-                expectedRentEur:
-                    month.month >= current.settings.rentStartMonth && month.month <= current.settings.rentEndMonth
-                        ? current.settings.monthlyRentEur
-                        : 0,
-                paidRentEur:
-                    month.month >= current.settings.rentStartMonth && month.month <= current.settings.rentEndMonth
-                        ? month.paidRentEur
-                        : 0,
-                rentPaid:
-                    month.month >= current.settings.rentStartMonth && month.month <= current.settings.rentEndMonth
-                        ? month.rentPaid
-                        : false,
-            })),
-        }));
-    }
+    async function markRentPaid(month: ManagedPropertyIncomeMonth) {
+        const nextPaid = month.rent_status !== "paid";
+        const nextPaidAmount = nextPaid ? month.rent_expected_eur : 0;
 
-    function markRentPaid(month: Unit19IncomeMonth) {
-        const nextPaid = !month.rentPaid;
-        patchMonth(month.month, {
-            rentPaid: nextPaid,
-            paidRentEur: nextPaid ? month.expectedRentEur : 0,
-            paidDate: nextPaid ? month.paidDate || todayIso() : undefined,
+        await patchMonth(month, {
+            rent_paid_eur: nextPaidAmount,
+            rent_paid_date: nextPaid ? month.rent_paid_date || todayIso() : null,
+            rent_status: deriveRentStatus(month.rent_expected_eur, nextPaidAmount),
         });
     }
 
-    function saveExpense() {
-        if (!expenseDraft?.title.trim()) return;
+    async function saveExpense() {
+        if (!expenseDraft?.title.trim() || !managedPropertyId) return;
 
-        const expense: Unit19OwnerExpense = {
-            id: `expense-${Date.now()}`,
-            title: expenseDraft.title.trim(),
-            amountEur: Number(expenseDraft.amountEur || 0),
-        };
+        try {
+            setSaving(true);
+            setError(null);
 
-        setState((current) => ({
-            ...current,
-            months: current.months.map((month) =>
-                month.month === expenseDraft.month
-                    ? { ...month, ownerExpenses: [...month.ownerExpenses, expense] }
-                    : month,
-            ),
-        }));
-        setExpenseDraft(null);
+            const created = await createManagedPropertyIncomeOwnerExpense({
+                managed_property_id: managedPropertyId,
+                income_month_id: expenseDraft.monthId,
+                title: expenseDraft.title.trim(),
+                amount_eur: Number(expenseDraft.amountEur || 0),
+                expense_date: todayIso(),
+                note: null,
+            });
+
+            setOwnerExpenses((current) => [created, ...current]);
+            setExpenseDraft(null);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to save owner expense");
+        } finally {
+            setSaving(false);
+        }
     }
 
-    function deleteExpense(monthNumber: number, expenseId: string) {
-        setState((current) => ({
-            ...current,
-            months: current.months.map((month) =>
-                month.month === monthNumber
-                    ? { ...month, ownerExpenses: month.ownerExpenses.filter((expense) => expense.id !== expenseId) }
-                    : month,
-            ),
-        }));
+    async function deleteExpense(id: string) {
+        try {
+            setSaving(true);
+            setError(null);
+            await deleteManagedPropertyIncomeOwnerExpense(id);
+            setOwnerExpenses((current) => current.filter((expense) => expense.id !== id));
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to delete owner expense");
+        } finally {
+            setSaving(false);
+        }
     }
 
-    function resetSeed() {
-        setState(unit19IncomeSeed);
-        setSelectedMonth(new Date().getMonth() + 1);
-        setExpenseDraft(null);
+    async function patchTaxReserve(patch: Partial<ManagedPropertyTaxReserve>) {
+        if (!taxReserve) return;
+
+        try {
+            setSaving(true);
+            setError(null);
+
+            const updated = await updateManagedPropertyTaxReserve(taxReserve.id, patch);
+            setTaxReserve(updated);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to save tax reserve");
+        } finally {
+            setSaving(false);
+        }
+    }
+
+    async function changeYear(nextYear: number) {
+        setYear(nextYear);
+        await loadIncome(nextYear);
     }
 
     if (!open) return null;
@@ -251,27 +337,30 @@ export default function Unit19IncomeModal({ open, onClose }: Props) {
                         <div>
                             <div className="mb-1 inline-flex items-center gap-2 rounded-full border border-[#20a76b]/[0.24] bg-[#20a76b]/[0.08] px-3 py-1 text-[9.5px] font-semibold uppercase tracking-[0.18em] text-[#0f7448]">
                                 <IconIncome />
-                                Income cockpit
+                                Income cockpit · DB live
                             </div>
                             <h2 className="font-display text-[28px] font-normal leading-tight tracking-[-0.03em] text-[#0b1623] sm:text-[34px]">
                                 Unit 19 Rental Income
                             </h2>
+                            {error ? <p className="mt-1 text-[12px] font-semibold text-[#9d2f2f]">{error}</p> : null}
                         </div>
 
                         <div className="flex flex-wrap items-center justify-end gap-2">
                             <button
                                 type="button"
                                 onClick={applyRentSchedule}
-                                className="rounded-[13px] border border-[#20a76b]/[0.24] bg-[#20a76b]/[0.08] px-4 py-2.5 text-[12px] font-semibold text-[#0f7448] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#20a76b]/[0.13] active:scale-[0.96]"
+                                disabled={saving || loading || months.length === 0}
+                                className="rounded-[13px] border border-[#20a76b]/[0.24] bg-[#20a76b]/[0.08] px-4 py-2.5 text-[12px] font-semibold text-[#0f7448] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#20a76b]/[0.13] active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-50"
                             >
-                                Apply rent schedule
+                                {saving ? "Saving..." : "Apply rent schedule"}
                             </button>
                             <button
                                 type="button"
-                                onClick={resetSeed}
-                                className="rounded-[13px] border border-white/[0.78] bg-white/[0.52] px-4 py-2.5 text-[12px] font-semibold text-[#6f849d] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#2f80ed]/[0.28] hover:bg-white/[0.86] hover:text-[#2060cc] active:scale-[0.96]"
+                                onClick={() => loadIncome(year)}
+                                disabled={loading || saving}
+                                className="rounded-[13px] border border-white/[0.78] bg-white/[0.52] px-4 py-2.5 text-[12px] font-semibold text-[#6f849d] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#2f80ed]/[0.28] hover:bg-white/[0.86] hover:text-[#2060cc] active:scale-[0.96] disabled:opacity-50"
                             >
-                                Reset
+                                Reload
                             </button>
                             <button
                                 type="button"
@@ -284,7 +373,7 @@ export default function Unit19IncomeModal({ open, onClose }: Props) {
                     </div>
 
                     <div className="mt-2.5 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
-                        <StatCard label="Expected rent" value={formatEur(stats.expectedRent)} detail={`${state.settings.year} schedule`} />
+                        <StatCard label="Expected rent" value={formatEur(stats.expectedRent)} detail={`${year} schedule`} />
                         <StatCard label="Collected" value={formatEur(stats.collectedRent)} detail="paid rent" tone="ok" />
                         <StatCard label="Outstanding" value={formatEur(stats.outstanding)} detail={`${stats.unpaidMonths} unpaid months`} tone={stats.outstanding > 0 ? "warn" : "ok"} />
                         <StatCard label="Owner expenses" value={formatEur(stats.ownerExpenses)} detail="not tenant utilities" tone="base" />
@@ -300,28 +389,25 @@ export default function Unit19IncomeModal({ open, onClose }: Props) {
                                 <Field label="Year">
                                     <input
                                         type="number"
-                                        value={state.settings.year}
-                                        onChange={(event) => {
-                                            const year = Number(event.target.value || state.settings.year);
-                                            setState((current) => ({ ...current, settings: { ...current.settings, year } }));
-                                        }}
+                                        value={year}
+                                        onChange={(event) => void changeYear(Number(event.target.value || DEFAULT_YEAR))}
                                         className={inputClass}
                                     />
                                 </Field>
                                 <Field label="Monthly rent">
                                     <input
                                         type="number"
-                                        value={state.settings.monthlyRentEur}
-                                        onChange={(event) => patchSettings({ monthlyRentEur: Number(event.target.value || 0) })}
+                                        value={monthlyRentEur}
+                                        onChange={(event) => setMonthlyRentEur(Number(event.target.value || 0))}
                                         className={inputClass}
                                     />
                                 </Field>
                                 <div className="grid grid-cols-2 gap-2">
                                     <Field label="From">
-                                        <MonthSelect value={state.settings.rentStartMonth} onChange={(month) => patchSettings({ rentStartMonth: month })} />
+                                        <MonthSelect value={rentStartMonth} onChange={setRentStartMonth} />
                                     </Field>
                                     <Field label="To">
-                                        <MonthSelect value={state.settings.rentEndMonth} onChange={(month) => patchSettings({ rentEndMonth: month })} />
+                                        <MonthSelect value={rentEndMonth} onChange={setRentEndMonth} />
                                     </Field>
                                 </div>
                             </div>
@@ -333,27 +419,28 @@ export default function Unit19IncomeModal({ open, onClose }: Props) {
                                 <Field label="Rate %">
                                     <input
                                         type="number"
-                                        value={state.settings.taxRatePercent}
-                                        onChange={(event) => patchSettings({ taxRatePercent: Number(event.target.value || 0) })}
+                                        value={taxReserve?.tax_rate_percent ?? 15}
+                                        onChange={(event) => void patchTaxReserve({ tax_rate_percent: Number(event.target.value || 0), estimated_tax_eur: stats.estimatedTax })}
                                         className={inputClass}
                                     />
                                 </Field>
                                 <Field label="Due date">
-                                    <AdminDatePicker value={state.settings.taxDueDate} onChange={(date) => patchSettings({ taxDueDate: date })} />
+                                    <AdminDatePicker value={taxReserve?.due_date ?? ""} onChange={(date) => void patchTaxReserve({ due_date: date })} />
                                 </Field>
                                 <button
                                     type="button"
-                                    onClick={() => patchSettings({ taxPaid: !state.settings.taxPaid })}
+                                    onClick={() => void patchTaxReserve({ paid: !taxReserve?.paid, paid_date: !taxReserve?.paid ? todayIso() : null })}
+                                    disabled={!taxReserve}
                                     className={[
-                                        "w-full rounded-xl border px-3 py-2 text-[12px] font-semibold transition hover:-translate-y-0.5 active:scale-[0.98]",
-                                        state.settings.taxPaid
+                                        "w-full rounded-xl border px-3 py-2 text-[12px] font-semibold transition hover:-translate-y-0.5 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50",
+                                        taxReserve?.paid
                                             ? "border-[#20a76b]/[0.24] bg-[#20a76b]/[0.08] text-[#0f7448]"
-                                            : isTaxDue(state.settings)
+                                            : isTaxDue(taxReserve)
                                                 ? "border-[#d96969]/[0.28] bg-[#d96969]/[0.08] text-[#9d2f2f]"
                                                 : "border-[#cfa090]/[0.24] bg-[#cfa090]/[0.08] text-[#8c5947]",
                                     ].join(" ")}
                                 >
-                                    {state.settings.taxPaid ? "Tax marked paid" : isTaxDue(state.settings) ? "Tax due / unpaid" : "Tax pending"}
+                                    {taxReserve?.paid ? "Tax marked paid" : isTaxDue(taxReserve) ? "Tax due / unpaid" : "Tax pending"}
                                 </button>
                                 <div className="rounded-xl border border-[#ccd9e8] bg-white/[0.56] px-3 py-2 text-[11px] leading-4 text-[#607993]">
                                     Estimate: <span className="font-semibold text-[#0b1623]">{formatEur(stats.estimatedTax)}</span>. Editable reserve only; verify with accountant before payment.
@@ -363,76 +450,85 @@ export default function Unit19IncomeModal({ open, onClose }: Props) {
                     </aside>
 
                     <main className="h-full min-h-0 overflow-y-auto overscroll-contain p-3.5">
-                        <div className="grid gap-2.5 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-                            {state.months.map((month) => {
-                                const selected = selectedMonth === month.month;
-                                const expected = month.expectedRentEur > 0;
-                                const ownerExpenses = month.ownerExpenses.reduce((sum, expense) => sum + expense.amountEur, 0);
-                                const utilityCount = utilityOrder.filter((key) => month.utilities[key]).length;
+                        {loading ? (
+                            <div className="rounded-[18px] border border-white/[0.78] bg-white/[0.58] p-6 text-[13px] font-semibold text-[#607993]">Loading income data...</div>
+                        ) : (
+                            <div className="grid gap-2.5 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                                {months.map((month) => {
+                                    const monthSelected = selectedMonth === month.month;
+                                    const expected = month.rent_expected_eur > 0;
+                                    const monthExpenses = expensesByMonthId.get(month.id) ?? [];
+                                    const ownerCostTotal = monthExpenses.reduce((sum, expense) => sum + expense.amount_eur, 0);
+                                    const utilityCount = utilityOrder.filter((key) => month[key]).length;
 
-                                return (
-                                    <button
-                                        key={month.month}
-                                        type="button"
-                                        onClick={() => setSelectedMonth(month.month)}
-                                        className={[
-                                            "min-h-[170px] rounded-[18px] border p-3 text-left shadow-[0_10px_28px_rgba(41,73,112,0.06)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.74] active:scale-[0.99]",
-                                            selected ? "border-[#2f80ed]/[0.34] bg-[#2f80ed]/[0.07]" : "border-white/[0.78] bg-white/[0.58]",
-                                        ].join(" ")}
-                                    >
-                                        <div className="flex items-start justify-between gap-3">
-                                            <div>
-                                                <div className="text-[13px] font-semibold text-[#0b1623]">{unit19MonthLabels[month.month - 1]}</div>
-                                                <div className="mt-0.5 text-[10.5px] text-[#7a90a8]">{state.settings.year}</div>
-                                            </div>
-                                            <span
-                                                className={[
+                                    return (
+                                        <button
+                                            key={month.id}
+                                            type="button"
+                                            onClick={() => setSelectedMonth(month.month)}
+                                            className={[
+                                                "min-h-[170px] rounded-[18px] border p-3 text-left shadow-[0_10px_28px_rgba(41,73,112,0.06)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.74] active:scale-[0.99]",
+                                                monthSelected ? "border-[#2f80ed]/[0.34] bg-[#2f80ed]/[0.07]" : "border-white/[0.78] bg-white/[0.58]",
+                                            ].join(" ")}
+                                        >
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div>
+                                                    <div className="text-[13px] font-semibold text-[#0b1623]">{monthLabels[month.month - 1]}</div>
+                                                    <div className="mt-0.5 text-[10.5px] text-[#7a90a8]">{month.year}</div>
+                                                </div>
+                                                <span className={[
                                                     "rounded-full border px-2 py-0.5 text-[9.5px] font-semibold uppercase tracking-[0.10em]",
                                                     !expected
                                                         ? "border-[#9ab0c4]/[0.24] bg-[#9ab0c4]/[0.08] text-[#607993]"
-                                                        : month.rentPaid
+                                                        : month.rent_status === "paid"
                                                             ? "border-[#20a76b]/[0.24] bg-[#20a76b]/[0.09] text-[#0f7448]"
                                                             : "border-[#d96969]/[0.28] bg-[#d96969]/[0.08] text-[#9d2f2f]",
                                                 ].join(" ")}
-                                            >
-                                                {!expected ? "No rent" : month.rentPaid ? "Paid" : "Unpaid"}
-                                            </span>
-                                        </div>
-
-                                        <div className="mt-3 grid grid-cols-2 gap-2">
-                                            <div className="rounded-xl border border-[#ccd9e8] bg-white/[0.52] px-2.5 py-2">
-                                                <div className="text-[9px] uppercase tracking-[0.12em] text-[#7a90a8]">Expected</div>
-                                                <div className="mt-1 text-[15px] font-semibold text-[#0b1623]">{formatEur(month.expectedRentEur)}</div>
+                                                >
+                                                    {!expected ? "No rent" : month.rent_status === "paid" ? "Paid" : month.rent_status === "partial" ? "Partial" : "Unpaid"}
+                                                </span>
                                             </div>
-                                            <div className="rounded-xl border border-[#ccd9e8] bg-white/[0.52] px-2.5 py-2">
-                                                <div className="text-[9px] uppercase tracking-[0.12em] text-[#7a90a8]">Paid</div>
-                                                <div className="mt-1 text-[15px] font-semibold text-[#0b1623]">{formatEur(month.paidRentEur)}</div>
+
+                                            <div className="mt-3 grid grid-cols-2 gap-2">
+                                                <div className="rounded-xl border border-[#ccd9e8] bg-white/[0.52] px-2.5 py-2">
+                                                    <div className="text-[9px] uppercase tracking-[0.12em] text-[#7a90a8]">Expected</div>
+                                                    <div className="mt-1 text-[15px] font-semibold text-[#0b1623]">{formatEur(month.rent_expected_eur)}</div>
+                                                </div>
+                                                <div className="rounded-xl border border-[#ccd9e8] bg-white/[0.52] px-2.5 py-2">
+                                                    <div className="text-[9px] uppercase tracking-[0.12em] text-[#7a90a8]">Paid</div>
+                                                    <div className="mt-1 text-[15px] font-semibold text-[#0b1623]">{formatEur(month.rent_paid_eur)}</div>
+                                                </div>
                                             </div>
-                                        </div>
 
-                                        <div className="mt-3 flex flex-wrap gap-1.5">
-                                            <span className="rounded-full border border-[#ccd9e8] bg-white/[0.52] px-2 py-0.5 text-[10px] text-[#607993]">Utilities {utilityCount}/4</span>
-                                            {ownerExpenses > 0 ? (
-                                                <span className="rounded-full border border-[#cfa090]/[0.24] bg-[#cfa090]/[0.08] px-2 py-0.5 text-[10px] text-[#8c5947]">Owner costs {formatEur(ownerExpenses)}</span>
-                                            ) : null}
-                                        </div>
+                                            <div className="mt-3 flex flex-wrap gap-1.5">
+                                                <span className="rounded-full border border-[#ccd9e8] bg-white/[0.52] px-2 py-0.5 text-[10px] text-[#607993]">Utilities {utilityCount}/4</span>
+                                                {ownerCostTotal > 0 ? (
+                                                    <span className="rounded-full border border-[#cfa090]/[0.24] bg-[#cfa090]/[0.08] px-2 py-0.5 text-[10px] text-[#8c5947]">Owner costs {formatEur(ownerCostTotal)}</span>
+                                                ) : null}
+                                            </div>
 
-                                        {month.note ? <div className="mt-2 line-clamp-2 text-[11px] leading-4 text-[#7a90a8]">{month.note}</div> : null}
-                                    </button>
-                                );
-                            })}
-                        </div>
+                                            {month.note ? <div className="mt-2 line-clamp-2 text-[11px] leading-4 text-[#7a90a8]">{month.note}</div> : null}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </main>
 
                     <aside className="h-full min-h-0 overflow-y-auto overscroll-contain border-t border-white/[0.65] bg-white/[0.36] p-3.5 lg:border-l lg:border-t-0">
-                        <MonthDetails
-                            month={selected}
-                            onTogglePaid={markRentPaid}
-                            onPatch={patchMonth}
-                            onToggleUtility={toggleUtility}
-                            onAddExpense={() => setExpenseDraft({ month: selected.month, title: "", amountEur: 0 })}
-                            onDeleteExpense={deleteExpense}
-                        />
+                        {selected ? (
+                            <MonthDetails
+                                month={selected}
+                                ownerExpenses={expensesByMonthId.get(selected.id) ?? []}
+                                onTogglePaid={() => void markRentPaid(selected)}
+                                onPatch={(patch) => void patchMonth(selected, patch)}
+                                onToggleUtility={(key) => void toggleUtility(selected, key)}
+                                onAddExpense={() => setExpenseDraft({ monthId: selected.id, title: "", amountEur: 0 })}
+                                onDeleteExpense={(id) => void deleteExpense(id)}
+                            />
+                        ) : (
+                            <div className="rounded-[16px] border border-white/[0.78] bg-white/[0.58] p-3.5 text-[12px] text-[#607993]">No month selected.</div>
+                        )}
                     </aside>
                 </div>
 
@@ -478,7 +574,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 function MonthSelect({ value, onChange }: { value: number; onChange: (value: number) => void }) {
     return (
         <select value={value} onChange={(event) => onChange(Number(event.target.value))} className={inputClass}>
-            {unit19MonthLabels.map((label, index) => (
+            {monthLabels.map((label, index) => (
                 <option key={label} value={index + 1}>
                     {label.slice(0, 3)}
                 </option>
@@ -489,38 +585,40 @@ function MonthSelect({ value, onChange }: { value: number; onChange: (value: num
 
 function MonthDetails({
     month,
+    ownerExpenses,
     onTogglePaid,
     onPatch,
     onToggleUtility,
     onAddExpense,
     onDeleteExpense,
 }: {
-    month: Unit19IncomeMonth;
-    onTogglePaid: (month: Unit19IncomeMonth) => void;
-    onPatch: (month: number, patch: Partial<Unit19IncomeMonth>) => void;
-    onToggleUtility: (month: number, key: Unit19UtilityKey) => void;
+    month: ManagedPropertyIncomeMonth;
+    ownerExpenses: ManagedPropertyIncomeOwnerExpense[];
+    onTogglePaid: () => void;
+    onPatch: (patch: ManagedPropertyIncomeMonthPatch) => void;
+    onToggleUtility: (key: UtilityKey) => void;
     onAddExpense: () => void;
-    onDeleteExpense: (month: number, expenseId: string) => void;
+    onDeleteExpense: (id: string) => void;
 }) {
     return (
         <div className="space-y-2.5">
             <div className="rounded-[16px] border border-white/[0.78] bg-white/[0.58] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
                 <div className="mb-2 text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">Selected month</div>
-                <div className="text-[17px] font-semibold text-[#0b1623]">{unit19MonthLabels[month.month - 1]}</div>
+                <div className="text-[17px] font-semibold text-[#0b1623]">{monthLabels[month.month - 1]}</div>
                 <div className="mt-1 text-[11px] text-[#7a90a8]">Rent and operational checks</div>
 
                 <button
                     type="button"
-                    onClick={() => onTogglePaid(month)}
-                    disabled={month.expectedRentEur <= 0}
+                    onClick={onTogglePaid}
+                    disabled={month.rent_expected_eur <= 0}
                     className={[
                         "mt-3 w-full rounded-xl border px-3 py-2 text-[12px] font-semibold transition hover:-translate-y-0.5 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50",
-                        month.rentPaid
+                        month.rent_status === "paid"
                             ? "border-[#20a76b]/[0.24] bg-[#20a76b]/[0.08] text-[#0f7448]"
                             : "border-[#d96969]/[0.28] bg-[#d96969]/[0.08] text-[#9d2f2f]",
                     ].join(" ")}
                 >
-                    {month.rentPaid ? "Rent paid" : "Mark rent paid"}
+                    {month.rent_status === "paid" ? "Rent paid" : "Mark rent paid"}
                 </button>
             </div>
 
@@ -530,23 +628,29 @@ function MonthDetails({
                     <Field label="Expected">
                         <input
                             type="number"
-                            value={month.expectedRentEur}
-                            onChange={(event) => onPatch(month.month, { expectedRentEur: Number(event.target.value || 0) })}
+                            value={month.rent_expected_eur}
+                            onChange={(event) => {
+                                const expected = Number(event.target.value || 0);
+                                onPatch({ rent_expected_eur: expected, rent_status: deriveRentStatus(expected, month.rent_paid_eur) });
+                            }}
                             className={inputClass}
                         />
                     </Field>
                     <Field label="Paid">
                         <input
                             type="number"
-                            value={month.paidRentEur}
-                            onChange={(event) => onPatch(month.month, { paidRentEur: Number(event.target.value || 0), rentPaid: Number(event.target.value || 0) >= month.expectedRentEur && month.expectedRentEur > 0 })}
+                            value={month.rent_paid_eur}
+                            onChange={(event) => {
+                                const paid = Number(event.target.value || 0);
+                                onPatch({ rent_paid_eur: paid, rent_status: deriveRentStatus(month.rent_expected_eur, paid) });
+                            }}
                             className={inputClass}
                         />
                     </Field>
                 </div>
                 <div className="mt-2">
                     <Field label="Paid date">
-                        <AdminDatePicker value={month.paidDate ?? todayIso()} onChange={(date) => onPatch(month.month, { paidDate: date })} />
+                        <AdminDatePicker value={month.rent_paid_date ?? ""} onChange={(date) => onPatch({ rent_paid_date: date })} />
                     </Field>
                 </div>
             </div>
@@ -558,15 +662,15 @@ function MonthDetails({
                         <button
                             key={key}
                             type="button"
-                            onClick={() => onToggleUtility(month.month, key)}
+                            onClick={() => onToggleUtility(key)}
                             className={[
                                 "rounded-xl border px-2 py-2 text-left text-[11px] font-semibold transition hover:-translate-y-0.5 active:scale-[0.98]",
-                                month.utilities[key]
+                                month[key]
                                     ? "border-[#20a76b]/[0.24] bg-[#20a76b]/[0.08] text-[#0f7448]"
                                     : "border-[#ccd9e8] bg-white/[0.56] text-[#607993]",
                             ].join(" ")}
                         >
-                            {month.utilities[key] ? "✓ " : "○ "}{unit19UtilityLabels[key]}
+                            {month[key] ? "✓ " : "○ "}{utilityLabels[key]}
                         </button>
                     ))}
                 </div>
@@ -581,16 +685,16 @@ function MonthDetails({
                     </button>
                 </div>
                 <div className="space-y-1.5">
-                    {month.ownerExpenses.length === 0 ? (
+                    {ownerExpenses.length === 0 ? (
                         <div className="text-[12px] text-[#7a90a8]">No owner expenses this month.</div>
                     ) : (
-                        month.ownerExpenses.map((expense) => (
+                        ownerExpenses.map((expense) => (
                             <div key={expense.id} className="flex items-center justify-between gap-2 rounded-xl border border-[#ccd9e8] bg-white/[0.56] px-3 py-2">
                                 <div className="min-w-0">
                                     <div className="truncate text-[12px] font-semibold text-[#0b1623]">{expense.title}</div>
-                                    <div className="text-[10.5px] text-[#7a90a8]">{formatEur(expense.amountEur)}</div>
+                                    <div className="text-[10.5px] text-[#7a90a8]">{formatEur(expense.amount_eur)}</div>
                                 </div>
-                                <button type="button" onClick={() => onDeleteExpense(month.month, expense.id)} className="text-[10.5px] font-semibold text-[#9d2f2f]">
+                                <button type="button" onClick={() => onDeleteExpense(expense.id)} className="text-[11px] font-semibold text-[#9d2f2f] transition hover:text-[#6f1f1f]">
                                     Delete
                                 </button>
                             </div>
@@ -600,34 +704,35 @@ function MonthDetails({
             </div>
 
             <div className="rounded-[16px] border border-white/[0.78] bg-white/[0.58] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
-                <Field label="Note">
-                    <textarea
-                        value={month.note ?? ""}
-                        onChange={(event) => onPatch(month.month, { note: event.target.value })}
-                        rows={3}
-                        className={`${inputClass} min-h-[76px] resize-none`}
-                    />
-                </Field>
+                <div className="mb-2 text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">Note</div>
+                <textarea
+                    value={month.note ?? ""}
+                    onChange={(event) => onPatch({ note: event.target.value })}
+                    rows={3}
+                    className={`${inputClass} resize-none`}
+                    placeholder="Month note"
+                />
             </div>
         </div>
     );
 }
 
-function ExpenseEditor({ draft, onChange, onSave, onCancel }: { draft: ExpenseDraft; onChange: (draft: ExpenseDraft) => void; onSave: () => void; onCancel: () => void }) {
+function ExpenseEditor({
+    draft,
+    onChange,
+    onSave,
+    onCancel,
+}: {
+    draft: ExpenseDraft;
+    onChange: (draft: ExpenseDraft) => void;
+    onSave: () => void;
+    onCancel: () => void;
+}) {
     return (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-[#06101d]/[0.18] p-4 backdrop-blur-[2px]">
-            <div className="w-full max-w-[460px] rounded-[24px] border border-white/[0.78] bg-white/[0.90] p-4 shadow-[0_24px_90px_rgba(6,16,29,0.25),inset_0_1px_0_rgba(255,255,255,0.96)] backdrop-blur-2xl">
-                <div className="mb-3 flex items-start justify-between gap-3">
-                    <div>
-                        <div className="text-[9.5px] font-semibold uppercase tracking-[0.18em] text-[#2060cc]">Owner expense</div>
-                        <div className="mt-1 text-[20px] font-semibold text-[#0b1623]">Add expense</div>
-                    </div>
-                    <button type="button" onClick={onCancel} className="flex h-8 w-8 items-center justify-center rounded-2xl border border-[#ccd9e8] bg-white/[0.62] text-[#607993] transition hover:bg-white">
-                        <IconClose />
-                    </button>
-                </div>
-
-                <div className="space-y-2.5">
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-[#06101d]/[0.28] p-4 backdrop-blur-[6px]">
+            <div className="w-full max-w-md rounded-[22px] border border-white/[0.78] bg-white/[0.86] p-4 shadow-[0_28px_80px_rgba(6,16,29,0.28)] backdrop-blur-2xl">
+                <div className="mb-3 text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">Owner expense</div>
+                <div className="space-y-3">
                     <Field label="Title">
                         <input value={draft.title} onChange={(event) => onChange({ ...draft, title: event.target.value })} className={inputClass} autoFocus />
                     </Field>
@@ -635,12 +740,11 @@ function ExpenseEditor({ draft, onChange, onSave, onCancel }: { draft: ExpenseDr
                         <input type="number" value={draft.amountEur} onChange={(event) => onChange({ ...draft, amountEur: Number(event.target.value || 0) })} className={inputClass} />
                     </Field>
                 </div>
-
                 <div className="mt-4 flex justify-end gap-2">
-                    <button type="button" onClick={onCancel} className="rounded-xl border border-[#ccd9e8] bg-white/[0.62] px-3 py-2 text-[12px] font-semibold text-[#607993] transition hover:bg-white">
+                    <button type="button" onClick={onCancel} className="rounded-xl border border-[#ccd9e8] bg-white/[0.62] px-4 py-2 text-[12px] font-semibold text-[#607993] transition hover:bg-white">
                         Cancel
                     </button>
-                    <button type="button" onClick={onSave} className="rounded-xl border border-[#20a76b]/[0.24] bg-[#20a76b]/[0.08] px-3 py-2 text-[12px] font-semibold text-[#0f7448] transition hover:bg-[#20a76b]/[0.13]">
+                    <button type="button" onClick={onSave} className="rounded-xl border border-[#20a76b]/[0.24] bg-[#20a76b]/[0.08] px-4 py-2 text-[12px] font-semibold text-[#0f7448] transition hover:bg-[#20a76b]/[0.13]">
                         Save expense
                     </button>
                 </div>
