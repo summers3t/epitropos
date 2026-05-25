@@ -62,6 +62,22 @@ const priorityLabels: Record<Unit19CalendarItemPriority, string> = {
 };
 
 const typeOrder: Unit19CalendarItemType[] = ["task", "deadline", "appointment", "payment", "document_followup", "reminder"];
+const weekDayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+function isWeekend(date: Date) {
+    const day = date.getDay();
+    return day === 0 || day === 6;
+}
+
+function getIsoWeekNumber(date: Date) {
+    const target = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const day = target.getUTCDay() || 7;
+
+    target.setUTCDate(target.getUTCDate() + 4 - day);
+
+    const yearStart = new Date(Date.UTC(target.getUTCFullYear(), 0, 1));
+    return Math.ceil((((target.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+}
 
 function todayStart() {
     const value = new Date();
@@ -594,6 +610,7 @@ export default function Unit19CalendarModal({ open, onClose }: Props) {
                                 selectedDate={selectedDate}
                                 onSelectDate={setSelectedDate}
                                 onSelectItem={(item) => setSelectedItemId(item.id)}
+                                onAddItem={(date) => setDraftItem(blankItem(date))}
                             />
                         ) : null}
 
@@ -603,6 +620,7 @@ export default function Unit19CalendarModal({ open, onClose }: Props) {
                                 selectedDate={selectedDate}
                                 onSelectDate={setSelectedDate}
                                 onSelectItem={(item) => setSelectedItemId(item.id)}
+                                onAddItem={(date) => setDraftItem(blankItem(date))}
                             />
                         ) : null}
                     </main>
@@ -772,14 +790,17 @@ function WeekView({
     selectedDate,
     onSelectDate,
     onSelectItem,
+    onAddItem,
 }: {
     items: Unit19CalendarItem[];
     selectedDate: string;
     onSelectDate: (date: string) => void;
     onSelectItem: (item: Unit19CalendarItem) => void;
+    onAddItem: (date: string) => void;
 }) {
     const weekStart = startOfWeek(parseLocalDate(selectedDate));
     const days = Array.from({ length: 7 }, (_, index) => addDays(weekStart, index));
+    const weekNumber = getIsoWeekNumber(weekStart);
 
     return (
         <div className="rounded-[18px] border border-white/[0.78] bg-white/[0.58] p-3 shadow-[0_14px_40px_rgba(41,73,112,0.08),inset_0_1px_0_rgba(255,255,255,0.92)]">
@@ -787,7 +808,7 @@ function WeekView({
                 <button type="button" onClick={() => onSelectDate(toIsoDate(addDays(weekStart, -7)))} className="rounded-xl border border-[#ccd9e8] bg-white/[0.58] px-3 py-1.5 text-[12px] font-semibold text-[#607993] transition hover:bg-white/[0.86]">
                     Previous
                 </button>
-                <div className="text-[13px] font-semibold text-[#0b1623]">Week of {formatDay(weekStart)}</div>
+                <div className="text-[13px] font-semibold text-[#0b1623]">Week {weekNumber} · Week of {formatDay(weekStart)}</div>
                 <button type="button" onClick={() => onSelectDate(toIsoDate(addDays(weekStart, 7)))} className="rounded-xl border border-[#ccd9e8] bg-white/[0.58] px-3 py-1.5 text-[12px] font-semibold text-[#607993] transition hover:bg-white/[0.86]">
                     Next
                 </button>
@@ -797,19 +818,28 @@ function WeekView({
                     const dayIso = toIsoDate(day);
                     const dayItems = items.filter((item) => item.date === dayIso);
                     const selected = selectedDate === dayIso;
+                    const weekend = isWeekend(day);
 
                     return (
                         <button
                             key={dayIso}
                             type="button"
                             onClick={() => onSelectDate(dayIso)}
+                            onDoubleClick={() => onAddItem(dayIso)}
                             className={[
-                                "rounded-[16px] border p-2 text-left transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.72] active:scale-[0.99]",
-                                selected ? "border-[#2f80ed]/[0.34] bg-[#2f80ed]/[0.07]" : "border-[#d8e8f6]/[0.82] bg-white/[0.42]",
+                                "flex min-h-[520px] flex-col justify-start rounded-[16px] border p-2 text-left transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.72] active:scale-[0.99]",
+                                selected
+                                    ? "border-[#2f80ed]/[0.34] bg-[#2f80ed]/[0.07]"
+                                    : weekend
+                                        ? "border-[#cfa090]/[0.26] bg-[#cfa090]/[0.08]"
+                                        : "border-[#d8e8f6]/[0.82] bg-white/[0.42]",
                             ].join(" ")}
                         >
-                            <div className="mb-2 flex items-center justify-between">
-                                <span className="text-[11px] font-semibold uppercase tracking-[0.10em] text-[#7a90a8]">{formatShortDay(day)}</span>
+                            <div className="mb-2 flex items-start justify-between gap-2">
+                                <span className={[
+                                    "text-[11px] font-semibold uppercase tracking-[0.10em]",
+                                    weekend ? "text-[#8c5947]" : "text-[#7a90a8]",
+                                ].join(" ")}>{formatShortDay(day)}</span>
                                 <span className="rounded-full border border-[#ccd9e8] bg-white/[0.58] px-1.5 py-0.5 text-[9px] text-[#607993]">{dayItems.length}</span>
                             </div>
                             <div className="space-y-1.5">
@@ -822,6 +852,7 @@ function WeekView({
                                             event.stopPropagation();
                                             onSelectItem(item);
                                         }}
+                                        onDoubleClick={(event) => event.stopPropagation()}
                                         onKeyDown={(event) => {
                                             if (event.key === "Enter") onSelectItem(item);
                                         }}
@@ -844,11 +875,13 @@ function MonthView({
     selectedDate,
     onSelectDate,
     onSelectItem,
+    onAddItem,
 }: {
     items: Unit19CalendarItem[];
     selectedDate: string;
     onSelectDate: (date: string) => void;
     onSelectItem: (item: Unit19CalendarItem) => void;
+    onAddItem: (date: string) => void;
 }) {
     const monthStart = startOfMonth(parseLocalDate(selectedDate));
     const calendarStart = startOfWeek(monthStart);
@@ -865,26 +898,54 @@ function MonthView({
                     Next
                 </button>
             </div>
+            <div className="mb-1 grid gap-1.5 md:grid-cols-7">
+                {weekDayLabels.map((label, index) => {
+                    const weekend = index >= 5;
+
+                    return (
+                        <div
+                            key={label}
+                            className={[
+                                "rounded-xl border px-2 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em]",
+                                weekend
+                                    ? "border-[#cfa090]/[0.22] bg-[#cfa090]/[0.08] text-[#8c5947]"
+                                    : "border-[#d8e8f6]/[0.82] bg-white/[0.50] text-[#7a90a8]",
+                            ].join(" ")}
+                        >
+                            {label}
+                        </div>
+                    );
+                })}
+            </div>
             <div className="grid gap-1.5 md:grid-cols-7">
                 {days.map((day) => {
                     const dayIso = toIsoDate(day);
                     const dayItems = items.filter((item) => item.date === dayIso);
                     const inMonth = day >= monthStart && day <= endOfMonth(monthStart);
                     const selected = selectedDate === dayIso;
+                    const weekend = isWeekend(day);
 
                     return (
                         <button
                             key={dayIso}
                             type="button"
                             onClick={() => onSelectDate(dayIso)}
+                            onDoubleClick={() => onAddItem(dayIso)}
                             className={[
-                                "min-h-[92px] rounded-[14px] border p-2 text-left transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.76] active:scale-[0.99]",
-                                selected ? "border-[#2f80ed]/[0.34] bg-[#2f80ed]/[0.07]" : "border-[#d8e8f6]/[0.82] bg-white/[0.42]",
+                                "flex min-h-[92px] flex-col justify-start rounded-[14px] border p-2 text-left transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.76] active:scale-[0.99]",
+                                selected
+                                    ? "border-[#2f80ed]/[0.34] bg-[#2f80ed]/[0.07]"
+                                    : weekend
+                                        ? "border-[#cfa090]/[0.24] bg-[#cfa090]/[0.07]"
+                                        : "border-[#d8e8f6]/[0.82] bg-white/[0.42]",
                                 inMonth ? "" : "opacity-45",
                             ].join(" ")}
                         >
-                            <div className="mb-2 flex items-center justify-between">
-                                <span className="text-[11px] font-semibold text-[#0b1623]">{day.getDate()}</span>
+                            <div className="mb-2 flex items-start justify-between gap-2">
+                                <span className={[
+                                    "text-[11px] font-semibold",
+                                    weekend ? "text-[#8c5947]" : "text-[#0b1623]",
+                                ].join(" ")}>{day.getDate()}</span>
                                 {dayItems.length ? <span className="h-1.5 w-1.5 rounded-full bg-[#2f80ed]" /> : null}
                             </div>
                             <div className="space-y-1">
@@ -897,6 +958,7 @@ function MonthView({
                                             event.stopPropagation();
                                             onSelectItem(item);
                                         }}
+                                        onDoubleClick={(event) => event.stopPropagation()}
                                         onKeyDown={(event) => {
                                             if (event.key === "Enter") onSelectItem(item);
                                         }}
