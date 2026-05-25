@@ -2,44 +2,70 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-    EUR_TO_BGN,
-    unit19Expenses,
-    type Unit19Expense,
-    type Unit19ExpenseCategory,
-    type Unit19ExpenseStatus,
-} from "@/lib/admin/unit19ExpensesData";
+    createManagedPropertyExpense,
+    deleteManagedPropertyExpense,
+    getManagedPropertyBySlug,
+    getManagedPropertyExpenses,
+    updateManagedPropertyExpense,
+    type ManagedProperty,
+    type ManagedPropertyExpense,
+    type ManagedPropertyExpenseCategory,
+    type ManagedPropertyExpenseStatus,
+} from "@/lib/admin/managedPropertiesApi";
+
+const EUR_TO_BGN = 1.95583;
+const PROPERTY_SLUG = "unit-19";
 
 type Props = {
     open: boolean;
     onClose: () => void;
 };
 
-type ExpenseFilter = "all" | Unit19ExpenseCategory;
-type StatusFilter = "active" | Unit19ExpenseStatus | "all";
+type ExpenseFilter = "all" | ManagedPropertyExpenseCategory;
+type StatusFilter = "active" | ManagedPropertyExpenseStatus | "all";
 
-const categoryLabels: Record<Unit19ExpenseCategory, string> = {
-    "Bulgarian documents": "BG documents",
-    "Greek setup & legal": "Greek setup",
-    "Credit / DSK": "Credit / DSK",
-    "Greek closing": "Greek closing",
-    "Post-acquisition": "Post-acq.",
-    "Vehicle / excluded": "Excluded",
+type ExpenseDraft = {
+    title: string;
+    category: ManagedPropertyExpenseCategory;
+    issuer: string;
+    note: string;
+    amount_eur: number;
+    amount_bgn: number;
+    status: ManagedPropertyExpenseStatus;
 };
 
-const statusLabels: Record<Unit19ExpenseStatus, string> = {
+const categoryLabels: Record<ManagedPropertyExpenseCategory, string> = {
+    bg_documents: "BG documents",
+    greek_setup: "Greek setup",
+    credit_dsk: "Credit / DSK",
+    greek_closing: "Greek closing",
+    post_acquisition: "Post-acq.",
+    repairs: "Repairs",
+    utilities: "Utilities",
+    tax: "Tax",
+    other: "Other",
+};
+
+const statusLabels: Record<ManagedPropertyExpenseStatus, string> = {
     paid: "Paid",
-    clarify: "Clarify",
+    pending: "Clarify",
+    planned: "Planned",
     excluded: "Excluded",
 };
 
-const categoryOrder: Unit19ExpenseCategory[] = [
-    "Bulgarian documents",
-    "Greek setup & legal",
-    "Credit / DSK",
-    "Greek closing",
-    "Post-acquisition",
-    "Vehicle / excluded",
+const categoryOrder: ManagedPropertyExpenseCategory[] = [
+    "bg_documents",
+    "greek_setup",
+    "credit_dsk",
+    "greek_closing",
+    "post_acquisition",
+    "repairs",
+    "utilities",
+    "tax",
+    "other",
 ];
+
+const statusOrder: ManagedPropertyExpenseStatus[] = ["paid", "pending", "planned", "excluded"];
 
 const currency = new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -59,13 +85,17 @@ function formatBgn(value: number) {
     return `${number.format(value)} BGN`;
 }
 
-function getStatusClasses(status: Unit19ExpenseStatus) {
+function getStatusClasses(status: ManagedPropertyExpenseStatus) {
     if (status === "paid") {
         return "border-[#20a76b]/[0.24] bg-[#20a76b]/[0.09] text-[#0f7448]";
     }
 
-    if (status === "clarify") {
+    if (status === "pending") {
         return "border-[#cfa090]/[0.32] bg-[#cfa090]/[0.11] text-[#8c5947]";
+    }
+
+    if (status === "planned") {
+        return "border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] text-[#2060cc]";
     }
 
     return "border-[#9ab0c4]/[0.26] bg-[#9ab0c4]/[0.10] text-[#4e6880]";
@@ -77,6 +107,18 @@ function recalcFromEur(value: number) {
 
 function recalcFromBgn(value: number) {
     return Number((value / EUR_TO_BGN).toFixed(2));
+}
+
+function toDraft(expense: ManagedPropertyExpense): ExpenseDraft {
+    return {
+        title: expense.title,
+        category: expense.category,
+        issuer: expense.issuer ?? "",
+        note: expense.note ?? "",
+        amount_eur: Number(expense.amount_eur ?? 0),
+        amount_bgn: Number(expense.amount_bgn ?? recalcFromEur(Number(expense.amount_eur ?? 0))),
+        status: expense.status,
+    };
 }
 
 function IconClose() {
@@ -109,12 +151,63 @@ function IconSearch() {
     );
 }
 
+function IconPlus() {
+    return (
+        <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M12 5v14" />
+            <path d="M5 12h14" />
+        </svg>
+    );
+}
+
 export default function Unit19ExpensesModal({ open, onClose }: Props) {
-    const [expenses, setExpenses] = useState<Unit19Expense[]>(unit19Expenses);
+    const [managedProperty, setManagedProperty] = useState<ManagedProperty | null>(null);
+    const [expenses, setExpenses] = useState<ManagedPropertyExpense[]>([]);
     const [categoryFilter, setCategoryFilter] = useState<ExpenseFilter>("all");
     const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
     const [query, setQuery] = useState("");
     const [editingId, setEditingId] = useState<string | null>(null);
+    const [drafts, setDrafts] = useState<Record<string, ExpenseDraft>>({});
+    const [loading, setLoading] = useState(false);
+    const [savingId, setSavingId] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!open) return;
+
+        let cancelled = false;
+
+        async function loadExpenses() {
+            try {
+                setLoading(true);
+                setError(null);
+
+                const property = await getManagedPropertyBySlug(PROPERTY_SLUG);
+                const rows = await getManagedPropertyExpenses(property.id);
+
+                if (cancelled) return;
+
+                setManagedProperty(property);
+                setExpenses(rows);
+                setEditingId(null);
+                setDrafts({});
+            } catch (err) {
+                if (!cancelled) {
+                    setError(err instanceof Error ? err.message : "Failed to load expenses");
+                }
+            } finally {
+                if (!cancelled) {
+                    setLoading(false);
+                }
+            }
+        }
+
+        loadExpenses();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [open]);
 
     useEffect(() => {
         if (!open) return;
@@ -140,21 +233,21 @@ export default function Unit19ExpensesModal({ open, onClose }: Props) {
     );
 
     const stats = useMemo(() => {
-        const total = activeExpenses.reduce((sum, expense) => sum + expense.eur, 0);
+        const total = activeExpenses.reduce((sum, expense) => sum + Number(expense.amount_eur ?? 0), 0);
         const greekClosing = activeExpenses
-            .filter((expense) => expense.category === "Greek closing")
-            .reduce((sum, expense) => sum + expense.eur, 0);
+            .filter((expense) => expense.category === "greek_closing")
+            .reduce((sum, expense) => sum + Number(expense.amount_eur ?? 0), 0);
         const credit = activeExpenses
-            .filter((expense) => expense.category === "Credit / DSK")
-            .reduce((sum, expense) => sum + expense.eur, 0);
-        const clarify = activeExpenses.filter((expense) => expense.status === "clarify");
+            .filter((expense) => expense.category === "credit_dsk")
+            .reduce((sum, expense) => sum + Number(expense.amount_eur ?? 0), 0);
+        const pending = activeExpenses.filter((expense) => expense.status === "pending");
 
         return {
             total,
             greekClosing,
             credit,
-            clarifyAmount: clarify.reduce((sum, expense) => sum + expense.eur, 0),
-            clarifyCount: clarify.length,
+            pendingAmount: pending.reduce((sum, expense) => sum + Number(expense.amount_eur ?? 0), 0),
+            pendingCount: pending.length,
             trackedCount: activeExpenses.length,
         };
     }, [activeExpenses]);
@@ -163,7 +256,7 @@ export default function Unit19ExpensesModal({ open, onClose }: Props) {
         const values = categoryOrder.map((category) => {
             const total = activeExpenses
                 .filter((expense) => expense.category === category)
-                .reduce((sum, expense) => sum + expense.eur, 0);
+                .reduce((sum, expense) => sum + Number(expense.amount_eur ?? 0), 0);
 
             return { category, total };
         });
@@ -196,17 +289,126 @@ export default function Unit19ExpensesModal({ open, onClose }: Props) {
                 return true;
             }
 
-            return [expense.title, expense.issuer, expense.note, expense.category]
+            return [expense.title, expense.issuer, expense.note, expense.category, expense.source]
                 .join(" ")
                 .toLowerCase()
                 .includes(normalizedQuery);
         });
     }, [categoryFilter, expenses, query, statusFilter]);
 
-    function patchExpense(id: string, patch: Partial<Unit19Expense>) {
-        setExpenses((current) =>
-            current.map((expense) => (expense.id === id ? { ...expense, ...patch } : expense)),
-        );
+    function startEdit(expense: ManagedPropertyExpense) {
+        setEditingId(expense.id);
+        setDrafts((current) => ({ ...current, [expense.id]: toDraft(expense) }));
+    }
+
+    function patchDraft(id: string, patch: Partial<ExpenseDraft>) {
+        setDrafts((current) => ({
+            ...current,
+            [id]: {
+                ...(current[id] ?? toDraft(expenses.find((expense) => expense.id === id)!)),
+                ...patch,
+            },
+        }));
+    }
+
+    async function saveExpense(expense: ManagedPropertyExpense) {
+        const draft = drafts[expense.id];
+        if (!draft) {
+            setEditingId(null);
+            return;
+        }
+
+        try {
+            setSavingId(expense.id);
+            setError(null);
+
+            const updated = await updateManagedPropertyExpense(expense.id, {
+                title: draft.title.trim() || "Untitled expense",
+                category: draft.category,
+                issuer: draft.issuer.trim() || null,
+                note: draft.note.trim() || null,
+                amount_eur: Number(draft.amount_eur || 0),
+                amount_bgn: Number(draft.amount_bgn || 0),
+                fx_rate: EUR_TO_BGN,
+                status: draft.status,
+            });
+
+            setExpenses((current) => current.map((item) => (item.id === expense.id ? updated : item)));
+            setDrafts((current) => {
+                const next = { ...current };
+                delete next[expense.id];
+                return next;
+            });
+            setEditingId(null);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to save expense");
+        } finally {
+            setSavingId(null);
+        }
+    }
+
+    async function toggleExcluded(expense: ManagedPropertyExpense) {
+        const nextStatus: ManagedPropertyExpenseStatus = expense.status === "excluded" ? "paid" : "excluded";
+
+        try {
+            setSavingId(expense.id);
+            setError(null);
+            const updated = await updateManagedPropertyExpense(expense.id, { status: nextStatus });
+            setExpenses((current) => current.map((item) => (item.id === expense.id ? updated : item)));
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to update expense status");
+        } finally {
+            setSavingId(null);
+        }
+    }
+
+    async function addExpense() {
+        if (!managedProperty) return;
+
+        try {
+            setSavingId("new");
+            setError(null);
+
+            const maxSortOrder = expenses.reduce((max, expense) => Math.max(max, expense.sort_order ?? 0), 0);
+            const created = await createManagedPropertyExpense({
+                managed_property_id: managedProperty.id,
+                title: "New expense",
+                category: "post_acquisition",
+                issuer: null,
+                note: null,
+                amount_eur: 0,
+                amount_bgn: 0,
+                fx_rate: EUR_TO_BGN,
+                expense_date: null,
+                status: "planned",
+                source: "manual admin entry",
+                sort_order: maxSortOrder + 1,
+            });
+
+            setExpenses((current) => [...current, created]);
+            startEdit(created);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to create expense");
+        } finally {
+            setSavingId(null);
+        }
+    }
+
+    async function deleteExpense(expense: ManagedPropertyExpense) {
+        const confirmed = window.confirm(`Delete expense: ${expense.title}?`);
+        if (!confirmed) return;
+
+        try {
+            setSavingId(expense.id);
+            setError(null);
+            await deleteManagedPropertyExpense(expense.id);
+            setExpenses((current) => current.filter((item) => item.id !== expense.id));
+            setEditingId((current) => (current === expense.id ? null : current));
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to delete expense");
+        } finally {
+            setSavingId(null);
+        }
     }
 
     if (!open) return null;
@@ -229,27 +431,44 @@ export default function Unit19ExpensesModal({ open, onClose }: Props) {
                         <div>
                             <div className="mb-1 inline-flex items-center gap-2 rounded-full border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-3 py-1 text-[9.5px] font-semibold uppercase tracking-[0.18em] text-[#2060cc]">
                                 <IconExpense />
-                                Expense cockpit
+                                Expense cockpit · DB live
                             </div>
                             <h2 className="font-display text-[28px] font-normal leading-tight tracking-[-0.03em] text-[#0b1623] sm:text-[34px]">
-                                Unit 19 Expense Tracker
+                                {managedProperty?.display_name ?? "Unit 19"} Expense Tracker
                             </h2>
                         </div>
 
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-white/[0.78] bg-white/[0.62] text-[#6f849d] shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] transition hover:-translate-y-0.5 hover:border-[#2f80ed]/[0.28] hover:bg-white/[0.86] hover:text-[#2060cc] active:scale-[0.96]"
-                        >
-                            <IconClose />
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={addExpense}
+                                disabled={!managedProperty || savingId === "new"}
+                                className="inline-flex items-center gap-1.5 rounded-2xl border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-3 py-2 text-[11px] font-semibold text-[#2060cc] transition hover:-translate-y-0.5 hover:border-[#2f80ed]/[0.34] hover:bg-[#2f80ed]/[0.13] active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                <IconPlus />
+                                Add row
+                            </button>
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-white/[0.78] bg-white/[0.62] text-[#6f849d] shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] transition hover:-translate-y-0.5 hover:border-[#2f80ed]/[0.28] hover:bg-white/[0.86] hover:text-[#2060cc] active:scale-[0.96]"
+                            >
+                                <IconClose />
+                            </button>
+                        </div>
                     </div>
+
+                    {error ? (
+                        <div className="mt-2 rounded-2xl border border-[#d94c4c]/[0.22] bg-[#d94c4c]/[0.08] px-3 py-2 text-[11px] font-medium text-[#9f3030]">
+                            {error}
+                        </div>
+                    ) : null}
 
                     <div className="mt-2.5 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
                         <div className="rounded-[16px] border border-white/[0.80] bg-white/[0.62] px-3.5 py-2.5 shadow-[0_10px_28px_rgba(41,73,112,0.07)]">
                             <div className="text-[9px] font-semibold uppercase tracking-[0.13em] text-[#7a90a8]">Total tracked</div>
                             <div className="mt-1 text-[21px] font-semibold leading-none text-[#0b1623]">{formatEur(stats.total)}</div>
-                            <div className="mt-1 text-[10px] text-[#7a90a8]">{stats.trackedCount} active rows</div>
+                            <div className="mt-1 text-[10px] text-[#7a90a8]">{loading ? "Loading..." : `${stats.trackedCount} active rows`}</div>
                         </div>
                         <div className="rounded-[16px] border border-white/[0.80] bg-white/[0.62] px-3.5 py-2.5 shadow-[0_10px_28px_rgba(41,73,112,0.07)]">
                             <div className="text-[9px] font-semibold uppercase tracking-[0.13em] text-[#7a90a8]">Greek closing</div>
@@ -263,8 +482,8 @@ export default function Unit19ExpensesModal({ open, onClose }: Props) {
                         </div>
                         <div className="rounded-[16px] border border-[#cfa090]/[0.24] bg-[#cfa090]/[0.08] px-3.5 py-2.5 shadow-[0_10px_28px_rgba(41,73,112,0.06)]">
                             <div className="text-[9px] font-semibold uppercase tracking-[0.13em] text-[#8c5947]">Need clarification</div>
-                            <div className="mt-1 text-[21px] font-semibold leading-none text-[#0b1623]">{formatEur(stats.clarifyAmount)}</div>
-                            <div className="mt-1 text-[10px] text-[#8c5947]">{stats.clarifyCount} rows to verify</div>
+                            <div className="mt-1 text-[21px] font-semibold leading-none text-[#0b1623]">{formatEur(stats.pendingAmount)}</div>
+                            <div className="mt-1 text-[10px] text-[#8c5947]">{stats.pendingCount} rows to verify</div>
                         </div>
                         <div className="rounded-[16px] border border-white/[0.80] bg-white/[0.62] px-3.5 py-2.5 shadow-[0_10px_28px_rgba(41,73,112,0.07)]">
                             <div className="text-[9px] font-semibold uppercase tracking-[0.13em] text-[#7a90a8]">BGN equivalent</div>
@@ -280,7 +499,7 @@ export default function Unit19ExpensesModal({ open, onClose }: Props) {
                             <div className="mb-2 text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">Cost composition</div>
                             <div className="space-y-2">
                                 {categoryTotals
-                                    .filter((item) => item.category !== "Vehicle / excluded")
+                                    .filter((item) => item.total > 0)
                                     .map((item) => (
                                         <button
                                             key={item.category}
@@ -326,9 +545,11 @@ export default function Unit19ExpensesModal({ open, onClose }: Props) {
                                 >
                                     <option value="active">Active only</option>
                                     <option value="all">All rows</option>
-                                    <option value="paid">Paid</option>
-                                    <option value="clarify">Clarify</option>
-                                    <option value="excluded">Excluded</option>
+                                    {statusOrder.map((status) => (
+                                        <option key={status} value={status}>
+                                            {statusLabels[status]}
+                                        </option>
+                                    ))}
                                 </select>
 
                                 <div className="relative">
@@ -348,8 +569,8 @@ export default function Unit19ExpensesModal({ open, onClose }: Props) {
 
                     <div className="h-full min-h-0 overflow-y-auto overscroll-contain p-3.5">
                         <div className="overflow-x-auto rounded-[18px] border border-white/[0.78] bg-white/[0.58] shadow-[0_14px_40px_rgba(41,73,112,0.08),inset_0_1px_0_rgba(255,255,255,0.92)]">
-                            <div className="min-w-[820px]">
-                                <div className="grid grid-cols-[minmax(250px,1.75fr)_125px_85px_90px_105px] gap-0 border-b border-[#d8e8f6]/[0.82] bg-white/[0.70] px-3.5 py-2 text-[9.5px] font-semibold uppercase tracking-[0.12em] text-[#7a90a8]">
+                            <div className="min-w-[920px]">
+                                <div className="grid grid-cols-[minmax(250px,1.75fr)_135px_95px_95px_145px] gap-0 border-b border-[#d8e8f6]/[0.82] bg-white/[0.70] px-3.5 py-2 text-[9.5px] font-semibold uppercase tracking-[0.12em] text-[#7a90a8]">
                                     <div>Cost</div>
                                     <div>Category</div>
                                     <div>EUR</div>
@@ -360,12 +581,14 @@ export default function Unit19ExpensesModal({ open, onClose }: Props) {
                                 <div className="divide-y divide-[#d8e8f6]/[0.72]">
                                     {filteredExpenses.map((expense) => {
                                         const editing = editingId === expense.id;
+                                        const draft = drafts[expense.id] ?? toDraft(expense);
+                                        const busy = savingId === expense.id;
 
                                         return (
                                             <div
                                                 key={expense.id}
                                                 className={[
-                                                    "grid grid-cols-[minmax(250px,1.75fr)_125px_85px_90px_105px] gap-0 px-3.5 py-2 transition hover:bg-white/[0.55]",
+                                                    "grid grid-cols-[minmax(250px,1.75fr)_135px_95px_95px_145px] gap-0 px-3.5 py-2 transition hover:bg-white/[0.55]",
                                                     expense.status === "excluded" ? "opacity-55" : "",
                                                 ].join(" ")}
                                             >
@@ -373,18 +596,18 @@ export default function Unit19ExpensesModal({ open, onClose }: Props) {
                                                     {editing ? (
                                                         <div className="space-y-1.5">
                                                             <input
-                                                                value={expense.title}
-                                                                onChange={(event) => patchExpense(expense.id, { title: event.target.value })}
+                                                                value={draft.title}
+                                                                onChange={(event) => patchDraft(expense.id, { title: event.target.value })}
                                                                 className="w-full rounded-lg border border-[#ccd9e8] bg-white/[0.86] px-2.5 py-1.5 text-[12.5px] font-semibold text-[#0b1623] outline-none focus:border-[#2f80ed]"
                                                             />
                                                             <input
-                                                                value={expense.issuer}
-                                                                onChange={(event) => patchExpense(expense.id, { issuer: event.target.value })}
+                                                                value={draft.issuer}
+                                                                onChange={(event) => patchDraft(expense.id, { issuer: event.target.value })}
                                                                 className="w-full rounded-lg border border-[#ccd9e8] bg-white/[0.86] px-2.5 py-1.5 text-[10.5px] text-[#4e6880] outline-none focus:border-[#2f80ed]"
                                                             />
                                                             <textarea
-                                                                value={expense.note}
-                                                                onChange={(event) => patchExpense(expense.id, { note: event.target.value })}
+                                                                value={draft.note}
+                                                                onChange={(event) => patchDraft(expense.id, { note: event.target.value })}
                                                                 rows={2}
                                                                 className="w-full rounded-lg border border-[#ccd9e8] bg-white/[0.86] px-2.5 py-1.5 text-[10.5px] text-[#4e6880] outline-none focus:border-[#2f80ed]"
                                                             />
@@ -401,8 +624,8 @@ export default function Unit19ExpensesModal({ open, onClose }: Props) {
                                                 <div className="pr-3">
                                                     {editing ? (
                                                         <select
-                                                            value={expense.category}
-                                                            onChange={(event) => patchExpense(expense.id, { category: event.target.value as Unit19ExpenseCategory })}
+                                                            value={draft.category}
+                                                            onChange={(event) => patchDraft(expense.id, { category: event.target.value as ManagedPropertyExpenseCategory })}
                                                             className="w-full rounded-lg border border-[#ccd9e8] bg-white/[0.86] px-2 py-1.5 text-[10.5px] text-[#0b1623] outline-none focus:border-[#2f80ed]"
                                                         >
                                                             {categoryOrder.map((category) => (
@@ -422,30 +645,30 @@ export default function Unit19ExpensesModal({ open, onClose }: Props) {
                                                     {editing ? (
                                                         <div className="space-y-1.5">
                                                             <input
-                                                                value={expense.eur}
+                                                                value={draft.amount_eur}
                                                                 type="number"
                                                                 step="0.01"
                                                                 onChange={(event) => {
-                                                                    const eur = Number(event.target.value || 0);
-                                                                    patchExpense(expense.id, { eur, bgn: recalcFromEur(eur) });
+                                                                    const amountEur = Number(event.target.value || 0);
+                                                                    patchDraft(expense.id, { amount_eur: amountEur, amount_bgn: recalcFromEur(amountEur) });
                                                                 }}
                                                                 className="w-full rounded-lg border border-[#ccd9e8] bg-white/[0.86] px-2 py-1.5 text-[10.5px] text-[#0b1623] outline-none focus:border-[#2f80ed]"
                                                             />
                                                             <input
-                                                                value={expense.bgn}
+                                                                value={draft.amount_bgn}
                                                                 type="number"
                                                                 step="0.01"
                                                                 onChange={(event) => {
-                                                                    const bgn = Number(event.target.value || 0);
-                                                                    patchExpense(expense.id, { bgn, eur: recalcFromBgn(bgn) });
+                                                                    const amountBgn = Number(event.target.value || 0);
+                                                                    patchDraft(expense.id, { amount_bgn: amountBgn, amount_eur: recalcFromBgn(amountBgn) });
                                                                 }}
                                                                 className="w-full rounded-lg border border-[#ccd9e8] bg-white/[0.86] px-2 py-1.5 text-[10.5px] text-[#0b1623] outline-none focus:border-[#2f80ed]"
                                                             />
                                                         </div>
                                                     ) : (
                                                         <>
-                                                            <div className="text-[12.5px] font-semibold text-[#0b1623]">{formatEur(expense.eur)}</div>
-                                                            <div className="mt-0.5 text-[10px] text-[#7a90a8]">{formatBgn(expense.bgn)}</div>
+                                                            <div className="text-[12.5px] font-semibold text-[#0b1623]">{formatEur(Number(expense.amount_eur ?? 0))}</div>
+                                                            <div className="mt-0.5 text-[10px] text-[#7a90a8]">{formatBgn(Number(expense.amount_bgn ?? recalcFromEur(Number(expense.amount_eur ?? 0))))}</div>
                                                         </>
                                                     )}
                                                 </div>
@@ -453,13 +676,15 @@ export default function Unit19ExpensesModal({ open, onClose }: Props) {
                                                 <div className="pr-3">
                                                     {editing ? (
                                                         <select
-                                                            value={expense.status}
-                                                            onChange={(event) => patchExpense(expense.id, { status: event.target.value as Unit19ExpenseStatus })}
+                                                            value={draft.status}
+                                                            onChange={(event) => patchDraft(expense.id, { status: event.target.value as ManagedPropertyExpenseStatus })}
                                                             className="w-full rounded-lg border border-[#ccd9e8] bg-white/[0.86] px-2 py-1.5 text-[10.5px] text-[#0b1623] outline-none focus:border-[#2f80ed]"
                                                         >
-                                                            <option value="paid">Paid</option>
-                                                            <option value="clarify">Clarify</option>
-                                                            <option value="excluded">Excluded</option>
+                                                            {statusOrder.map((status) => (
+                                                                <option key={status} value={status}>
+                                                                    {statusLabels[status]}
+                                                                </option>
+                                                            ))}
                                                         </select>
                                                     ) : (
                                                         <span className={["rounded-full border px-2 py-0.5 text-[9.5px] font-semibold uppercase tracking-[0.10em]", getStatusClasses(expense.status)].join(" ")}>
@@ -468,24 +693,48 @@ export default function Unit19ExpensesModal({ open, onClose }: Props) {
                                                     )}
                                                 </div>
 
-                                                <div className="flex items-start justify-end gap-1.5">
+                                                <div className="flex flex-wrap items-start justify-end gap-1.5">
                                                     <button
                                                         type="button"
-                                                        onClick={() => setEditingId(editing ? null : expense.id)}
-                                                        className="rounded-lg border border-[#ccd9e8] bg-white/[0.62] px-2 py-1 text-[10.5px] font-semibold text-[#4e6880] transition hover:border-[#2f80ed]/[0.32] hover:bg-white/[0.88] hover:text-[#2060cc] active:scale-[0.97]"
+                                                        disabled={Boolean(savingId)}
+                                                        onClick={() => (editing ? saveExpense(expense) : startEdit(expense))}
+                                                        className="rounded-lg border border-[#ccd9e8] bg-white/[0.62] px-2 py-1 text-[10.5px] font-semibold text-[#4e6880] transition hover:border-[#2f80ed]/[0.32] hover:bg-white/[0.88] hover:text-[#2060cc] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
                                                     >
-                                                        {editing ? "Done" : "Edit"}
+                                                        {busy ? "Saving" : editing ? "Save" : "Edit"}
                                                     </button>
+                                                    {editing ? (
+                                                        <button
+                                                            type="button"
+                                                            disabled={Boolean(savingId)}
+                                                            onClick={() => {
+                                                                setEditingId(null);
+                                                                setDrafts((current) => {
+                                                                    const next = { ...current };
+                                                                    delete next[expense.id];
+                                                                    return next;
+                                                                });
+                                                            }}
+                                                            className="rounded-lg border border-[#ccd9e8] bg-white/[0.45] px-2 py-1 text-[10.5px] font-semibold text-[#7a90a8] transition hover:bg-white/[0.82] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                    ) : (
+                                                        <button
+                                                            type="button"
+                                                            disabled={Boolean(savingId)}
+                                                            onClick={() => toggleExcluded(expense)}
+                                                            className="rounded-lg border border-[#ccd9e8] bg-white/[0.45] px-2 py-1 text-[10.5px] font-semibold text-[#7a90a8] transition hover:bg-white/[0.82] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
+                                                        >
+                                                            {expense.status === "excluded" ? "Include" : "Exclude"}
+                                                        </button>
+                                                    )}
                                                     <button
                                                         type="button"
-                                                        onClick={() =>
-                                                            patchExpense(expense.id, {
-                                                                status: expense.status === "excluded" ? "paid" : "excluded",
-                                                            })
-                                                        }
-                                                        className="rounded-lg border border-[#ccd9e8] bg-white/[0.45] px-2 py-1 text-[10.5px] font-semibold text-[#7a90a8] transition hover:bg-white/[0.82] active:scale-[0.97]"
+                                                        disabled={Boolean(savingId)}
+                                                        onClick={() => deleteExpense(expense)}
+                                                        className="rounded-lg border border-[#d94c4c]/[0.18] bg-[#d94c4c]/[0.05] px-2 py-1 text-[10.5px] font-semibold text-[#9f3030] transition hover:bg-[#d94c4c]/[0.09] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
                                                     >
-                                                        {expense.status === "excluded" ? "Include" : "Exclude"}
+                                                        Delete
                                                     </button>
                                                 </div>
                                             </div>
@@ -495,7 +744,7 @@ export default function Unit19ExpensesModal({ open, onClose }: Props) {
 
                                 {filteredExpenses.length === 0 ? (
                                     <div className="px-4 py-10 text-center text-sm text-[#7a90a8]">
-                                        No matching expenses.
+                                        {loading ? "Loading expenses..." : "No matching expenses."}
                                     </div>
                                 ) : null}
                             </div>
