@@ -71,6 +71,83 @@ export type ManagedPropertyExpensePatch = Partial<
     >
 >;
 
+export type ManagedPropertyDocumentStatus =
+    | "available"
+    | "watchlist"
+    | "trace_only"
+    | "pending"
+    | "missing"
+    | "deferred"
+    | "weak_evidence";
+
+export type ManagedPropertyDocumentPriority = "critical" | "high" | "medium" | "low";
+
+export type ManagedPropertyDocumentCategory = {
+    id: string;
+    managed_property_id: string;
+    stable_key: string;
+    name: string;
+    description: string | null;
+    sort_order: number;
+    created_at: string;
+    updated_at: string;
+};
+
+export type ManagedPropertyDocumentCategoryInsert = Omit<
+    ManagedPropertyDocumentCategory,
+    "id" | "created_at" | "updated_at"
+>;
+
+export type ManagedPropertyDocumentCategoryPatch = Partial<
+    Pick<ManagedPropertyDocumentCategory, "stable_key" | "name" | "description" | "sort_order">
+>;
+
+export type ManagedPropertyDocument = {
+    id: string;
+    managed_property_id: string;
+    category_id: string | null;
+    title: string;
+    file_name: string | null;
+    storage_path: string | null;
+    source: string | null;
+    proves: string | null;
+    control_note: string | null;
+    next_action: string | null;
+    document_date: string | null;
+    amount_eur: number | null;
+    status: ManagedPropertyDocumentStatus;
+    priority: ManagedPropertyDocumentPriority;
+    tags: string[];
+    sort_order: number;
+    created_at: string;
+    updated_at: string;
+};
+
+export type ManagedPropertyDocumentInsert = Omit<
+    ManagedPropertyDocument,
+    "id" | "created_at" | "updated_at"
+>;
+
+export type ManagedPropertyDocumentPatch = Partial<
+    Pick<
+        ManagedPropertyDocument,
+        | "category_id"
+        | "title"
+        | "file_name"
+        | "storage_path"
+        | "source"
+        | "proves"
+        | "control_note"
+        | "next_action"
+        | "document_date"
+        | "amount_eur"
+        | "status"
+        | "priority"
+        | "tags"
+        | "sort_order"
+    >
+>;
+
 function normalizeError(error: unknown) {
     if (error instanceof Error) return error.message;
 
@@ -155,4 +232,124 @@ export async function deleteManagedPropertyExpense(id: string) {
         .eq("id", id);
 
     if (error) throwIfError(error, "Failed to delete managed property expense");
+}
+
+export async function getManagedPropertyDocuments(managedPropertyId: string) {
+    const supabase = createClient();
+
+    const [categoriesResult, documentsResult] = await Promise.all([
+        supabase
+            .from("managed_property_document_categories")
+            .select("*")
+            .eq("managed_property_id", managedPropertyId)
+            .order("sort_order", { ascending: true })
+            .order("created_at", { ascending: true }),
+        supabase
+            .from("managed_property_documents")
+            .select("*")
+            .eq("managed_property_id", managedPropertyId)
+            .order("sort_order", { ascending: true })
+            .order("created_at", { ascending: true }),
+    ]);
+
+    if (categoriesResult.error) {
+        throwIfError(categoriesResult.error, "Failed to load managed property document categories");
+    }
+
+    if (documentsResult.error) {
+        throwIfError(documentsResult.error, "Failed to load managed property documents");
+    }
+
+    return {
+        categories: (categoriesResult.data ?? []) as ManagedPropertyDocumentCategory[],
+        documents: (documentsResult.data ?? []) as ManagedPropertyDocument[],
+    };
+}
+
+export async function createManagedPropertyDocument(payload: ManagedPropertyDocumentInsert) {
+    const supabase = createClient();
+
+    const { data, error } = await supabase
+        .from("managed_property_documents")
+        .insert(payload)
+        .select("*")
+        .single();
+
+    if (error) throwIfError(error, "Failed to create managed property document");
+
+    return data as ManagedPropertyDocument;
+}
+
+export async function updateManagedPropertyDocument(
+    id: string,
+    patch: ManagedPropertyDocumentPatch,
+) {
+    const supabase = createClient();
+
+    const { data, error } = await supabase
+        .from("managed_property_documents")
+        .update(patch)
+        .eq("id", id)
+        .select("*")
+        .single();
+
+    if (error) throwIfError(error, "Failed to update managed property document");
+
+    return data as ManagedPropertyDocument;
+}
+
+export async function deleteManagedPropertyDocument(id: string) {
+    const supabase = createClient();
+
+    const { error } = await supabase
+        .from("managed_property_documents")
+        .delete()
+        .eq("id", id);
+
+    if (error) throwIfError(error, "Failed to delete managed property document");
+}
+
+export async function createManagedPropertyDocumentCategory(
+    payload: ManagedPropertyDocumentCategoryInsert,
+) {
+    const supabase = createClient();
+
+    const { data, error } = await supabase
+        .from("managed_property_document_categories")
+        .insert(payload)
+        .select("*")
+        .single();
+
+    if (error) throwIfError(error, "Failed to create managed property document category");
+
+    return data as ManagedPropertyDocumentCategory;
+}
+
+export async function updateManagedPropertyDocumentCategory(
+    id: string,
+    patch: ManagedPropertyDocumentCategoryPatch,
+) {
+    const supabase = createClient();
+
+    const { data, error } = await supabase
+        .from("managed_property_document_categories")
+        .update(patch)
+        .eq("id", id)
+        .select("*")
+        .single();
+
+    if (error) throwIfError(error, "Failed to update managed property document category");
+
+    return data as ManagedPropertyDocumentCategory;
+}
+
+export async function deleteManagedPropertyDocumentCategory(id: string) {
+    const supabase = createClient();
+
+    const { error } = await supabase
+        .from("managed_property_document_categories")
+        .delete()
+        .eq("id", id);
+
+    if (error) throwIfError(error, "Failed to delete managed property document category");
 }
