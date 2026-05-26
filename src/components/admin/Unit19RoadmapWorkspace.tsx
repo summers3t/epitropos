@@ -2,18 +2,25 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
-import type {
-    RoadmapStageStatus,
-    RoadmapTaskStatus,
-    Unit19RoadmapStage,
-    Unit19RoadmapTask,
-} from "@/lib/admin/unit19RoadmapData";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import AdminDatePicker from "@/components/admin/AdminDatePicker";
 import {
     unit19FocusNotes,
     unit19KeyMetrics,
     unit19RoadmapStages,
 } from "@/lib/admin/unit19RoadmapData";
+import {
+    createManagedPropertyTask,
+    deleteManagedPropertyTask,
+    getManagedPropertyBySlug,
+    getManagedPropertyRoadmap,
+    scheduleManagedPropertyTask,
+    updateManagedPropertyTask,
+    type ManagedPropertyRoadmapStage,
+    type ManagedPropertyRoadmapStageStatus as RoadmapStageStatus,
+    type ManagedPropertyRoadmapTask,
+    type ManagedPropertyRoadmapTaskStatus as RoadmapTaskStatus,
+} from "@/lib/admin/managedPropertiesApi";
 import Unit19ExpensesModal from "@/components/admin/Unit19ExpensesModal";
 import Unit19DocumentsModal from "@/components/admin/Unit19DocumentsModal";
 import Unit19IncomeModal from "@/components/admin/Unit19IncomeModal";
@@ -24,6 +31,61 @@ type FocusStatus = Exclude<FilterMode, "all">;
 
 const BACKGROUND_IMAGE = "/images/unit19-roadmap-bg.jpg";
 const FOOTER_IMAGE = "/images/unit19-roadmap-footer.jpg";
+const PROPERTY_SLUG = "unit-19";
+
+type Unit19RoadmapTask = ManagedPropertyRoadmapTask;
+
+type Unit19RoadmapStage = {
+    id: string;
+    dbStageId: string;
+    stableKey: string;
+    number: string;
+    title: string;
+    status: RoadmapStageStatus;
+    summary: string;
+    lesson: string;
+    tasks: Unit19RoadmapTask[];
+};
+
+function toIsoDate(value: Date) {
+    const copy = new Date(value);
+    copy.setMinutes(copy.getMinutes() - copy.getTimezoneOffset());
+    return copy.toISOString().slice(0, 10);
+}
+
+function parseStageTitle(rawTitle: string) {
+    const match = rawTitle.match(/^(\d{2})\s*[·-]\s*(.+)$/);
+
+    if (!match) {
+        return { number: "--", title: rawTitle };
+    }
+
+    return { number: match[1], title: match[2] };
+}
+
+function mapRoadmapFromDb(
+    dbStages: ManagedPropertyRoadmapStage[],
+    dbTasks: ManagedPropertyRoadmapTask[],
+): Unit19RoadmapStage[] {
+    return dbStages.map((stage) => {
+        const localStage = unit19RoadmapStages.find((item) => item.id === stage.stable_key);
+        const parsed = parseStageTitle(stage.title);
+
+        return {
+            id: stage.id,
+            dbStageId: stage.id,
+            stableKey: stage.stable_key,
+            number: parsed.number,
+            title: parsed.title,
+            status: stage.status,
+            summary: stage.description ?? localStage?.summary ?? "",
+            lesson: localStage?.lesson ?? "Use this stage as the working layer for execution, scheduling and follow-up.",
+            tasks: dbTasks
+                .filter((task) => task.stage_id === stage.id)
+                .sort((a, b) => a.sort_order - b.sort_order || a.title.localeCompare(b.title)),
+        };
+    });
+}
 
 function getStageLabel(status: RoadmapStageStatus) {
     return { completed: "Completed", current: "In Progress", upcoming: "Upcoming", deferred: "Deferred" }[status];
@@ -36,15 +98,6 @@ function getTaskLabel(status: RoadmapTaskStatus) {
 function isInteractiveField(target: EventTarget | null) {
     if (!(target instanceof HTMLElement)) return false;
     return Boolean(target.closest("input, textarea, select, button, a, [contenteditable='true']"));
-}
-
-function createEmptyTask(stageId: string): Unit19RoadmapTask {
-    return {
-        id: `${stageId}-${Date.now()}`,
-        title: "Нова задача",
-        note: "Добави кратка бележка.",
-        status: "open",
-    };
 }
 
 const IconCheck = ({ c = "w-3 h-3" }: { c?: string }) => (
@@ -223,20 +276,53 @@ function matchesFocusedStatus(stageStatus: RoadmapStageStatus, focusedStatus: Fo
 export default function Unit19RoadmapWorkspace(props: Props) {
     void props;
 
-    const [stages, setStages] = useState<Unit19RoadmapStage[]>(unit19RoadmapStages);
-    const [selectedStageId, setSelectedStageId] = useState(
-        unit19RoadmapStages.find((stage) => stage.status === "current")?.id ?? unit19RoadmapStages[0]?.id,
-    );
-    const [expandedStageIds, setExpandedStageIds] = useState<Set<string>>(
-        () => new Set(unit19RoadmapStages.filter((stage) => stage.status === "current").map((stage) => stage.id)),
-    );
+    const [managedPropertyId, setManagedPropertyId] = useState<string | null>(null);
+    const [stages, setStages] = useState<Unit19RoadmapStage[]>([]);
+    const [selectedStageId, setSelectedStageId] = useState<string | null>(null);
+    const [expandedStageIds, setExpandedStageIds] = useState<Set<string>>(() => new Set());
     const [filterMode, setFilterMode] = useState<FilterMode>("all");
     const [focusedStageStatus, setFocusedStageStatus] = useState<FocusStatus | null>(null);
     const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+    const [schedulingTaskId, setSchedulingTaskId] = useState<string | null>(null);
+    const [scheduleDate, setScheduleDate] = useState(() => toIsoDate(new Date()));
+    const [scheduleTime, setScheduleTime] = useState("");
+    const [calendarTargetDate, setCalendarTargetDate] = useState<string | null>(null);
+    const [calendarTargetItemId, setCalendarTargetItemId] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const [expensesOpen, setExpensesOpen] = useState(false);
     const [documentsOpen, setDocumentsOpen] = useState(false);
     const [incomeOpen, setIncomeOpen] = useState(false);
     const [calendarOpen, setCalendarOpen] = useState(false);
+
+    const loadRoadmap = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+
+        try {
+            const property = await getManagedPropertyBySlug(PROPERTY_SLUG);
+            const roadmap = await getManagedPropertyRoadmap(property.id);
+            const mappedStages = mapRoadmapFromDb(roadmap.stages, roadmap.tasks);
+            const currentStage = mappedStages.find((stage) => stage.status === "current") ?? mappedStages[0] ?? null;
+
+            setManagedPropertyId(property.id);
+            setStages(mappedStages);
+            setSelectedStageId((current) => current ?? currentStage?.id ?? null);
+            setExpandedStageIds((current) => {
+                if (current.size > 0) return current;
+                return currentStage ? new Set([currentStage.id]) : new Set();
+            });
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to load roadmap data");
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        void loadRoadmap();
+    }, [loadRoadmap]);
 
     const visibleStages = useMemo(() => {
         if (filterMode === "all") return stages;
@@ -256,6 +342,15 @@ export default function Unit19RoadmapWorkspace(props: Props) {
     }, [stages]);
 
     const progressPercent = Math.round((taskTotals.done / Math.max(taskTotals.total, 1)) * 100);
+
+    function replaceTaskInState(task: Unit19RoadmapTask) {
+        setStages((current) =>
+            current.map((stage) => ({
+                ...stage,
+                tasks: stage.tasks.map((currentTask) => (currentTask.id === task.id ? task : currentTask)),
+            })),
+        );
+    }
 
     function toggleExpanded(id: string) {
         setExpandedStageIds((current) => {
@@ -312,28 +407,65 @@ export default function Unit19RoadmapWorkspace(props: Props) {
         });
     }
 
-    function addTask(stageId: string) {
-        const task = createEmptyTask(stageId);
+    async function addTask(stageId: string) {
+        if (!managedPropertyId) return;
 
-        setStages((current) =>
-            current.map((stage) => (stage.id === stageId ? { ...stage, tasks: [...stage.tasks, task] } : stage)),
-        );
-        setEditingTaskId(task.id);
-        setExpandedStageIds((current) => {
-            const next = new Set(current);
-            next.add(stageId);
-            return next;
-        });
+        const stage = stages.find((item) => item.id === stageId);
+        if (!stage) return;
+
+        setSaving(true);
+        setError(null);
+
+        try {
+            const sortOrder = Math.max(0, ...stage.tasks.map((task) => task.sort_order ?? 0)) + 1000;
+            const task = await createManagedPropertyTask({
+                managed_property_id: managedPropertyId,
+                stage_id: stage.dbStageId,
+                stable_key: null,
+                title: "Нова задача",
+                note: "Добави кратка бележка.",
+                status: "open",
+                priority: "normal",
+                due_date: null,
+                sort_order: sortOrder,
+            });
+
+            setStages((current) =>
+                current.map((currentStage) =>
+                    currentStage.id === stageId ? { ...currentStage, tasks: [...currentStage.tasks, task] } : currentStage,
+                ),
+            );
+            setEditingTaskId(task.id);
+            setExpandedStageIds((current) => {
+                const next = new Set(current);
+                next.add(stageId);
+                return next;
+            });
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to create roadmap task");
+        } finally {
+            setSaving(false);
+        }
     }
 
-    function removeTask(stageId: string, taskId: string) {
-        setStages((current) =>
-            current.map((stage) =>
-                stage.id === stageId ? { ...stage, tasks: stage.tasks.filter((task) => task.id !== taskId) } : stage,
-            ),
-        );
+    async function removeTask(stageId: string, taskId: string) {
+        setSaving(true);
+        setError(null);
 
-        if (editingTaskId === taskId) setEditingTaskId(null);
+        try {
+            await deleteManagedPropertyTask(taskId);
+            setStages((current) =>
+                current.map((stage) =>
+                    stage.id === stageId ? { ...stage, tasks: stage.tasks.filter((task) => task.id !== taskId) } : stage,
+                ),
+            );
+
+            if (editingTaskId === taskId) setEditingTaskId(null);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to delete roadmap task");
+        } finally {
+            setSaving(false);
+        }
     }
 
     function updateTask(stageId: string, taskId: string, patch: Partial<Unit19RoadmapTask>) {
@@ -347,6 +479,67 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                     : stage,
             ),
         );
+    }
+
+    async function saveTask(task: Unit19RoadmapTask) {
+        setSaving(true);
+        setError(null);
+
+        try {
+            const savedTask = await updateManagedPropertyTask(task.id, {
+                title: task.title,
+                note: task.note,
+                status: task.status,
+                priority: task.priority,
+                due_date: task.due_date,
+                completed_at: task.status === "done" ? task.completed_at ?? new Date().toISOString() : null,
+            });
+
+            replaceTaskInState(savedTask);
+            setEditingTaskId(null);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to save roadmap task");
+        } finally {
+            setSaving(false);
+        }
+    }
+
+    function startSchedule(task: Unit19RoadmapTask) {
+        setSchedulingTaskId(task.id);
+        setScheduleDate(task.due_date ?? toIsoDate(new Date()));
+        setScheduleTime("");
+    }
+
+    async function saveSchedule(task: Unit19RoadmapTask) {
+        if (!managedPropertyId) return;
+
+        setSaving(true);
+        setError(null);
+
+        try {
+            const result = await scheduleManagedPropertyTask({
+                managedPropertyId,
+                task,
+                itemDate: scheduleDate,
+                itemTime: scheduleTime,
+            });
+
+            replaceTaskInState(result.task);
+            setSchedulingTaskId(null);
+            setCalendarTargetDate(result.calendarItem.item_date);
+            setCalendarTargetItemId(result.calendarItem.id);
+            setCalendarOpen(true);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to schedule roadmap task");
+        } finally {
+            setSaving(false);
+        }
+    }
+
+    function openCalendarForTask(task: Unit19RoadmapTask) {
+        setCalendarTargetDate(task.due_date ?? toIsoDate(new Date()));
+        setCalendarTargetItemId(task.calendar_item_id);
+        setCalendarOpen(true);
     }
 
     return (
@@ -581,6 +774,18 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                             </div>
                         </div>
 
+                        {error ? (
+                            <div className="mb-4 rounded-[14px] border border-[#d96969]/[0.24] bg-[#d96969]/[0.08] px-4 py-3 text-[12px] font-semibold text-[#9d2f2f]">
+                                {error}
+                            </div>
+                        ) : null}
+
+                        {loading ? (
+                            <div className="mb-4 rounded-[14px] border border-[#2f80ed]/[0.22] bg-[#2f80ed]/[0.08] px-4 py-3 text-[12px] font-semibold text-[#1560bc]">
+                                Loading DB roadmap...
+                            </div>
+                        ) : null}
+
                         <div className="relative pl-0 md:pl-[72px]">
                             <div className="space-y-3">
                                 {visibleStages.map((stage, index) => {
@@ -727,7 +932,7 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                                                                                                 className="w-full rounded-[9px] border border-[#ccd9e8] bg-white/[0.92] px-3 py-2 text-[13px] text-[#0b1623] outline-none transition focus:border-[#2f80ed] focus:ring-2 focus:ring-[#2f80ed]/[0.12]"
                                                                                             />
                                                                                             <textarea
-                                                                                                value={task.note}
+                                                                                                value={task.note ?? ""}
                                                                                                 onChange={(event) => updateTask(stage.id, task.id, { note: event.target.value })}
                                                                                                 rows={2}
                                                                                                 className="w-full rounded-[9px] border border-[#ccd9e8] bg-white/[0.92] px-3 py-2 text-[13px] text-[#0b1623] outline-none transition focus:border-[#2f80ed] focus:ring-2 focus:ring-[#2f80ed]/[0.12]"
@@ -746,8 +951,9 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                                                                                             <div className="flex justify-end">
                                                                                                 <button
                                                                                                     type="button"
-                                                                                                    onClick={() => setEditingTaskId(null)}
-                                                                                                    className="rounded-[9px] bg-[#2f80ed] px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-[#236fcc] active:scale-[0.97]"
+                                                                                                    onClick={() => void saveTask(task)}
+                                                                                                    disabled={saving}
+                                                                                                    className="rounded-[9px] bg-[#2f80ed] px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-[#236fcc] disabled:cursor-not-allowed disabled:opacity-60 active:scale-[0.97]"
                                                                                                 >
                                                                                                     Save
                                                                                                 </button>
@@ -779,6 +985,15 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                                                                                                     {task.title}
                                                                                                 </span>
                                                                                                 <p className="mt-0.5 text-[11px] leading-[1.45] text-[#7a90a8]">{task.note}</p>
+                                                                                                {task.due_date ? (
+                                                                                                    <button
+                                                                                                        type="button"
+                                                                                                        onClick={() => openCalendarForTask(task)}
+                                                                                                        className="mt-1 inline-flex rounded-full border border-[#8a65cc]/[0.22] bg-[#8a65cc]/[0.08] px-2 py-0.5 text-[9.5px] font-semibold text-[#5e38a0] transition hover:bg-[#8a65cc]/[0.14]"
+                                                                                                    >
+                                                                                                        Scheduled: {task.due_date}
+                                                                                                    </button>
+                                                                                                ) : null}
                                                                                             </div>
 
                                                                                             <div className="flex shrink-0 items-center gap-1.5">
@@ -794,7 +1009,23 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                                                                                                 </button>
                                                                                                 <button
                                                                                                     type="button"
-                                                                                                    onClick={() => removeTask(stage.id, task.id)}
+                                                                                                    onClick={() => startSchedule(task)}
+                                                                                                    className="rounded-[7px] border border-[#8a65cc]/[0.24] bg-[#8a65cc]/[0.08] px-2.5 py-1 text-[11px] text-[#5e38a0] transition hover:bg-[#8a65cc]/[0.14] active:scale-[0.97]"
+                                                                                                >
+                                                                                                    {task.calendar_item_id ? "Reschedule" : "Schedule"}
+                                                                                                </button>
+                                                                                                {task.calendar_item_id ? (
+                                                                                                    <button
+                                                                                                        type="button"
+                                                                                                        onClick={() => openCalendarForTask(task)}
+                                                                                                        className="rounded-[7px] border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-2.5 py-1 text-[11px] text-[#1560bc] transition hover:bg-[#2f80ed]/[0.14] active:scale-[0.97]"
+                                                                                                    >
+                                                                                                        Calendar
+                                                                                                    </button>
+                                                                                                ) : null}
+                                                                                                <button
+                                                                                                    type="button"
+                                                                                                    onClick={() => void removeTask(stage.id, task.id)}
                                                                                                     className="rounded-[7px] border border-[#e2c4bb] bg-[#c78973]/[0.07] px-2.5 py-1 text-[11px] text-[#8c5947] transition hover:bg-[#c78973]/[0.15] active:scale-[0.97]"
                                                                                                 >
                                                                                                     ×
@@ -802,6 +1033,45 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                                                                                             </div>
                                                                                         </div>
                                                                                     )}
+                                                                                    {schedulingTaskId === task.id ? (
+                                                                                        <div className="mt-3 rounded-[12px] border border-[#8a65cc]/[0.20] bg-[#8a65cc]/[0.06] p-3">
+                                                                                            <div className="mb-2 text-[9.5px] font-semibold uppercase tracking-[0.14em] text-[#5e38a0]">Schedule in Calendar</div>
+                                                                                            <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_120px_auto] sm:items-end">
+                                                                                                <label className="block text-[11px] font-semibold text-[#607993]">
+                                                                                                    Date
+                                                                                                    <div className="mt-1">
+                                                                                                        <AdminDatePicker value={scheduleDate} onChange={setScheduleDate} />
+                                                                                                    </div>
+                                                                                                </label>
+                                                                                                <label className="block text-[11px] font-semibold text-[#607993]">
+                                                                                                    Time
+                                                                                                    <input
+                                                                                                        type="time"
+                                                                                                        value={scheduleTime}
+                                                                                                        onChange={(event) => setScheduleTime(event.target.value)}
+                                                                                                        className="mt-1 w-full rounded-[9px] border border-[#ccd9e8] bg-white/[0.88] px-3 py-2 text-[12px] text-[#0b1623] outline-none transition focus:border-[#2f80ed]"
+                                                                                                    />
+                                                                                                </label>
+                                                                                                <div className="flex gap-2">
+                                                                                                    <button
+                                                                                                        type="button"
+                                                                                                        onClick={() => void saveSchedule(task)}
+                                                                                                        disabled={saving}
+                                                                                                        className="rounded-[9px] bg-[#8a65cc] px-3 py-2 text-[11px] font-semibold text-white transition hover:bg-[#7651b8] disabled:cursor-not-allowed disabled:opacity-60 active:scale-[0.97]"
+                                                                                                    >
+                                                                                                        Save
+                                                                                                    </button>
+                                                                                                    <button
+                                                                                                        type="button"
+                                                                                                        onClick={() => setSchedulingTaskId(null)}
+                                                                                                        className="rounded-[9px] border border-[#ccd9e8] bg-white/[0.62] px-3 py-2 text-[11px] font-semibold text-[#607993] transition hover:bg-white/[0.86] active:scale-[0.97]"
+                                                                                                    >
+                                                                                                        Cancel
+                                                                                                    </button>
+                                                                                                </div>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    ) : null}
                                                                                 </div>
                                                                             );
                                                                         })}
@@ -827,7 +1097,7 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                                                             type="button"
                                                             onClick={(event) => {
                                                                 event.stopPropagation();
-                                                                addTask(stage.id);
+                                                                void addTask(stage.id);
                                                             }}
                                                             className="flex items-center gap-1 rounded-[8px] border border-[#ccd9e8] bg-white/[0.60] px-2.5 py-1.5 text-[11px] font-medium text-[#4e6880] transition hover:border-[#2f80ed]/[0.32] hover:bg-white/[0.85] hover:text-[#2060cc] active:scale-[0.97]"
                                                         >
@@ -952,6 +1222,12 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                     <Unit19CalendarModal
                         open={calendarOpen}
                         onClose={() => setCalendarOpen(false)}
+                        initialDate={calendarTargetDate}
+                        initialItemId={calendarTargetItemId}
+                        onInitialTargetConsumed={() => {
+                            setCalendarTargetDate(null);
+                            setCalendarTargetItemId(null);
+                        }}
                     />
                 </main>
             </div>

@@ -19,6 +19,9 @@ import {
 type Props = {
     open: boolean;
     onClose: () => void;
+    initialDate?: string | null;
+    initialItemId?: string | null;
+    onInitialTargetConsumed?: () => void;
 };
 
 type CalendarView = "agenda" | "week" | "month";
@@ -35,6 +38,7 @@ type Unit19CalendarItem = {
     note?: string;
     location?: string;
     linkedRecords?: Unit19CalendarLinkedRecord[];
+    taskId?: string | null;
     sortOrder?: number | null;
 };
 
@@ -84,6 +88,7 @@ function formatWeekRange(weekStart: Date) {
     const weekEnd = addDays(weekStart, 6);
     const startMonth = new Intl.DateTimeFormat("en-GB", { month: "short" }).format(weekStart);
     const endMonth = new Intl.DateTimeFormat("en-GB", { month: "short" }).format(weekEnd);
+
     const year = weekStart.getFullYear();
 
     if (startMonth === endMonth) {
@@ -251,7 +256,8 @@ function dbItemToUi(item: ManagedPropertyCalendarItem): Unit19CalendarItem {
         note: item.note ?? undefined,
         location: item.location ?? undefined,
         linkedRecords: Array.isArray(item.linked_records) ? item.linked_records : [],
-        sortOrder: typeof (item as unknown as { sort_order?: unknown }).sort_order === "number" ? (item as unknown as { sort_order: number }).sort_order : null,
+        taskId: item.task_id,
+        sortOrder: item.sort_order,
     };
 }
 
@@ -267,6 +273,7 @@ function draftToDbPayload(managedPropertyId: string, item: DraftCalendarItem): M
         location: item.location?.trim() || null,
         note: item.note?.trim() || null,
         linked_records: textToLinkedRecords(item.linkedText),
+        task_id: item.taskId ?? null,
     };
 }
 
@@ -299,7 +306,13 @@ function IconSearch() {
     );
 }
 
-export default function Unit19CalendarModal({ open, onClose }: Props) {
+export default function Unit19CalendarModal({
+    open,
+    onClose,
+    initialDate,
+    initialItemId,
+    onInitialTargetConsumed,
+}: Props) {
     const [managedPropertyId, setManagedPropertyId] = useState<string | null>(null);
     const [items, setItems] = useState<Unit19CalendarItem[]>([]);
     const [view, setView] = useState<CalendarView>("agenda");
@@ -346,6 +359,19 @@ export default function Unit19CalendarModal({ open, onClose }: Props) {
             document.body.style.overflow = "";
         };
     }, [loadCalendar, open, onClose]);
+
+    useEffect(() => {
+        if (!open || (!initialDate && !initialItemId)) return;
+
+        if (initialDate) setSelectedDate(initialDate);
+        if (initialItemId) setSelectedItemId(initialItemId);
+
+        setView("week");
+        setQuickFilter("all");
+        setTypeFilter("all");
+        setQuery("");
+        onInitialTargetConsumed?.();
+    }, [initialDate, initialItemId, onInitialTargetConsumed, open]);
 
     const orderedItems = useMemo(() => {
         return [...items].sort((a, b) => `${a.date} ${a.time ?? ""}`.localeCompare(`${b.date} ${b.time ?? ""}`));
@@ -1296,6 +1322,11 @@ function SelectedPanel({
                             <span className={["rounded-full border px-2 py-0.5 text-[9.5px] font-semibold", typeClasses(item.type)].join(" ")}>{typeLabels[item.type]}</span>
                             <span className={["rounded-full border px-2 py-0.5 text-[9.5px] font-semibold", priorityClasses(item.priority)].join(" ")}>{priorityLabels[item.priority]}</span>
                             <span className={["rounded-full border px-2 py-0.5 text-[9.5px] font-semibold", statusClasses(item.status, isOverdue(item))].join(" ")}>{isOverdue(item) ? "Overdue" : statusLabels[item.status]}</span>
+                            {item.taskId ? (
+                                <span className="rounded-full border border-[#8a65cc]/[0.24] bg-[#8a65cc]/[0.09] px-2 py-0.5 text-[9.5px] font-semibold text-[#5e38a0]">
+                                    Linked roadmap task
+                                </span>
+                            ) : null}
                         </div>
                         <h3 className="mt-3 text-[16px] font-semibold leading-tight text-[#0b1623]">{item.title}</h3>
                         <div className="mt-1 text-[12px] text-[#607993]">{formatDay(parseLocalDate(item.date))}{item.time ? ` · ${item.time}` : " · Any time"}</div>

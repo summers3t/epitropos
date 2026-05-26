@@ -831,14 +831,27 @@ export async function scheduleManagedPropertyTask({
         sort_order: null,
     };
 
-    const { data: calendarItem, error: calendarError } = await supabase
-        .from("managed_property_calendar_items")
-        .insert(calendarPayload)
-        .select("*")
-        .single();
+    const calendarResult = task.calendar_item_id
+        ? await supabase
+            .from("managed_property_calendar_items")
+            .update(calendarPayload)
+            .eq("id", task.calendar_item_id)
+            .select("*")
+            .single()
+        : await supabase
+            .from("managed_property_calendar_items")
+            .insert(calendarPayload)
+            .select("*")
+            .single();
 
-    if (calendarError) throwIfError(calendarError, "Failed to schedule roadmap task");
+    if (calendarResult.error) {
+        throwIfError(
+            calendarResult.error,
+            task.calendar_item_id ? "Failed to reschedule roadmap task" : "Failed to schedule roadmap task",
+        );
+    }
 
+    const calendarItem = calendarResult.data as ManagedPropertyCalendarItem;
     const nextTaskStatus: ManagedPropertyRoadmapTaskStatus =
         task.status === "done" ? "done" : "scheduled";
 
@@ -856,7 +869,7 @@ export async function scheduleManagedPropertyTask({
     if (taskError) throwIfError(taskError, "Failed to link roadmap task to calendar item");
 
     return {
-        calendarItem: calendarItem as ManagedPropertyCalendarItem,
+        calendarItem,
         task: updatedTask as ManagedPropertyRoadmapTask,
     };
 }
