@@ -18,6 +18,68 @@ export type ManagedProperty = {
     updated_at: string;
 };
 
+export type ManagedPropertyRoadmapStageStatus = "completed" | "current" | "upcoming" | "deferred";
+export type ManagedPropertyRoadmapTaskStatus = "done" | "pending" | "scheduled" | "open" | "deferred";
+export type ManagedPropertyRoadmapTaskPriority = "critical" | "high" | "normal" | "low";
+
+export type ManagedPropertyRoadmapStage = {
+    id: string;
+    managed_property_id: string;
+    stable_key: string;
+    title: string;
+    description: string | null;
+    status: ManagedPropertyRoadmapStageStatus;
+    sort_order: number;
+    created_at: string;
+    updated_at: string;
+};
+
+export type ManagedPropertyRoadmapTask = {
+    id: string;
+    managed_property_id: string;
+    stage_id: string | null;
+    stable_key: string | null;
+    title: string;
+    note: string | null;
+    status: ManagedPropertyRoadmapTaskStatus;
+    priority: ManagedPropertyRoadmapTaskPriority;
+    due_date: string | null;
+    completed_at: string | null;
+    sort_order: number;
+    calendar_item_id: string | null;
+    created_at: string;
+    updated_at: string;
+};
+
+export type ManagedPropertyRoadmapTaskInsert = Omit<
+    ManagedPropertyRoadmapTask,
+    "id" | "created_at" | "updated_at" | "completed_at" | "calendar_item_id"
+> & {
+    completed_at?: string | null;
+    calendar_item_id?: string | null;
+};
+
+export type ManagedPropertyRoadmapTaskPatch = Partial<
+    Pick<
+        ManagedPropertyRoadmapTask,
+        | "stage_id"
+        | "stable_key"
+        | "title"
+        | "note"
+        | "status"
+        | "priority"
+        | "due_date"
+        | "completed_at"
+        | "sort_order"
+        | "calendar_item_id"
+    >
+>;
+
+export type ManagedPropertyRoadmap = {
+    stages: ManagedPropertyRoadmapStage[];
+    tasks: ManagedPropertyRoadmapTask[];
+};
+
 export type ManagedPropertyExpenseCategory =
     | "bg_documents"
     | "greek_setup"
@@ -174,6 +236,107 @@ export async function getManagedPropertyBySlug(slug: string) {
     if (error) throwIfError(error, "Failed to load managed property");
 
     return data as ManagedProperty;
+}
+
+export async function getManagedPropertyRoadmap(managedPropertyId: string) {
+    const supabase = createClient();
+
+    const [stagesResult, tasksResult] = await Promise.all([
+        supabase
+            .from("managed_property_roadmap_stages")
+            .select("*")
+            .eq("managed_property_id", managedPropertyId)
+            .order("sort_order", { ascending: true })
+            .order("created_at", { ascending: true }),
+        supabase
+            .from("managed_property_tasks")
+            .select("*")
+            .eq("managed_property_id", managedPropertyId)
+            .order("sort_order", { ascending: true })
+            .order("created_at", { ascending: true }),
+    ]);
+
+    if (stagesResult.error) throwIfError(stagesResult.error, "Failed to load roadmap stages");
+    if (tasksResult.error) throwIfError(tasksResult.error, "Failed to load roadmap tasks");
+
+    return {
+        stages: (stagesResult.data ?? []) as ManagedPropertyRoadmapStage[],
+        tasks: (tasksResult.data ?? []) as ManagedPropertyRoadmapTask[],
+    };
+}
+
+export async function createManagedPropertyTask(payload: ManagedPropertyRoadmapTaskInsert) {
+    const supabase = createClient();
+
+    const { data, error } = await supabase
+        .from("managed_property_tasks")
+        .insert(payload)
+        .select("*")
+        .single();
+
+    if (error) throwIfError(error, "Failed to create roadmap task");
+
+    return data as ManagedPropertyRoadmapTask;
+}
+
+export async function updateManagedPropertyTask(
+    id: string,
+    patch: ManagedPropertyRoadmapTaskPatch,
+) {
+    const supabase = createClient();
+
+    const { data, error } = await supabase
+        .from("managed_property_tasks")
+        .update(patch)
+        .eq("id", id)
+        .select("*")
+        .single();
+
+    if (error) throwIfError(error, "Failed to update roadmap task");
+
+    return data as ManagedPropertyRoadmapTask;
+}
+
+export async function deleteManagedPropertyTask(id: string) {
+    const supabase = createClient();
+
+    const { error } = await supabase
+        .from("managed_property_tasks")
+        .delete()
+        .eq("id", id);
+
+    if (error) throwIfError(error, "Failed to delete roadmap task");
+}
+
+export async function getCalendarItemById(id: string) {
+    const supabase = createClient();
+
+    const { data, error } = await supabase
+        .from("managed_property_calendar_items")
+        .select("*")
+        .eq("id", id)
+        .maybeSingle();
+
+    if (error) throwIfError(error, "Failed to load calendar item");
+
+    return data as ManagedPropertyCalendarItem | null;
+}
+
+export async function getCalendarItemsByTaskId(taskId: string) {
+    const supabase = createClient();
+
+    const { data, error } = await supabase
+        .from("managed_property_calendar_items")
+        .select("*")
+        .eq("task_id", taskId)
+        .order("item_date", { ascending: true })
+        .order("sort_order", { ascending: true, nullsFirst: false })
+        .order("item_time", { ascending: true, nullsFirst: false })
+        .order("created_at", { ascending: true });
+
+    if (error) throwIfError(error, "Failed to load calendar items for task");
+
+    return (data ?? []) as ManagedPropertyCalendarItem[];
 }
 
 export async function getManagedPropertyExpenses(managedPropertyId: string) {
@@ -553,6 +716,7 @@ export type ManagedPropertyCalendarLinkedRecord = {
 export type ManagedPropertyCalendarItem = {
     id: string;
     managed_property_id: string;
+    task_id: string | null;
     title: string;
     item_date: string;
     item_time: string | null;
@@ -562,18 +726,21 @@ export type ManagedPropertyCalendarItem = {
     location: string | null;
     note: string | null;
     linked_records: ManagedPropertyCalendarLinkedRecord[];
+    sort_order: number | null;
     created_at: string;
     updated_at: string;
 };
 
 export type ManagedPropertyCalendarItemInsert = Omit<
     ManagedPropertyCalendarItem,
-    "id" | "created_at" | "updated_at"
->;
+    "id" | "created_at" | "updated_at" | "task_id" | "sort_order"
+> &
+    Partial<Pick<ManagedPropertyCalendarItem, "task_id" | "sort_order">>;
 
 export type ManagedPropertyCalendarItemPatch = Partial<
     Pick<
         ManagedPropertyCalendarItem,
+        | "task_id"
         | "title"
         | "item_date"
         | "item_time"
@@ -583,6 +750,7 @@ export type ManagedPropertyCalendarItemPatch = Partial<
         | "location"
         | "note"
         | "linked_records"
+        | "sort_order"
     >
 >;
 
@@ -594,6 +762,7 @@ export async function getManagedPropertyCalendarItems(managedPropertyId: string)
         .select("*")
         .eq("managed_property_id", managedPropertyId)
         .order("item_date", { ascending: true })
+        .order("sort_order", { ascending: true, nullsFirst: false })
         .order("item_time", { ascending: true, nullsFirst: false })
         .order("created_at", { ascending: true });
 
@@ -632,6 +801,64 @@ export async function updateManagedPropertyCalendarItem(
     if (error) throwIfError(error, "Failed to update managed property calendar item");
 
     return data as ManagedPropertyCalendarItem;
+}
+
+export async function scheduleManagedPropertyTask({
+    managedPropertyId,
+    task,
+    itemDate,
+    itemTime,
+}: {
+    managedPropertyId: string;
+    task: ManagedPropertyRoadmapTask;
+    itemDate: string;
+    itemTime?: string | null;
+}) {
+    const supabase = createClient();
+
+    const calendarPayload: ManagedPropertyCalendarItemInsert = {
+        managed_property_id: managedPropertyId,
+        task_id: task.id,
+        title: task.title,
+        item_date: itemDate,
+        item_time: itemTime?.trim() || null,
+        type: "task",
+        priority: task.priority,
+        status: task.status === "done" ? "done" : "open",
+        location: null,
+        note: task.note,
+        linked_records: [{ kind: "Task", label: task.title }],
+        sort_order: null,
+    };
+
+    const { data: calendarItem, error: calendarError } = await supabase
+        .from("managed_property_calendar_items")
+        .insert(calendarPayload)
+        .select("*")
+        .single();
+
+    if (calendarError) throwIfError(calendarError, "Failed to schedule roadmap task");
+
+    const nextTaskStatus: ManagedPropertyRoadmapTaskStatus =
+        task.status === "done" ? "done" : "scheduled";
+
+    const { data: updatedTask, error: taskError } = await supabase
+        .from("managed_property_tasks")
+        .update({
+            calendar_item_id: calendarItem.id,
+            due_date: itemDate,
+            status: nextTaskStatus,
+        })
+        .eq("id", task.id)
+        .select("*")
+        .single();
+
+    if (taskError) throwIfError(taskError, "Failed to link roadmap task to calendar item");
+
+    return {
+        calendarItem: calendarItem as ManagedPropertyCalendarItem,
+        task: updatedTask as ManagedPropertyRoadmapTask,
+    };
 }
 
 export async function deleteManagedPropertyCalendarItem(id: string) {
