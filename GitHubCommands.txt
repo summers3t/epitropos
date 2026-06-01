@@ -1,7 +1,7 @@
 Every change cycle:
 -------------------------------------------
 git add .
-git commit -m "Initial Push 187 Connect Unit 19 roadmap tasks with calendar"
+git commit -m "Initial Push 188"
 git push
 
 
