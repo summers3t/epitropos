@@ -59,7 +59,17 @@ function toIsoDate(value: Date) {
 }
 
 function formatStageNumber(value: number) {
-    return String(Math.max(0, value)).padStart(2, "0");
+    return String(Math.max(1, value)).padStart(2, "0");
+}
+
+function normalizeStageNumber(value: string) {
+    const numericValue = Number(value.replace(/\D/g, ""));
+
+    if (!Number.isFinite(numericValue) || numericValue < 1) {
+        return null;
+    }
+
+    return formatStageNumber(numericValue);
 }
 
 function buildStageTitle(number: string, title: string) {
@@ -84,7 +94,9 @@ function mapRoadmapFromDb(
     dbStages: ManagedPropertyRoadmapStage[],
     dbTasks: ManagedPropertyRoadmapTask[],
 ): Unit19RoadmapStage[] {
-    return dbStages.map((stage) => {
+    return [...dbStages]
+        .sort((a, b) => a.sort_order - b.sort_order || a.title.localeCompare(b.title))
+        .map((stage, index) => {
         const localStage = unit19RoadmapStages.find((item) => item.id === stage.stable_key);
         const parsed = parseStageTitle(stage.title);
 
@@ -92,7 +104,7 @@ function mapRoadmapFromDb(
             id: stage.id,
             dbStageId: stage.id,
             stableKey: stage.stable_key,
-            number: parsed.number,
+            number: formatStageNumber(index + 1),
             title: parsed.title,
             status: stage.status,
             summary: stage.description ?? localStage?.summary ?? "",
@@ -302,6 +314,8 @@ export default function Unit19RoadmapWorkspace(props: Props) {
     const [focusedStageStatus, setFocusedStageStatus] = useState<FocusStatus | null>(null);
     const [editingStageId, setEditingStageId] = useState<string | null>(null);
     const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+    const [rearrangeMode, setRearrangeMode] = useState(false);
+    const [draggedStageId, setDraggedStageId] = useState<string | null>(null);
     const [schedulingTaskId, setSchedulingTaskId] = useState<string | null>(null);
     const [scheduleDate, setScheduleDate] = useState(() => toIsoDate(new Date()));
     const [scheduleTime, setScheduleTime] = useState("");
@@ -314,6 +328,13 @@ export default function Unit19RoadmapWorkspace(props: Props) {
     const [documentsOpen, setDocumentsOpen] = useState(false);
     const [incomeOpen, setIncomeOpen] = useState(false);
     const [calendarOpen, setCalendarOpen] = useState(false);
+
+    const switchPanel = useCallback((panel: Unit19PanelKey) => {
+        setExpensesOpen(panel === "expenses");
+        setDocumentsOpen(panel === "documents");
+        setIncomeOpen(panel === "income");
+        setCalendarOpen(panel === "calendar");
+    }, []);
 
     const loadRoadmap = useCallback(async () => {
         setLoading(true);
@@ -397,12 +418,29 @@ export default function Unit19RoadmapWorkspace(props: Props) {
         );
     }
 
-    function getNextStageNumber() {
-        const numericValues = stages
-            .map((stage) => Number(stage.number))
-            .filter((value) => Number.isFinite(value));
+    function getOrderedStages(stageList = stages) {
+        return [...stageList].sort((a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title));
+    }
 
-        return formatStageNumber(Math.max(-1, ...numericValues) + 1);
+    function renumberStages(stageList: Unit19RoadmapStage[]) {
+        return stageList.map((stage, index) => ({
+            ...stage,
+            number: formatStageNumber(index + 1),
+            sortOrder: (index + 1) * 1000,
+        }));
+    }
+
+    async function persistStageOrder(stageList: Unit19RoadmapStage[]) {
+        await Promise.all(
+            stageList.map((stage) =>
+                updateManagedPropertyRoadmapStage(stage.dbStageId, {
+                    title: buildStageTitle(stage.number, stage.title),
+                    description: stage.summary?.trim() || null,
+                    status: stage.status,
+                    sort_order: stage.sortOrder,
+                }),
+            ),
+        );
     }
 
     async function addStage() {
@@ -412,15 +450,20 @@ export default function Unit19RoadmapWorkspace(props: Props) {
         setError(null);
 
         try {
-            const nextNumber = getNextStageNumber();
-            const sortOrder = Math.max(0, ...stages.map((stage) => stage.sortOrder ?? 0)) + 1000;
+            const orderedStages = getOrderedStages();
+            const selectedIndex = selectedStageId
+                ? orderedStages.findIndex((stage) => stage.id === selectedStageId)
+                : -1;
+            const insertIndex = selectedIndex >= 0 ? selectedIndex : orderedStages.length;
+            const initialNumber = formatStageNumber(insertIndex + 1);
+
             const dbStage = await createManagedPropertyRoadmapStage({
                 managed_property_id: managedPropertyId,
                 stable_key: createStageStableKey(),
-                title: buildStageTitle(nextNumber, "New stage"),
+                title: buildStageTitle(initialNumber, "New stage"),
                 description: "Describe this stage.",
                 status: "upcoming",
-                sort_order: sortOrder,
+                sort_order: (insertIndex + 1) * 1000,
             });
             const parsed = parseStageTitle(dbStage.title);
             const newStage: Unit19RoadmapStage = {
@@ -436,9 +479,19 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                 tasks: [],
             };
 
-            setStages((current) => [...current, newStage]);
+            const nextStages = renumberStages([
+                ...orderedStages.slice(0, insertIndex),
+                newStage,
+                ...orderedStages.slice(insertIndex),
+            ]);
+
+            await persistStageOrder(nextStages);
+
+            setStages(nextStages);
             setSelectedStageId(newStage.id);
             setEditingStageId(newStage.id);
+            setFilterMode("all");
+            setFocusedStageStatus(null);
             setExpandedStageIds((current) => {
                 const next = new Set(current);
                 next.add(newStage.id);
@@ -459,18 +512,32 @@ export default function Unit19RoadmapWorkspace(props: Props) {
     }
 
     async function saveStage(stage: Unit19RoadmapStage) {
+        const normalizedNumber = normalizeStageNumber(stage.number);
+
+        if (!normalizedNumber) {
+            setError("Stage number must be a positive number.");
+            return;
+        }
+
+        const duplicateStage = stages.find((item) => item.id !== stage.id && item.number === normalizedNumber);
+
+        if (duplicateStage) {
+            setError(`Stage number ${normalizedNumber} is already used by "${duplicateStage.title}".`);
+            return;
+        }
+
         setSaving(true);
         setError(null);
 
         try {
             const dbStage = await updateManagedPropertyRoadmapStage(stage.dbStageId, {
-                title: buildStageTitle(stage.number, stage.title),
+                title: buildStageTitle(normalizedNumber, stage.title),
                 description: stage.summary?.trim() || null,
                 status: stage.status,
                 sort_order: stage.sortOrder,
             });
 
-            replaceStageInState(dbStage);
+            replaceStageInState({ ...dbStage, title: buildStageTitle(normalizedNumber, stage.title) });
             setEditingStageId(null);
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to save roadmap stage");
@@ -490,14 +557,18 @@ export default function Unit19RoadmapWorkspace(props: Props) {
 
         try {
             await deleteManagedPropertyRoadmapStage(stage.dbStageId);
-            setStages((current) => current.filter((item) => item.id !== stage.id));
+
+            const nextStages = renumberStages(getOrderedStages().filter((item) => item.id !== stage.id));
+            await persistStageOrder(nextStages);
+
+            setStages(nextStages);
             setExpandedStageIds((current) => {
                 const next = new Set(current);
                 next.delete(stage.id);
                 return next;
             });
             setEditingStageId((current) => (current === stage.id ? null : current));
-            setSelectedStageId((current) => (current === stage.id ? stages.find((item) => item.id !== stage.id)?.id ?? null : current));
+            setSelectedStageId((current) => (current === stage.id ? nextStages[0]?.id ?? null : current));
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to delete roadmap stage");
         } finally {
@@ -505,15 +576,46 @@ export default function Unit19RoadmapWorkspace(props: Props) {
         }
     }
 
-    function switchPanel(panel: Unit19PanelKey) {
-        setExpensesOpen(panel === "expenses");
-        setDocumentsOpen(panel === "documents");
-        setIncomeOpen(panel === "income");
-        setCalendarOpen(panel === "calendar");
+    function toggleRearrangeMode() {
+        setRearrangeMode((current) => {
+            const next = !current;
 
-        if (panel !== "calendar") {
-            setCalendarTargetDate(null);
-            setCalendarTargetItemId(null);
+            if (next) {
+                setFilterMode("all");
+                setFocusedStageStatus(null);
+                setEditingStageId(null);
+            }
+
+            return next;
+        });
+    }
+
+    async function reorderStage(draggedId: string, targetId: string) {
+        if (draggedId === targetId) return;
+
+        const orderedStages = getOrderedStages();
+        const draggedIndex = orderedStages.findIndex((stage) => stage.id === draggedId);
+        const targetIndex = orderedStages.findIndex((stage) => stage.id === targetId);
+
+        if (draggedIndex < 0 || targetIndex < 0) return;
+
+        const nextOrder = [...orderedStages];
+        const [draggedStage] = nextOrder.splice(draggedIndex, 1);
+        nextOrder.splice(targetIndex, 0, draggedStage);
+
+        const nextStages = renumberStages(nextOrder);
+        setStages(nextStages);
+        setSelectedStageId(draggedId);
+        setSaving(true);
+        setError(null);
+
+        try {
+            await persistStageOrder(nextStages);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to reorder roadmap stages");
+            await loadRoadmap();
+        } finally {
+            setSaving(false);
         }
     }
 
@@ -733,6 +835,16 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                                 />
                             </Link>
 
+                            <button
+                                type="button"
+                                onClick={() => void addStage()}
+                                disabled={saving || !managedPropertyId}
+                                className="group flex w-full flex-col items-center justify-center gap-1 rounded-2xl border border-[#20a76b]/[0.26] bg-[#20a76b]/[0.09] px-2 py-2.5 text-[10px] font-semibold text-[#0f7448] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#20a76b]/[0.38] hover:bg-[#20a76b]/[0.14] hover:text-[#0f1c2e] hover:shadow-[0_10px_24px_rgba(32,167,107,0.12)] disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.96]"
+                            >
+                                <IconPlus c="h-4 w-4" />
+                                Stage
+                            </button>
+
                             <nav className="flex w-full flex-col gap-1.5" aria-label="Roadmap stage focus navigation">
                                 {SIDEBAR_FILTERS.map(({ mode, label }) => {
                                     const active = focusedStageStatus === mode;
@@ -771,6 +883,20 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                                 >
                                     <IconCollapse c="h-4 w-4" />
                                     Collapse
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={toggleRearrangeMode}
+                                    aria-pressed={rearrangeMode}
+                                    className={[
+                                        "flex flex-col items-center justify-center gap-1 rounded-2xl border px-2 py-2.5 text-[9.5px] font-semibold transition-all duration-300 active:scale-[0.96]",
+                                        rearrangeMode
+                                            ? "border-[#8a65cc]/[0.36] bg-[#8a65cc] text-white shadow-[0_14px_30px_rgba(138,101,204,0.24)]"
+                                            : "border-white/[0.74] bg-white/[0.46] text-[#6f849d] hover:-translate-y-0.5 hover:border-[#8a65cc]/[0.26] hover:bg-white/[0.86] hover:text-[#5e38a0]",
+                                    ].join(" ")}
+                                >
+                                    <IconCollapse c="h-4 w-4" />
+                                    Rearrange
                                 </button>
                                 <button
                                     type="button"
@@ -875,19 +1001,7 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                                 </p>
                             </div>
 
-                            <div className="flex flex-wrap items-center gap-2 rounded-[18px] border border-white/[0.78] bg-white/[0.44] p-1.5 shadow-[0_12px_36px_rgba(41,73,112,0.08),inset_0_1px_0_rgba(255,255,255,0.92)] backdrop-blur-2xl">
-                                <button
-                                    type="button"
-                                    onClick={() => void addStage()}
-                                    disabled={saving || !managedPropertyId}
-                                    className="relative flex items-center gap-1.5 overflow-hidden rounded-[13px] border border-[#20a76b]/[0.24] bg-[#20a76b]/[0.09] px-4 py-2.5 text-[12px] font-semibold text-[#0f7448] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-[#20a76b]/[0.36] hover:bg-[#20a76b]/[0.14] hover:text-[#0f1c2e] disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.96]"
-                                >
-                                    <IconPlus />
-                                    Stage
-                                </button>
-
-                                <span className="mx-1 hidden h-7 w-px bg-[#ccd9e8]/80 sm:block" />
-
+                            <div className="flex flex-wrap items-center gap-2 rounded-[18px] border border-white/[0.78] bg-white/[0.44] p-1.5 shadow-[0_12px_36px_rgba(41,73,112,0.08),inset_0_1px_0_rgba(255,255,255,0.92)] backdrop-blur-2xl xl:flex-nowrap">
                                 {TOP_FILTERS.map(({ mode, label }) => {
                                     const active = filterMode === mode;
 
@@ -963,6 +1077,12 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                             </div>
                         ) : null}
 
+                        {rearrangeMode ? (
+                            <div className="mb-4 rounded-[14px] border border-[#8a65cc]/[0.22] bg-[#8a65cc]/[0.08] px-4 py-3 text-[12px] font-semibold text-[#5e38a0]">
+                                Rearrange mode is active. Drag stages to reorder. Stage numbers will be updated automatically.
+                            </div>
+                        ) : null}
+
                         <div className="relative pl-0 md:pl-[72px]">
                             <div className="space-y-3">
                                 {visibleStages.map((stage, index) => {
@@ -976,8 +1096,30 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                                         <article
                                             id={`roadmap-stage-${stage.id}`}
                                             key={stage.id}
+                                            draggable={rearrangeMode}
+                                            onDragStart={(event) => {
+                                                if (!rearrangeMode || isInteractiveField(event.target)) return;
+                                                setDraggedStageId(stage.id);
+                                                event.dataTransfer.effectAllowed = "move";
+                                                event.dataTransfer.setData("text/plain", stage.id);
+                                            }}
+                                            onDragOver={(event) => {
+                                                if (!rearrangeMode) return;
+                                                event.preventDefault();
+                                                event.dataTransfer.dropEffect = "move";
+                                            }}
+                                            onDrop={(event) => {
+                                                if (!rearrangeMode) return;
+                                                event.preventDefault();
+                                                const draggedId = draggedStageId ?? event.dataTransfer.getData("text/plain");
+                                                setDraggedStageId(null);
+                                                void reorderStage(draggedId, stage.id);
+                                            }}
+                                            onDragEnd={() => setDraggedStageId(null)}
                                             className={[
                                                 "relative rounded-[17px] border transition-all duration-300 backdrop-blur-xl",
+                                                rearrangeMode ? "cursor-grab active:cursor-grabbing" : "",
+                                                draggedStageId === stage.id ? "opacity-50 ring-2 ring-[#8a65cc]/[0.28]" : "",
                                                 stageCard(stage.status, selected),
                                                 focusedStageStatus && !matchesFocusedStatus(stage.status, focusedStageStatus)
                                                     ? "opacity-[0.34] saturate-[0.55] blur-[0.2px]"
@@ -1015,7 +1157,7 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                                                 role="button"
                                                 tabIndex={0}
                                                 onClick={(event) => {
-                                                    if (isInteractiveField(event.target)) return;
+                                                    if (rearrangeMode || isInteractiveField(event.target)) return;
 
                                                     if (expanded && selected) {
                                                         toggleExpanded(stage.id);
@@ -1025,7 +1167,7 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                                                     selectStage(stage.id);
                                                 }}
                                                 onKeyDown={(event) => {
-                                                    if (isInteractiveField(event.target)) return;
+                                                    if (rearrangeMode || isInteractiveField(event.target)) return;
 
                                                     if (event.key === "Enter") {
                                                         event.preventDefault();
@@ -1068,6 +1210,9 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                                                                         onChange={(event) => updateStage(stage.id, { number: event.target.value })}
                                                                         className="mt-1 w-full rounded-[9px] border border-[#ccd9e8] bg-white/[0.90] px-2.5 py-2 text-[12px] text-[#0b1623] outline-none transition focus:border-[#2f80ed]"
                                                                     />
+                                                                    {normalizeStageNumber(stage.number) && stages.some((item) => item.id !== stage.id && item.number === normalizeStageNumber(stage.number)) ? (
+                                                                        <span className="mt-1 block text-[9.5px] font-semibold text-[#9d2f2f]">Number already used</span>
+                                                                    ) : null}
                                                                 </label>
                                                                 <label className="block text-[10.5px] font-semibold text-[#607993]">
                                                                     Stage title
