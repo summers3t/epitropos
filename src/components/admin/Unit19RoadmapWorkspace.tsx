@@ -1228,6 +1228,9 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                             setCalendarTargetDate(null);
                             setCalendarTargetItemId(null);
                         }}
+                        onCalendarDataChanged={() => {
+                            void loadRoadmap();
+                        }}
                     />
                 </main>
             </div>

@@ -294,7 +294,18 @@ export async function updateManagedPropertyTask(
 
     if (error) throwIfError(error, "Failed to update roadmap task");
 
-    return data as ManagedPropertyRoadmapTask;
+    const task = data as ManagedPropertyRoadmapTask;
+
+    if (patch.status === "done" && task.calendar_item_id) {
+        const { error: calendarError } = await supabase
+            .from("managed_property_calendar_items")
+            .update({ status: "done" })
+            .eq("id", task.calendar_item_id);
+
+        if (calendarError) throwIfError(calendarError, "Failed to sync linked calendar item status");
+    }
+
+    return task;
 }
 
 export async function deleteManagedPropertyTask(id: string) {
@@ -800,7 +811,25 @@ export async function updateManagedPropertyCalendarItem(
 
     if (error) throwIfError(error, "Failed to update managed property calendar item");
 
-    return data as ManagedPropertyCalendarItem;
+    const calendarItem = data as ManagedPropertyCalendarItem;
+
+    if (patch.status && calendarItem.task_id) {
+        const taskPatch: ManagedPropertyRoadmapTaskPatch =
+            patch.status === "done"
+                ? { status: "done", completed_at: new Date().toISOString() }
+                : patch.status === "open"
+                    ? { status: "scheduled", completed_at: null }
+                    : { status: "deferred", completed_at: null };
+
+        const { error: taskError } = await supabase
+            .from("managed_property_tasks")
+            .update(taskPatch)
+            .eq("id", calendarItem.task_id);
+
+        if (taskError) throwIfError(taskError, "Failed to sync linked roadmap task status");
+    }
+
+    return calendarItem;
 }
 
 export async function scheduleManagedPropertyTask({

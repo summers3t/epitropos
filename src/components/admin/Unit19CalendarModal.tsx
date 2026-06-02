@@ -10,6 +10,7 @@ import {
     updateManagedPropertyCalendarItem,
     type ManagedPropertyCalendarItem,
     type ManagedPropertyCalendarItemInsert,
+    type ManagedPropertyCalendarItemPatch,
     type ManagedPropertyCalendarItemPriority as Unit19CalendarItemPriority,
     type ManagedPropertyCalendarItemStatus as Unit19CalendarItemStatus,
     type ManagedPropertyCalendarItemType as Unit19CalendarItemType,
@@ -22,6 +23,7 @@ type Props = {
     initialDate?: string | null;
     initialItemId?: string | null;
     onInitialTargetConsumed?: () => void;
+    onCalendarDataChanged?: () => void;
 };
 
 type CalendarView = "agenda" | "week" | "month";
@@ -312,6 +314,7 @@ export default function Unit19CalendarModal({
     initialDate,
     initialItemId,
     onInitialTargetConsumed,
+    onCalendarDataChanged,
 }: Props) {
     const [managedPropertyId, setManagedPropertyId] = useState<string | null>(null);
     const [items, setItems] = useState<Unit19CalendarItem[]>([]);
@@ -445,11 +448,24 @@ export default function Unit19CalendarModal({
                 !existingItem || existingItem.date !== draftItem.date
                     ? getNextSortOrderForDate(items, draftItem.date)
                     : existingItem.sortOrder ?? getNextSortOrderForDate(items, draftItem.date);
-            const payloadWithSortOrder = { ...payload, sort_order: sortOrder };
+            const payloadWithSortOrder: ManagedPropertyCalendarItemInsert = { ...payload, sort_order: sortOrder };
+            const updatePayload: ManagedPropertyCalendarItemPatch = {
+                task_id: payload.task_id,
+                title: payload.title,
+                item_date: payload.item_date,
+                item_time: payload.item_time,
+                type: payload.type,
+                priority: payload.priority,
+                status: payload.status,
+                location: payload.location,
+                note: payload.note,
+                linked_records: payload.linked_records,
+                sort_order: sortOrder,
+            };
 
             const saved = existing
-                ? await updateManagedPropertyCalendarItem(draftItem.id, payloadWithSortOrder as Parameters<typeof updateManagedPropertyCalendarItem>[1])
-                : await createManagedPropertyCalendarItem(payloadWithSortOrder as ManagedPropertyCalendarItemInsert);
+                ? await updateManagedPropertyCalendarItem(draftItem.id, updatePayload)
+                : await createManagedPropertyCalendarItem(payloadWithSortOrder);
 
             const cleanItem = dbItemToUi(saved);
             setItems((current) => {
@@ -459,6 +475,7 @@ export default function Unit19CalendarModal({
             });
             setSelectedItemId(cleanItem.id);
             setDraftItem(null);
+            if (cleanItem.taskId) onCalendarDataChanged?.();
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to save calendar item");
         } finally {
@@ -547,7 +564,7 @@ export default function Unit19CalendarModal({
                     updateManagedPropertyCalendarItem(item.id, {
                         item_date: item.date,
                         sort_order: item.sortOrder,
-                    } as Parameters<typeof updateManagedPropertyCalendarItem>[1]),
+                    }),
                 ),
             );
 
@@ -576,6 +593,7 @@ export default function Unit19CalendarModal({
             const saved = await updateManagedPropertyCalendarItem(item.id, { status: nextStatus });
             const cleanItem = dbItemToUi(saved);
             setItems((current) => current.map((currentItem) => (currentItem.id === item.id ? cleanItem : currentItem)));
+            if (cleanItem.taskId) onCalendarDataChanged?.();
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to update calendar item");
         } finally {
