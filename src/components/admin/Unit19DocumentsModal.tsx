@@ -6,12 +6,15 @@ import AdminDatePicker from "@/components/admin/AdminDatePicker";
 import {
     createManagedPropertyDocument,
     createManagedPropertyDocumentCategory,
+    createManagedPropertyDocumentSignedUrl,
     deleteManagedPropertyDocument,
     deleteManagedPropertyDocumentCategory,
     getManagedPropertyBySlug,
     getManagedPropertyDocuments,
+    removeManagedPropertyDocumentFile,
     updateManagedPropertyDocument,
     updateManagedPropertyDocumentCategory,
+    uploadManagedPropertyDocumentFile,
     type ManagedPropertyDocument,
     type ManagedPropertyDocumentCategory,
     type ManagedPropertyDocumentPriority,
@@ -207,6 +210,7 @@ export default function Unit19DocumentsModal({ open, onClose, onSwitchPanel }: P
     const [editingCategoryName, setEditingCategoryName] = useState("");
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [uploadingDocumentId, setUploadingDocumentId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     async function loadDocuments() {
@@ -420,6 +424,65 @@ export default function Unit19DocumentsModal({ open, onClose, onSwitchPanel }: P
             setError(err instanceof Error ? err.message : "Failed to delete document");
         } finally {
             setSaving(false);
+        }
+    }
+
+    async function uploadDocumentFile(document: DraftDocument, file: File) {
+        if (!document.id || !managedPropertyId) return;
+
+        setUploadingDocumentId(document.id);
+        setError(null);
+
+        try {
+            const saved = await uploadManagedPropertyDocumentFile({
+                managedPropertyId,
+                documentId: document.id,
+                file,
+                previousStoragePath: document.storagePath || null,
+            });
+            const uiDocument = mapDocument(saved);
+
+            setDocuments((current) => current.map((item) => (item.id === uiDocument.id ? uiDocument : item)));
+            setEditingDocument(uiDocument);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to upload document file");
+        } finally {
+            setUploadingDocumentId(null);
+        }
+    }
+
+    async function openDocumentFile(document: DraftDocument) {
+        if (!document.storagePath) return;
+
+        setError(null);
+
+        try {
+            const signedUrl = await createManagedPropertyDocumentSignedUrl(document.storagePath);
+            window.open(signedUrl, "_blank", "noopener,noreferrer");
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to open document file");
+        }
+    }
+
+    async function removeDocumentFile(document: DraftDocument) {
+        if (!document.id || !document.storagePath) return;
+
+        setUploadingDocumentId(document.id);
+        setError(null);
+
+        try {
+            const saved = await removeManagedPropertyDocumentFile({
+                documentId: document.id,
+                storagePath: document.storagePath,
+            });
+            const uiDocument = mapDocument(saved);
+
+            setDocuments((current) => current.map((item) => (item.id === uiDocument.id ? uiDocument : item)));
+            setEditingDocument(uiDocument);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to remove document file");
+        } finally {
+            setUploadingDocumentId(null);
         }
     }
 
@@ -828,10 +891,14 @@ export default function Unit19DocumentsModal({ open, onClose, onSwitchPanel }: P
                         document={editingDocument}
                         categories={categories}
                         saving={saving}
+                        uploading={uploadingDocumentId === editingDocument.id}
                         onChange={setEditingDocument}
                         onSave={() => void saveDocument()}
                         onCancel={() => setEditingDocument(null)}
                         onDelete={() => editingDocument.id ? void deleteDocument(editingDocument.id) : setEditingDocument(null)}
+                        onUpload={(file) => void uploadDocumentFile(editingDocument, file)}
+                        onOpenFile={() => void openDocumentFile(editingDocument)}
+                        onRemoveFile={() => void removeDocumentFile(editingDocument)}
                     />
                 ) : null}
             </div>
@@ -870,18 +937,26 @@ function DocumentEditor({
     document,
     categories,
     saving,
+    uploading,
     onChange,
     onSave,
     onCancel,
     onDelete,
+    onUpload,
+    onOpenFile,
+    onRemoveFile,
 }: {
     document: DraftDocument;
     categories: UiCategory[];
     saving: boolean;
+    uploading: boolean;
     onChange: (document: DraftDocument) => void;
     onSave: () => void;
     onCancel: () => void;
     onDelete: () => void;
+    onUpload: (file: File) => void;
+    onOpenFile: () => void;
+    onRemoveFile: () => void;
 }) {
     return (
         <div className="absolute inset-0 z-[5] flex items-center justify-center bg-[#06101d]/[0.24] p-4 backdrop-blur-sm">
@@ -953,12 +1028,63 @@ function DocumentEditor({
                             </select>
                         </Field>
 
-                        <Field label="File name">
-                            <input
-                                value={document.fileName}
-                                onChange={(event) => onChange({ ...document, fileName: event.target.value })}
-                                className="w-full rounded-xl border border-[#ccd9e8] bg-white/[0.82] px-3 py-2 text-[13px] text-[#0b1623] outline-none focus:border-[#2f80ed]"
-                            />
+                        <Field label="File">
+                            <div className="rounded-xl border border-[#ccd9e8] bg-white/[0.62] p-3">
+                                {document.fileName ? (
+                                    <div className="mb-2 min-w-0">
+                                        <div className="truncate text-[12px] font-semibold text-[#0b1623]">{document.fileName}</div>
+                                        <div className="truncate text-[10.5px] text-[#7a90a8]">{document.storagePath || "Attached file"}</div>
+                                    </div>
+                                ) : (
+                                    <div className="mb-2 text-[12px] text-[#7a90a8]">
+                                        {document.id ? "No file uploaded yet." : "Save the document first, then upload a file."}
+                                    </div>
+                                )}
+
+                                <div className="flex flex-wrap gap-2">
+                                    <label
+                                        className={[
+                                            "inline-flex cursor-pointer items-center rounded-xl border px-3 py-2 text-[11.5px] font-semibold transition",
+                                            document.id && !saving && !uploading
+                                                ? "border-[#2f80ed]/[0.28] bg-[#2f80ed]/[0.10] text-[#1560bc] hover:bg-[#2f80ed]/[0.14]"
+                                                : "pointer-events-none border-[#ccd9e8] bg-[#eef4fb] text-[#9aacbf]",
+                                        ].join(" ")}
+                                    >
+                                        {uploading ? "Uploading..." : document.fileName ? "Replace file" : "Upload file"}
+                                        <input
+                                            type="file"
+                                            className="hidden"
+                                            disabled={!document.id || saving || uploading}
+                                            onChange={(event) => {
+                                                const file = event.target.files?.[0];
+                                                event.currentTarget.value = "";
+                                                if (file) onUpload(file);
+                                            }}
+                                        />
+                                    </label>
+
+                                    {document.storagePath ? (
+                                        <>
+                                            <button
+                                                type="button"
+                                                onClick={onOpenFile}
+                                                disabled={saving || uploading}
+                                                className="rounded-xl border border-[#ccd9e8] bg-white/[0.74] px-3 py-2 text-[11.5px] font-semibold text-[#4e6880] transition hover:bg-white disabled:opacity-45"
+                                            >
+                                                Open file
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={onRemoveFile}
+                                                disabled={saving || uploading}
+                                                className="rounded-xl border border-[#d85b68]/[0.24] bg-[#d85b68]/[0.07] px-3 py-2 text-[11.5px] font-semibold text-[#a73642] transition hover:bg-[#d85b68]/[0.10] disabled:opacity-45"
+                                            >
+                                                Remove file
+                                            </button>
+                                        </>
+                                    ) : null}
+                                </div>
+                            </div>
                         </Field>
 
                         <Field label="Source">

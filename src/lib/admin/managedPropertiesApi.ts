@@ -542,6 +542,127 @@ export async function deleteManagedPropertyDocument(id: string) {
     if (error) throwIfError(error, "Failed to delete managed property document");
 }
 
+export const MANAGED_PROPERTY_DOCUMENTS_BUCKET = "managed-property-documents";
+
+function sanitizeStorageFileName(fileName: string) {
+    const cleanName = fileName
+        .normalize("NFKD")
+        .replace(/[^\w.\-]+/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "");
+
+    return cleanName || "document-file";
+}
+
+function buildManagedPropertyDocumentStoragePath({
+    managedPropertyId,
+    documentId,
+    fileName,
+}: {
+    managedPropertyId: string;
+    documentId: string;
+    fileName: string;
+}) {
+    const safeName = sanitizeStorageFileName(fileName);
+    const uniqueSuffix =
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+            ? crypto.randomUUID()
+            : `${Date.now()}`;
+
+    return `managed-properties/${managedPropertyId}/documents/${documentId}/${uniqueSuffix}-${safeName}`;
+}
+
+export async function uploadManagedPropertyDocumentFile({
+    managedPropertyId,
+    documentId,
+    file,
+    previousStoragePath,
+}: {
+    managedPropertyId: string;
+    documentId: string;
+    file: File;
+    previousStoragePath?: string | null;
+}) {
+    const supabase = createClient();
+    const storagePath = buildManagedPropertyDocumentStoragePath({
+        managedPropertyId,
+        documentId,
+        fileName: file.name,
+    });
+
+    const { error: uploadError } = await supabase.storage
+        .from(MANAGED_PROPERTY_DOCUMENTS_BUCKET)
+        .upload(storagePath, file, {
+            cacheControl: "3600",
+            contentType: file.type || undefined,
+            upsert: false,
+        });
+
+    if (uploadError) throwIfError(uploadError, "Failed to upload managed property document file");
+
+    const { data, error } = await supabase
+        .from("managed_property_documents")
+        .update({
+            file_name: file.name,
+            storage_path: storagePath,
+        })
+        .eq("id", documentId)
+        .select("*")
+        .single();
+
+    if (error) throwIfError(error, "Failed to link uploaded file to document");
+
+    if (previousStoragePath && previousStoragePath !== storagePath) {
+        await supabase.storage
+            .from(MANAGED_PROPERTY_DOCUMENTS_BUCKET)
+            .remove([previousStoragePath]);
+    }
+
+    return data as ManagedPropertyDocument;
+}
+
+export async function createManagedPropertyDocumentSignedUrl(storagePath: string) {
+    const supabase = createClient();
+
+    const { data, error } = await supabase.storage
+        .from(MANAGED_PROPERTY_DOCUMENTS_BUCKET)
+        .createSignedUrl(storagePath, 60 * 10);
+
+    if (error) throwIfError(error, "Failed to create document download link");
+
+    return data.signedUrl;
+}
+
+export async function removeManagedPropertyDocumentFile({
+    documentId,
+    storagePath,
+}: {
+    documentId: string;
+    storagePath: string;
+}) {
+    const supabase = createClient();
+
+    const { error: removeError } = await supabase.storage
+        .from(MANAGED_PROPERTY_DOCUMENTS_BUCKET)
+        .remove([storagePath]);
+
+    if (removeError) throwIfError(removeError, "Failed to remove managed property document file");
+
+    const { data, error } = await supabase
+        .from("managed_property_documents")
+        .update({
+            file_name: null,
+            storage_path: null,
+        })
+        .eq("id", documentId)
+        .select("*")
+        .single();
+
+    if (error) throwIfError(error, "Failed to unlink document file");
+
+    return data as ManagedPropertyDocument;
+}
+
 export async function createManagedPropertyDocumentCategory(
     payload: ManagedPropertyDocumentCategoryInsert,
 ) {
