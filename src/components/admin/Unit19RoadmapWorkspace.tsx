@@ -408,6 +408,76 @@ export default function Unit19RoadmapWorkspace({
         };
     }, [stages]);
 
+    const projectMetricCards = useMemo(() => {
+        if (projectSlug === "unit-19") {
+            return unit19KeyMetrics
+                .filter((metric) => metric.label !== "Progress")
+                .map((metric) => ({
+                    label: metric.label,
+                    value:
+                        metric.label === "Current focus"
+                            ? "Post-acq."
+                            : metric.label === "Active blockers"
+                                ? `${taskTotals.active}`
+                                : metric.value,
+                    detail: metric.detail,
+                }));
+        }
+
+        const currentStage =
+            stages.find((stage) => stage.status === "current") ??
+            stages.find((stage) => stage.tasks.some((task) => task.status === "in_progress")) ??
+            stages[0];
+
+        const currentStageTitle = currentStage?.title ?? "Roadmap setup";
+        const activeTasks = stages
+            .flatMap((stage) => stage.tasks)
+            .filter((task) => ["in_progress", "scheduled", "open", "blocked"].includes(task.status));
+
+        const activeTaskTitles = activeTasks
+            .slice(0, 3)
+            .map((task) => task.title)
+            .join(", ");
+
+        if (projectSlug === "maria-northstar") {
+            return [
+                {
+                    label: "Current focus",
+                    value: currentStageTitle,
+                    detail: "2026 stability: Subway, DUO evidence, housing, exam, CV/LinkedIn",
+                },
+                {
+                    label: "Target direction",
+                    value: "HR / Recruitment",
+                    detail: "Employer branding + communication bridge",
+                },
+                {
+                    label: "Active focus",
+                    value: `${activeTasks.length}`,
+                    detail: activeTaskTitles || "No active focus items",
+                },
+            ];
+        }
+
+        return [
+            {
+                label: "Current focus",
+                value: currentStageTitle,
+                detail: "Current stage based on roadmap status",
+            },
+            {
+                label: "Target model",
+                value: projectLabel,
+                detail: "Project-specific model and operating direction",
+            },
+            {
+                label: "Active focus",
+                value: `${activeTasks.length}`,
+                detail: activeTaskTitles || "No active focus items",
+            },
+        ];
+    }, [projectLabel, projectSlug, stages, taskTotals.active]);
+
     const progressPercent = Math.round((taskTotals.done / Math.max(taskTotals.total, 1)) * 100);
 
     function replaceTaskInState(task: Unit19RoadmapTask) {
@@ -985,34 +1055,26 @@ export default function Unit19RoadmapWorkspace({
                                     <div className="mt-1.5 text-[11px] text-[#7a90a8]">{taskTotals.done} / {taskTotals.total} tasks</div>
                                 </div>
 
-                                {unit19KeyMetrics
-                                    .filter((metric) => metric.label !== "Progress")
-                                    .map((metric, index) => {
-                                        const metricIcons = [IconCalendar, IconTrend, IconCheckSquare];
-                                        const MetricIcon = metricIcons[index] ?? IconClock;
-                                        const value =
-                                            metric.label === "Current focus"
-                                                ? "Post-acq."
-                                                : metric.label === "Active blockers"
-                                                    ? `${taskTotals.active}`
-                                                    : metric.value;
+                                {projectMetricCards.map((metric, index) => {
+                                    const metricIcons = [IconCalendar, IconTrend, IconCheckSquare];
+                                    const MetricIcon = metricIcons[index] ?? IconClock;
 
-                                        return (
-                                            <div
-                                                key={metric.label}
-                                                className="rounded-[18px] border border-white/[0.85] bg-white/[0.76] p-4 shadow-[0_12px_38px_rgba(41,73,112,0.08),inset_0_1px_0_rgba(255,255,255,1)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_52px_rgba(47,128,237,0.10)]"
-                                            >
-                                                <div className="mb-2 flex items-center gap-2">
-                                                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-[#2f80ed]/[0.14] bg-[#2f80ed]/[0.09] text-[#2060cc]">
-                                                        <MetricIcon />
-                                                    </div>
-                                                    <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#7a90a8]">{metric.label}</span>
+                                    return (
+                                        <div
+                                            key={metric.label}
+                                            className="rounded-[18px] border border-white/[0.85] bg-white/[0.76] p-4 shadow-[0_12px_38px_rgba(41,73,112,0.08),inset_0_1px_0_rgba(255,255,255,1)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_52px_rgba(47,128,237,0.10)]"
+                                        >
+                                            <div className="mb-2 flex items-center gap-2">
+                                                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-[#2f80ed]/[0.14] bg-[#2f80ed]/[0.09] text-[#2060cc]">
+                                                    <MetricIcon />
                                                 </div>
-                                                <div className="break-words text-[22px] font-semibold leading-tight text-[#0b1623]">{value}</div>
-                                                <div className="mt-1.5 text-[11px] leading-[1.35] text-[#7a90a8]">{metric.detail}</div>
+                                                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#7a90a8]">{metric.label}</span>
                                             </div>
-                                        );
-                                    })}
+                                            <div className="break-words text-[22px] font-semibold leading-tight text-[#0b1623]">{metric.value}</div>
+                                            <div className="mt-1.5 text-[11px] leading-[1.35] text-[#7a90a8]">{metric.detail}</div>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                     </header>
