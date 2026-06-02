@@ -33,6 +33,7 @@ export default async function RootLayout({
   let isAdmin = false;
   let displayName: string | null = null;
   let avatarUrl: string | null = null;
+  let userEmail: string | null = data.user?.email ?? null;
   let adminCounts = {
     screening: 0,
     orders: 0,
@@ -42,11 +43,12 @@ export default async function RootLayout({
   if (data.user) {
     const { data: profile } = await supabase
       .from("profiles")
-      .select("role, full_name")
+      .select("role, full_name, email")
       .eq("id", data.user.id)
       .maybeSingle();
 
     isAdmin = profile?.role === "admin";
+    userEmail = profile?.email || data.user.email || null;
 
     displayName =
       profile?.full_name ||
@@ -80,6 +82,7 @@ export default async function RootLayout({
           displayName={displayName}
           avatarUrl={avatarUrl}
           initialAdminCounts={adminCounts}
+          userEmail={userEmail}
         />
 
         <main className="mx-auto w-full max-w-[1440px] flex-1 px-6 pb-12 pt-36">

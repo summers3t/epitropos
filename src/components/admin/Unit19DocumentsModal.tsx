@@ -25,6 +25,8 @@ type Props = {
     open: boolean;
     onClose: () => void;
     onSwitchPanel?: (panel: Unit19PanelKey) => void;
+    propertySlug?: string;
+    projectLabel?: string;
 };
 
 type DocumentStatusFilter = "all" | "active" | "critical" | ManagedPropertyDocumentStatus;
@@ -197,7 +199,7 @@ function createBlankDocument(categories: UiCategory[], nextOrder: number): Draft
     };
 }
 
-export default function Unit19DocumentsModal({ open, onClose, onSwitchPanel }: Props) {
+export default function Unit19DocumentsModal({ open, onClose, onSwitchPanel, propertySlug = "unit-19", projectLabel = "Unit 19" }: Props) {
     const [managedPropertyId, setManagedPropertyId] = useState<string | null>(null);
     const [categories, setCategories] = useState<UiCategory[]>([]);
     const [documents, setDocuments] = useState<UiDocument[]>([]);
@@ -218,7 +220,7 @@ export default function Unit19DocumentsModal({ open, onClose, onSwitchPanel }: P
         setError(null);
 
         try {
-            const property = await getManagedPropertyBySlug("unit-19");
+            const property = await getManagedPropertyBySlug(propertySlug);
             const result = await getManagedPropertyDocuments(property.id);
 
             setManagedPropertyId(property.id);
@@ -246,7 +248,7 @@ export default function Unit19DocumentsModal({ open, onClose, onSwitchPanel }: P
             document.removeEventListener("keydown", handleKeyDown);
             document.body.style.overflow = "";
         };
-    }, [open, onClose]);
+    }, [open, onClose, propertySlug]);
 
     const categoryById = useMemo(() => {
         return new Map(categories.map((category) => [category.id, category]));
@@ -579,7 +581,7 @@ export default function Unit19DocumentsModal({ open, onClose, onSwitchPanel }: P
                                 Document cockpit · DB live
                             </div>
                             <h2 className="font-display text-[28px] font-normal leading-tight tracking-[-0.03em] text-[#0b1623] sm:text-[34px]">
-                                Unit 19 Document Register
+                                {projectLabel} Document Register
                             </h2>
                         </div>
 

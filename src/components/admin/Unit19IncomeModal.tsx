@@ -21,6 +21,8 @@ type Props = {
     open: boolean;
     onClose: () => void;
     onSwitchPanel?: (panel: Unit19PanelKey) => void;
+    propertySlug?: string;
+    projectLabel?: string;
 };
 
 type ExpenseDraft = {
@@ -116,7 +118,7 @@ function IconIncome() {
     );
 }
 
-export default function Unit19IncomeModal({ open, onClose, onSwitchPanel }: Props) {
+export default function Unit19IncomeModal({ open, onClose, onSwitchPanel, propertySlug = PROPERTY_SLUG, projectLabel = "Unit 19" }: Props) {
     const [managedPropertyId, setManagedPropertyId] = useState<string | null>(null);
     const [year, setYear] = useState(DEFAULT_YEAR);
     const [months, setMonths] = useState<ManagedPropertyIncomeMonth[]>([]);
@@ -136,7 +138,7 @@ export default function Unit19IncomeModal({ open, onClose, onSwitchPanel }: Prop
             setLoading(true);
             setError(null);
 
-            const property = await getManagedPropertyBySlug(PROPERTY_SLUG);
+            const property = await getManagedPropertyBySlug(propertySlug);
             const result = await getManagedPropertyIncome(property.id, targetYear);
 
             setManagedPropertyId(property.id);
@@ -172,7 +174,7 @@ export default function Unit19IncomeModal({ open, onClose, onSwitchPanel }: Prop
             document.removeEventListener("keydown", handleKeyDown);
             document.body.style.overflow = "";
         };
-    }, [open, onClose]);
+    }, [open, onClose, propertySlug, year]);
 
     const selected = months.find((month) => month.month === selectedMonth) ?? months[0];
 
@@ -342,7 +344,7 @@ export default function Unit19IncomeModal({ open, onClose, onSwitchPanel }: Prop
                                 Income cockpit · DB live
                             </div>
                             <h2 className="font-display text-[28px] font-normal leading-tight tracking-[-0.03em] text-[#0b1623] sm:text-[34px]">
-                                Unit 19 Rental Income
+                                {projectLabel} Income
                             </h2>
                             {error ? <p className="mt-1 text-[12px] font-semibold text-[#9d2f2f]">{error}</p> : null}
                         </div>

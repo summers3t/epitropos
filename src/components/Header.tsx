@@ -25,6 +25,7 @@ type HeaderProps = {
   displayName?: string | null;
   avatarUrl?: string | null;
   initialAdminCounts?: AdminCounts;
+  userEmail?: string | null;
 };
 
 function getInitials(displayName: string | null | undefined) {
@@ -53,6 +54,7 @@ export default function Header({
   displayName,
   avatarUrl,
   initialAdminCounts,
+  userEmail,
 }: HeaderProps) {
   const [scrolled, setScrolled] = useState(false);
   const [adminCounts, setAdminCounts] = useState<AdminCounts>(
@@ -166,6 +168,7 @@ export default function Header({
   }, [isLoggedIn, isAdmin, routeRefreshKey]);
 
   const initials = useMemo(() => getInitials(displayName), [displayName]);
+  const canAccessNorthStar = userEmail === "summers3t@gmail.com" || userEmail === "maria.brambashka@gmail.com";
 
   return (
     <header
@@ -243,6 +246,15 @@ export default function Header({
                     <span>Unit 19</span>
                   </Link>
 
+                  {canAccessNorthStar ? (
+                    <Link
+                      href="/admin/northstar"
+                      className="inline-flex items-center gap-2 rounded-xl border border-[#8a65cc]/30 bg-[#8a65cc]/10 px-3 py-1.5 text-[11px] normal-case tracking-normal text-[#d7c9ff] transition hover:-translate-y-0.5 hover:border-[#8a65cc]/45 hover:bg-[#8a65cc]/15 hover:text-white active:translate-y-0 active:scale-[0.985]"
+                    >
+                      <span>NorthStar</span>
+                    </Link>
+                  ) : null}
+
                   <span className="mx-2 h-5 w-px bg-white/12" />
                 </>
               ) : null}
@@ -265,6 +277,15 @@ export default function Header({
             <div className="ml-2 flex shrink-0 items-center gap-2">
               {isLoggedIn ? (
                 <>
+                  {!isAdmin && canAccessNorthStar ? (
+                    <Link
+                      href="/admin/northstar"
+                      className="relative hidden text-[12px] uppercase tracking-[0.18em] text-white/62 transition duration-300 hover:text-white after:absolute after:-bottom-1.5 after:left-0 after:h-px after:w-0 after:bg-stone/80 after:transition-all after:duration-300 hover:after:w-full md:inline-flex"
+                    >
+                      NorthStar
+                    </Link>
+                  ) : null}
+
                   <Link
                     href="/dashboard"
                     className="relative hidden text-[12px] uppercase tracking-[0.18em] text-white/62 transition duration-300 hover:text-white after:absolute after:-bottom-1.5 after:left-0 after:h-px after:w-0 after:bg-stone/80 after:transition-all after:duration-300 hover:after:w-full md:inline-flex"

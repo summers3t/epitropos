@@ -19,7 +19,7 @@ export type ManagedProperty = {
 };
 
 export type ManagedPropertyRoadmapStageStatus = "completed" | "current" | "upcoming" | "deferred";
-export type ManagedPropertyRoadmapTaskStatus = "done" | "pending" | "scheduled" | "open" | "deferred";
+export type ManagedPropertyRoadmapTaskStatus = "done" | "pending" | "scheduled" | "open" | "deferred" | "in_progress" | "watch" | "blocked" | "dropped";
 export type ManagedPropertyRoadmapTaskPriority = "critical" | "high" | "normal" | "low";
 
 export type ManagedPropertyRoadmapStage = {

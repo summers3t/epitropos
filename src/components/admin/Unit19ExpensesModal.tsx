@@ -21,6 +21,8 @@ type Props = {
     open: boolean;
     onClose: () => void;
     onSwitchPanel?: (panel: Unit19PanelKey) => void;
+    propertySlug?: string;
+    projectLabel?: string;
 };
 
 type ExpenseFilter = "all" | ManagedPropertyExpenseCategory;
@@ -162,7 +164,7 @@ function IconPlus() {
     );
 }
 
-export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel }: Props) {
+export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, propertySlug = PROPERTY_SLUG }: Props) {
     const [managedProperty, setManagedProperty] = useState<ManagedProperty | null>(null);
     const [expenses, setExpenses] = useState<ManagedPropertyExpense[]>([]);
     const [categoryFilter, setCategoryFilter] = useState<ExpenseFilter>("all");
@@ -184,7 +186,7 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel }: Pr
                 setLoading(true);
                 setError(null);
 
-                const property = await getManagedPropertyBySlug(PROPERTY_SLUG);
+                const property = await getManagedPropertyBySlug(propertySlug);
                 const rows = await getManagedPropertyExpenses(property.id);
 
                 if (cancelled) return;
@@ -209,7 +211,7 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel }: Pr
         return () => {
             cancelled = true;
         };
-    }, [open]);
+    }, [open, propertySlug]);
 
     useEffect(() => {
         if (!open) return;

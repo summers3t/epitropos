@@ -122,7 +122,17 @@ function getStageLabel(status: RoadmapStageStatus) {
 }
 
 function getTaskLabel(status: RoadmapTaskStatus) {
-    return { done: "Done", pending: "In Progress", scheduled: "Scheduled", open: "Todo", deferred: "Deferred" }[status];
+    return {
+        done: "Done",
+        pending: "Planned",
+        scheduled: "Scheduled",
+        open: "Todo",
+        deferred: "Deferred",
+        in_progress: "In progress",
+        watch: "Watch",
+        blocked: "Blocked",
+        dropped: "Dropped",
+    }[status];
 }
 
 function isInteractiveField(target: EventTarget | null) {
@@ -274,13 +284,25 @@ function stageBadge(status: RoadmapStageStatus) {
 
 function taskBadge(status: RoadmapTaskStatus) {
     if (status === "done") return "border-[#20a76b]/[0.22] bg-[#20a76b]/[0.09] text-[#0f7448]";
-    if (status === "pending") return "border-[#2f80ed]/[0.26] bg-[#2f80ed]/[0.09] text-[#1560bc]";
+    if (status === "in_progress") return "border-[#2f80ed]/[0.26] bg-[#2f80ed]/[0.09] text-[#1560bc]";
+    if (status === "pending") return "border-[#9ab0c4]/[0.26] bg-[#9ab0c4]/[0.09] text-[#4e6880]";
     if (status === "scheduled") return "border-[#8a65cc]/[0.26] bg-[#8a65cc]/[0.09] text-[#5e38a0]";
+    if (status === "watch") return "border-[#d8b95f]/[0.30] bg-[#d8b95f]/[0.10] text-[#8a6b10]";
+    if (status === "blocked") return "border-[#d66363]/[0.28] bg-[#d66363]/[0.10] text-[#9a3434]";
+    if (status === "dropped") return "border-[#7f8a98]/[0.28] bg-[#7f8a98]/[0.10] text-[#586372]";
     if (status === "deferred") return "border-[#cfa090]/[0.28] bg-[#cfa090]/[0.09] text-[#8c5947]";
     return "border-[#9ab0c4]/[0.26] bg-[#9ab0c4]/[0.09] text-[#4e6880]";
 }
 
-type Props = { userName?: string | null; userAvatarUrl?: string | null };
+type Props = {
+    userName?: string | null;
+    userAvatarUrl?: string | null;
+    projectSlug?: string;
+    projectTitle?: string;
+    projectSubtitle?: string;
+    projectLabel?: string;
+    heroBadge?: string;
+};
 
 const TOP_FILTERS: { mode: FilterMode; label: string }[] = [
     { mode: "all", label: "Full Journey" },
@@ -303,8 +325,13 @@ function matchesFocusedStatus(stageStatus: RoadmapStageStatus, focusedStatus: Fo
     return stageStatus === focusedStatus;
 }
 
-export default function Unit19RoadmapWorkspace(props: Props) {
-    void props;
+export default function Unit19RoadmapWorkspace({
+    projectSlug = PROPERTY_SLUG,
+    projectTitle = "Unit 19 Project Roadmap",
+    projectSubtitle = "Thessaloniki · Analipsi",
+    projectLabel = "Unit 19",
+    heroBadge = "Admin Roadmap",
+}: Props) {
 
     const [managedPropertyId, setManagedPropertyId] = useState<string | null>(null);
     const [stages, setStages] = useState<Unit19RoadmapStage[]>([]);
@@ -341,7 +368,7 @@ export default function Unit19RoadmapWorkspace(props: Props) {
         setError(null);
 
         try {
-            const property = await getManagedPropertyBySlug(PROPERTY_SLUG);
+            const property = await getManagedPropertyBySlug(projectSlug);
             const roadmap = await getManagedPropertyRoadmap(property.id);
             const mappedStages = mapRoadmapFromDb(roadmap.stages, roadmap.tasks);
             const currentStage = mappedStages.find((stage) => stage.status === "current") ?? mappedStages[0] ?? null;
@@ -358,7 +385,7 @@ export default function Unit19RoadmapWorkspace(props: Props) {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [projectSlug]);
 
     useEffect(() => {
         void loadRoadmap();
@@ -376,7 +403,7 @@ export default function Unit19RoadmapWorkspace(props: Props) {
 
         return {
             done: allTasks.filter((task) => task.status === "done").length,
-            active: allTasks.filter((task) => ["pending", "scheduled", "open"].includes(task.status)).length,
+            active: allTasks.filter((task) => ["pending", "scheduled", "open", "in_progress", "watch", "blocked"].includes(task.status)).length,
             total: allTasks.length,
         };
     }, [stages]);
@@ -925,7 +952,7 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                         <div className="relative p-7 md:p-9">
                             <div className="mb-5 flex flex-wrap items-center gap-2">
                                 <span className="rounded-full border border-[#2f80ed]/[0.22] bg-[#2f80ed]/[0.09] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#2060cc]">
-                                    Admin Roadmap
+                                    {heroBadge}
                                 </span>
                                 <span className="text-[#b8c9d8]">/</span>
                                 <span className="rounded-full border border-black/[0.08] bg-white/[0.52] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#7a90a8]">
@@ -934,10 +961,10 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                             </div>
 
                             <h1 className="font-display text-[38px] font-normal leading-[0.98] tracking-[-0.025em] text-[#0b1623] md:text-[54px]">
-                                Unit 19 Project Roadmap
+                                {projectTitle}
                             </h1>
                             <p className="mt-2.5 text-[15px] text-[#3d5270] md:text-[17px]">
-                                Thessaloniki · Analipsi
+                                {projectSubtitle}
                             </p>
 
                             <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -1089,7 +1116,7 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                                     const selected = stage.id === selectedStageId;
                                     const expanded = expandedStageIds.has(stage.id);
                                     const activeTasks = stage.tasks.filter((task) =>
-                                        ["pending", "scheduled", "open"].includes(task.status),
+                                        ["pending", "scheduled", "open", "in_progress", "watch", "blocked"].includes(task.status),
                                     );
 
                                     return (
@@ -1329,10 +1356,14 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                                                                                                 className="rounded-[9px] border border-[#ccd9e8] bg-white/[0.92] px-3 py-2 text-[13px] text-[#0b1623] outline-none transition focus:border-[#2f80ed]"
                                                                                             >
                                                                                                 <option value="done">Done</option>
-                                                                                                <option value="pending">In Progress</option>
+                                                                                                <option value="in_progress">In progress</option>
+                                                                                                <option value="pending">Planned</option>
                                                                                                 <option value="scheduled">Scheduled</option>
                                                                                                 <option value="open">Todo</option>
+                                                                                                <option value="watch">Watch</option>
+                                                                                                <option value="blocked">Blocked</option>
                                                                                                 <option value="deferred">Deferred</option>
+                                                                                                <option value="dropped">Dropped</option>
                                                                                             </select>
                                                                                             <div className="flex justify-end">
                                                                                                 <button
@@ -1352,13 +1383,13 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                                                                                                     "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full",
                                                                                                     task.status === "done"
                                                                                                         ? "border-2 border-[#20a76b] bg-[#20a76b]"
-                                                                                                        : task.status === "pending"
+                                                                                                        : task.status === "in_progress"
                                                                                                             ? "border-2 border-[#2f80ed] bg-transparent"
                                                                                                             : "border-2 border-[#c8d5e2] bg-transparent",
                                                                                                 ].join(" ")}
                                                                                             >
                                                                                                 {task.status === "done" ? <IconCheck c="h-2.5 w-2.5 text-white" /> : null}
-                                                                                                {task.status === "pending" ? <div className="h-1.5 w-1.5 rounded-full bg-[#2f80ed]" /> : null}
+                                                                                                {task.status === "in_progress" ? <div className="h-1.5 w-1.5 rounded-full bg-[#2f80ed]" /> : null}
                                                                                             </div>
 
                                                                                             <div className="min-w-0 flex-1">
@@ -1616,24 +1647,32 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                     </section>
 
                     <Unit19ExpensesModal
+                        propertySlug={projectSlug}
+                        projectLabel={projectLabel}
                         open={expensesOpen}
                         onClose={() => setExpensesOpen(false)}
                         onSwitchPanel={switchPanel}
                     />
 
                     <Unit19DocumentsModal
+                        propertySlug={projectSlug}
+                        projectLabel={projectLabel}
                         open={documentsOpen}
                         onClose={() => setDocumentsOpen(false)}
                         onSwitchPanel={switchPanel}
                     />
 
                     <Unit19IncomeModal
+                        propertySlug={projectSlug}
+                        projectLabel={projectLabel}
                         open={incomeOpen}
                         onClose={() => setIncomeOpen(false)}
                         onSwitchPanel={switchPanel}
                     />
 
                     <Unit19CalendarModal
+                        propertySlug={projectSlug}
+                        projectLabel={projectLabel}
                         open={calendarOpen}
                         onClose={() => setCalendarOpen(false)}
                         initialDate={calendarTargetDate}

@@ -26,6 +26,8 @@ type Props = {
     onInitialTargetConsumed?: () => void;
     onCalendarDataChanged?: () => void;
     onSwitchPanel?: (panel: Unit19PanelKey) => void;
+    propertySlug?: string;
+    projectLabel?: string;
 };
 
 type CalendarView = "agenda" | "week" | "month";
@@ -318,6 +320,8 @@ export default function Unit19CalendarModal({
     onInitialTargetConsumed,
     onCalendarDataChanged,
     onSwitchPanel,
+    propertySlug = "unit-19",
+    projectLabel = "Unit 19",
 }: Props) {
     const [managedPropertyId, setManagedPropertyId] = useState<string | null>(null);
     const [items, setItems] = useState<Unit19CalendarItem[]>([]);
@@ -338,7 +342,7 @@ export default function Unit19CalendarModal({
         setError(null);
 
         try {
-            const property = await getManagedPropertyBySlug("unit-19");
+            const property = await getManagedPropertyBySlug(propertySlug);
             const calendarItems = await getManagedPropertyCalendarItems(property.id);
             setManagedPropertyId(property.id);
             setItems(calendarItems.map(dbItemToUi));
@@ -347,7 +351,7 @@ export default function Unit19CalendarModal({
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [propertySlug]);
 
     useEffect(() => {
         if (!open) return;
@@ -653,7 +657,7 @@ export default function Unit19CalendarModal({
                                 Calendar cockpit · DB live
                             </div>
                             <h2 className="font-display text-[28px] font-normal leading-tight tracking-[-0.03em] text-[#0b1623] sm:text-[34px]">
-                                Unit 19 Activity Planner
+                                {projectLabel} Activity Planner
                             </h2>
                         </div>
 
