@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Unit19ModalSwitcher, { type Unit19PanelKey } from "@/components/admin/Unit19ModalSwitcher";
 import {
     createManagedPropertyExpense,
     deleteManagedPropertyExpense,
@@ -19,6 +20,7 @@ const PROPERTY_SLUG = "unit-19";
 type Props = {
     open: boolean;
     onClose: () => void;
+    onSwitchPanel?: (panel: Unit19PanelKey) => void;
 };
 
 type ExpenseFilter = "all" | ManagedPropertyExpenseCategory;
@@ -160,7 +162,7 @@ function IconPlus() {
     );
 }
 
-export default function Unit19ExpensesModal({ open, onClose }: Props) {
+export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel }: Props) {
     const [managedProperty, setManagedProperty] = useState<ManagedProperty | null>(null);
     const [expenses, setExpenses] = useState<ManagedPropertyExpense[]>([]);
     const [categoryFilter, setCategoryFilter] = useState<ExpenseFilter>("all");
@@ -438,7 +440,8 @@ export default function Unit19ExpensesModal({ open, onClose }: Props) {
                             </h2>
                         </div>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                            <Unit19ModalSwitcher activePanel="expenses" onSwitchPanel={onSwitchPanel} />
                             <button
                                 type="button"
                                 onClick={addExpense}

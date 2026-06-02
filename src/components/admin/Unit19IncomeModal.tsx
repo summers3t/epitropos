@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import Unit19ModalSwitcher, { type Unit19PanelKey } from "@/components/admin/Unit19ModalSwitcher";
 import AdminDatePicker from "@/components/admin/AdminDatePicker";
 import {
     createManagedPropertyIncomeOwnerExpense,
@@ -19,6 +20,7 @@ import {
 type Props = {
     open: boolean;
     onClose: () => void;
+    onSwitchPanel?: (panel: Unit19PanelKey) => void;
 };
 
 type ExpenseDraft = {
@@ -114,7 +116,7 @@ function IconIncome() {
     );
 }
 
-export default function Unit19IncomeModal({ open, onClose }: Props) {
+export default function Unit19IncomeModal({ open, onClose, onSwitchPanel }: Props) {
     const [managedPropertyId, setManagedPropertyId] = useState<string | null>(null);
     const [year, setYear] = useState(DEFAULT_YEAR);
     const [months, setMonths] = useState<ManagedPropertyIncomeMonth[]>([]);
@@ -346,6 +348,7 @@ export default function Unit19IncomeModal({ open, onClose }: Props) {
                         </div>
 
                         <div className="flex flex-wrap items-center justify-end gap-2">
+                            <Unit19ModalSwitcher activePanel="income" onSwitchPanel={onSwitchPanel} />
                             <button
                                 type="button"
                                 onClick={applyRentSchedule}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type DragEvent } from "react";
+import Unit19ModalSwitcher, { type Unit19PanelKey } from "@/components/admin/Unit19ModalSwitcher";
 import AdminDatePicker from "@/components/admin/AdminDatePicker";
 import {
     createManagedPropertyCalendarItem,
@@ -24,6 +25,7 @@ type Props = {
     initialItemId?: string | null;
     onInitialTargetConsumed?: () => void;
     onCalendarDataChanged?: () => void;
+    onSwitchPanel?: (panel: Unit19PanelKey) => void;
 };
 
 type CalendarView = "agenda" | "week" | "month";
@@ -315,6 +317,7 @@ export default function Unit19CalendarModal({
     initialItemId,
     onInitialTargetConsumed,
     onCalendarDataChanged,
+    onSwitchPanel,
 }: Props) {
     const [managedPropertyId, setManagedPropertyId] = useState<string | null>(null);
     const [items, setItems] = useState<Unit19CalendarItem[]>([]);
@@ -655,6 +658,7 @@ export default function Unit19CalendarModal({
                         </div>
 
                         <div className="flex flex-wrap items-center justify-end gap-2">
+                            <Unit19ModalSwitcher activePanel="calendar" onSwitchPanel={onSwitchPanel} />
                             <button
                                 type="button"
                                 onClick={() => setDraftItem(blankItem(selectedDate))}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import Unit19ModalSwitcher, { type Unit19PanelKey } from "@/components/admin/Unit19ModalSwitcher";
 import AdminDatePicker from "@/components/admin/AdminDatePicker";
 import {
     createManagedPropertyDocument,
@@ -20,6 +21,7 @@ import {
 type Props = {
     open: boolean;
     onClose: () => void;
+    onSwitchPanel?: (panel: Unit19PanelKey) => void;
 };
 
 type DocumentStatusFilter = "all" | "active" | "critical" | ManagedPropertyDocumentStatus;
@@ -192,7 +194,7 @@ function createBlankDocument(categories: UiCategory[], nextOrder: number): Draft
     };
 }
 
-export default function Unit19DocumentsModal({ open, onClose }: Props) {
+export default function Unit19DocumentsModal({ open, onClose, onSwitchPanel }: Props) {
     const [managedPropertyId, setManagedPropertyId] = useState<string | null>(null);
     const [categories, setCategories] = useState<UiCategory[]>([]);
     const [documents, setDocuments] = useState<UiDocument[]>([]);
@@ -518,7 +520,8 @@ export default function Unit19DocumentsModal({ open, onClose }: Props) {
                             </h2>
                         </div>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                            <Unit19ModalSwitcher activePanel="documents" onSwitchPanel={onSwitchPanel} />
                             <button
                                 type="button"
                                 onClick={() => setEditingDocument(createBlankDocument(categories, nextOrder))}

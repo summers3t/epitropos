@@ -25,6 +25,7 @@ import Unit19ExpensesModal from "@/components/admin/Unit19ExpensesModal";
 import Unit19DocumentsModal from "@/components/admin/Unit19DocumentsModal";
 import Unit19IncomeModal from "@/components/admin/Unit19IncomeModal";
 import Unit19CalendarModal from "@/components/admin/Unit19CalendarModal";
+import type { Unit19PanelKey } from "@/components/admin/Unit19ModalSwitcher";
 
 type FilterMode = "all" | "current" | "upcoming" | "completed";
 type FocusStatus = Exclude<FilterMode, "all">;
@@ -350,6 +351,19 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                 tasks: stage.tasks.map((currentTask) => (currentTask.id === task.id ? task : currentTask)),
             })),
         );
+    }
+
+
+    function switchPanel(panel: Unit19PanelKey) {
+        setExpensesOpen(panel === "expenses");
+        setDocumentsOpen(panel === "documents");
+        setIncomeOpen(panel === "income");
+        setCalendarOpen(panel === "calendar");
+
+        if (panel !== "calendar") {
+            setCalendarTargetDate(null);
+            setCalendarTargetItemId(null);
+        }
     }
 
     function toggleExpanded(id: string) {
@@ -742,7 +756,7 @@ export default function Unit19RoadmapWorkspace(props: Props) {
 
                                 <button
                                     type="button"
-                                    onClick={() => setExpensesOpen(true)}
+                                    onClick={() => switchPanel("expenses")}
                                     className="relative overflow-hidden rounded-[13px] border border-[#a68b4a]/[0.28] bg-[#a68b4a]/[0.10] px-4 py-2.5 text-[12px] font-semibold text-[#7a6228] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-[#a68b4a]/[0.42] hover:bg-[#a68b4a]/[0.16] hover:text-[#0f1c2e] hover:shadow-[0_12px_30px_rgba(166,139,74,0.18)] active:scale-[0.96]"
                                 >
                                     Expenses
@@ -750,7 +764,7 @@ export default function Unit19RoadmapWorkspace(props: Props) {
 
                                 <button
                                     type="button"
-                                    onClick={() => setDocumentsOpen(true)}
+                                    onClick={() => switchPanel("documents")}
                                     className="relative overflow-hidden rounded-[13px] border border-[#2f80ed]/[0.26] bg-[#2f80ed]/[0.09] px-4 py-2.5 text-[12px] font-semibold text-[#1560bc] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-[#2f80ed]/[0.40] hover:bg-[#2f80ed]/[0.14] hover:text-[#0f1c2e] hover:shadow-[0_12px_30px_rgba(47,128,237,0.16)] active:scale-[0.96]"
                                 >
                                     Documents
@@ -758,7 +772,7 @@ export default function Unit19RoadmapWorkspace(props: Props) {
 
                                 <button
                                     type="button"
-                                    onClick={() => setIncomeOpen(true)}
+                                    onClick={() => switchPanel("income")}
                                     className="relative overflow-hidden rounded-[13px] border border-[#20a76b]/[0.24] bg-[#20a76b]/[0.08] px-4 py-2.5 text-[12px] font-semibold text-[#0f7448] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-[#20a76b]/[0.34] hover:bg-[#20a76b]/[0.13] hover:text-[#0f1c2e] hover:shadow-[0_12px_30px_rgba(32,167,107,0.14)] active:scale-[0.96]"
                                 >
                                     Income
@@ -766,7 +780,7 @@ export default function Unit19RoadmapWorkspace(props: Props) {
 
                                 <button
                                     type="button"
-                                    onClick={() => setCalendarOpen(true)}
+                                    onClick={() => switchPanel("calendar")}
                                     className="relative overflow-hidden rounded-[13px] border border-[#8a65cc]/[0.24] bg-[#8a65cc]/[0.08] px-4 py-2.5 text-[12px] font-semibold text-[#5e38a0] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-[#8a65cc]/[0.34] hover:bg-[#8a65cc]/[0.13] hover:text-[#0f1c2e] hover:shadow-[0_12px_30px_rgba(138,101,204,0.14)] active:scale-[0.96]"
                                 >
                                     Calendar
@@ -1207,16 +1221,19 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                     <Unit19ExpensesModal
                         open={expensesOpen}
                         onClose={() => setExpensesOpen(false)}
+                        onSwitchPanel={switchPanel}
                     />
 
                     <Unit19DocumentsModal
                         open={documentsOpen}
                         onClose={() => setDocumentsOpen(false)}
+                        onSwitchPanel={switchPanel}
                     />
 
                     <Unit19IncomeModal
                         open={incomeOpen}
                         onClose={() => setIncomeOpen(false)}
+                        onSwitchPanel={switchPanel}
                     />
 
                     <Unit19CalendarModal
@@ -1231,6 +1248,7 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                         onCalendarDataChanged={() => {
                             void loadRoadmap();
                         }}
+                        onSwitchPanel={switchPanel}
                     />
                 </main>
             </div>
