@@ -8,7 +8,12 @@ import {
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
-import type { ScreeningSubmitState } from "./page";
+
+type ScreeningSubmitState = {
+  success: boolean;
+  error: string | null;
+  fieldErrors: Record<string, string | undefined>;
+};
 
 const DRAFT_KEY = "epitropos:screeningDraft:v2";
 const MIN_BUDGET_VALUE = 10000;
