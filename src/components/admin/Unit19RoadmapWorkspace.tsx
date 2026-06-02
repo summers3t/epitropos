@@ -10,11 +10,14 @@ import {
     unit19RoadmapStages,
 } from "@/lib/admin/unit19RoadmapData";
 import {
+    createManagedPropertyRoadmapStage,
     createManagedPropertyTask,
+    deleteManagedPropertyRoadmapStage,
     deleteManagedPropertyTask,
     getManagedPropertyBySlug,
     getManagedPropertyRoadmap,
     scheduleManagedPropertyTask,
+    updateManagedPropertyRoadmapStage,
     updateManagedPropertyTask,
     type ManagedPropertyRoadmapStage,
     type ManagedPropertyRoadmapStageStatus as RoadmapStageStatus,
@@ -45,6 +48,7 @@ type Unit19RoadmapStage = {
     status: RoadmapStageStatus;
     summary: string;
     lesson: string;
+    sortOrder: number;
     tasks: Unit19RoadmapTask[];
 };
 
@@ -52,6 +56,18 @@ function toIsoDate(value: Date) {
     const copy = new Date(value);
     copy.setMinutes(copy.getMinutes() - copy.getTimezoneOffset());
     return copy.toISOString().slice(0, 10);
+}
+
+function formatStageNumber(value: number) {
+    return String(Math.max(0, value)).padStart(2, "0");
+}
+
+function buildStageTitle(number: string, title: string) {
+    return `${number} · ${title.trim() || "New stage"}`;
+}
+
+function createStageStableKey() {
+    return `custom-${Date.now()}`;
 }
 
 function parseStageTitle(rawTitle: string) {
@@ -81,6 +97,7 @@ function mapRoadmapFromDb(
             status: stage.status,
             summary: stage.description ?? localStage?.summary ?? "",
             lesson: localStage?.lesson ?? "Use this stage as the working layer for execution, scheduling and follow-up.",
+            sortOrder: stage.sort_order,
             tasks: dbTasks
                 .filter((task) => task.stage_id === stage.id)
                 .sort((a, b) => a.sort_order - b.sort_order || a.title.localeCompare(b.title)),
@@ -283,6 +300,7 @@ export default function Unit19RoadmapWorkspace(props: Props) {
     const [expandedStageIds, setExpandedStageIds] = useState<Set<string>>(() => new Set());
     const [filterMode, setFilterMode] = useState<FilterMode>("all");
     const [focusedStageStatus, setFocusedStageStatus] = useState<FocusStatus | null>(null);
+    const [editingStageId, setEditingStageId] = useState<string | null>(null);
     const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
     const [schedulingTaskId, setSchedulingTaskId] = useState<string | null>(null);
     const [scheduleDate, setScheduleDate] = useState(() => toIsoDate(new Date()));
@@ -353,6 +371,139 @@ export default function Unit19RoadmapWorkspace(props: Props) {
         );
     }
 
+    function replaceStageInState(dbStage: ManagedPropertyRoadmapStage) {
+        const parsed = parseStageTitle(dbStage.title);
+
+        setStages((current) =>
+            current.map((stage) =>
+                stage.id === dbStage.id
+                    ? {
+                        ...stage,
+                        stableKey: dbStage.stable_key,
+                        number: parsed.number,
+                        title: parsed.title,
+                        status: dbStage.status,
+                        summary: dbStage.description ?? "",
+                        sortOrder: dbStage.sort_order,
+                    }
+                    : stage,
+            ),
+        );
+    }
+
+    function updateStage(stageId: string, patch: Partial<Unit19RoadmapStage>) {
+        setStages((current) =>
+            current.map((stage) => (stage.id === stageId ? { ...stage, ...patch } : stage)),
+        );
+    }
+
+    function getNextStageNumber() {
+        const numericValues = stages
+            .map((stage) => Number(stage.number))
+            .filter((value) => Number.isFinite(value));
+
+        return formatStageNumber(Math.max(-1, ...numericValues) + 1);
+    }
+
+    async function addStage() {
+        if (!managedPropertyId) return;
+
+        setSaving(true);
+        setError(null);
+
+        try {
+            const nextNumber = getNextStageNumber();
+            const sortOrder = Math.max(0, ...stages.map((stage) => stage.sortOrder ?? 0)) + 1000;
+            const dbStage = await createManagedPropertyRoadmapStage({
+                managed_property_id: managedPropertyId,
+                stable_key: createStageStableKey(),
+                title: buildStageTitle(nextNumber, "New stage"),
+                description: "Describe this stage.",
+                status: "upcoming",
+                sort_order: sortOrder,
+            });
+            const parsed = parseStageTitle(dbStage.title);
+            const newStage: Unit19RoadmapStage = {
+                id: dbStage.id,
+                dbStageId: dbStage.id,
+                stableKey: dbStage.stable_key,
+                number: parsed.number,
+                title: parsed.title,
+                status: dbStage.status,
+                summary: dbStage.description ?? "",
+                lesson: "Use this stage as the working layer for execution, scheduling and follow-up.",
+                sortOrder: dbStage.sort_order,
+                tasks: [],
+            };
+
+            setStages((current) => [...current, newStage]);
+            setSelectedStageId(newStage.id);
+            setEditingStageId(newStage.id);
+            setExpandedStageIds((current) => {
+                const next = new Set(current);
+                next.add(newStage.id);
+                return next;
+            });
+
+            window.setTimeout(() => {
+                document.getElementById(`roadmap-stage-${newStage.id}`)?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "center",
+                });
+            }, 80);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to create roadmap stage");
+        } finally {
+            setSaving(false);
+        }
+    }
+
+    async function saveStage(stage: Unit19RoadmapStage) {
+        setSaving(true);
+        setError(null);
+
+        try {
+            const dbStage = await updateManagedPropertyRoadmapStage(stage.dbStageId, {
+                title: buildStageTitle(stage.number, stage.title),
+                description: stage.summary?.trim() || null,
+                status: stage.status,
+                sort_order: stage.sortOrder,
+            });
+
+            replaceStageInState(dbStage);
+            setEditingStageId(null);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to save roadmap stage");
+        } finally {
+            setSaving(false);
+        }
+    }
+
+    async function removeStage(stage: Unit19RoadmapStage) {
+        if (stage.tasks.length > 0) {
+            setError("Only empty stages can be deleted. Delete or move the tasks first.");
+            return;
+        }
+
+        setSaving(true);
+        setError(null);
+
+        try {
+            await deleteManagedPropertyRoadmapStage(stage.dbStageId);
+            setStages((current) => current.filter((item) => item.id !== stage.id));
+            setExpandedStageIds((current) => {
+                const next = new Set(current);
+                next.delete(stage.id);
+                return next;
+            });
+            setEditingStageId((current) => (current === stage.id ? null : current));
+            setSelectedStageId((current) => (current === stage.id ? stages.find((item) => item.id !== stage.id)?.id ?? null : current));
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to delete roadmap stage");
+        } finally {
+            setSaving(false);
+        }
+    }
 
     function switchPanel(panel: Unit19PanelKey) {
         setExpensesOpen(panel === "expenses");
@@ -725,6 +876,18 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                             </div>
 
                             <div className="flex flex-wrap items-center gap-2 rounded-[18px] border border-white/[0.78] bg-white/[0.44] p-1.5 shadow-[0_12px_36px_rgba(41,73,112,0.08),inset_0_1px_0_rgba(255,255,255,0.92)] backdrop-blur-2xl">
+                                <button
+                                    type="button"
+                                    onClick={() => void addStage()}
+                                    disabled={saving || !managedPropertyId}
+                                    className="relative flex items-center gap-1.5 overflow-hidden rounded-[13px] border border-[#20a76b]/[0.24] bg-[#20a76b]/[0.09] px-4 py-2.5 text-[12px] font-semibold text-[#0f7448] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-[#20a76b]/[0.36] hover:bg-[#20a76b]/[0.14] hover:text-[#0f1c2e] disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.96]"
+                                >
+                                    <IconPlus />
+                                    Stage
+                                </button>
+
+                                <span className="mx-1 hidden h-7 w-px bg-[#ccd9e8]/80 sm:block" />
+
                                 {TOP_FILTERS.map(({ mode, label }) => {
                                     const active = filterMode === mode;
 
@@ -895,17 +1058,81 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                                                 </span>
 
                                                 <div className="min-w-0 flex-1">
-                                                    <div className="flex flex-wrap items-baseline gap-2">
-                                                        <h3 className="text-[13.5px] font-semibold leading-snug text-[#0b1623]">
-                                                            {stage.title}
-                                                        </h3>
-                                                        <span className="text-[11px] font-semibold text-[#9ab0c4] md:hidden">
-                                                            #{stage.number}
-                                                        </span>
-                                                    </div>
-                                                    <p className="mt-0.5 text-[12px] leading-[1.55] text-[#7a90a8]">
-                                                        {stage.summary}
-                                                    </p>
+                                                    {editingStageId === stage.id ? (
+                                                        <div className="space-y-2.5 rounded-[14px] border border-[#2f80ed]/[0.18] bg-white/[0.58] p-3" onClick={(event) => event.stopPropagation()}>
+                                                            <div className="grid gap-2 sm:grid-cols-[80px_minmax(0,1fr)_150px]">
+                                                                <label className="block text-[10.5px] font-semibold text-[#607993]">
+                                                                    No.
+                                                                    <input
+                                                                        value={stage.number}
+                                                                        onChange={(event) => updateStage(stage.id, { number: event.target.value })}
+                                                                        className="mt-1 w-full rounded-[9px] border border-[#ccd9e8] bg-white/[0.90] px-2.5 py-2 text-[12px] text-[#0b1623] outline-none transition focus:border-[#2f80ed]"
+                                                                    />
+                                                                </label>
+                                                                <label className="block text-[10.5px] font-semibold text-[#607993]">
+                                                                    Stage title
+                                                                    <input
+                                                                        value={stage.title}
+                                                                        onChange={(event) => updateStage(stage.id, { title: event.target.value })}
+                                                                        className="mt-1 w-full rounded-[9px] border border-[#ccd9e8] bg-white/[0.90] px-3 py-2 text-[12px] text-[#0b1623] outline-none transition focus:border-[#2f80ed]"
+                                                                    />
+                                                                </label>
+                                                                <label className="block text-[10.5px] font-semibold text-[#607993]">
+                                                                    Status
+                                                                    <select
+                                                                        value={stage.status}
+                                                                        onChange={(event) => updateStage(stage.id, { status: event.target.value as RoadmapStageStatus })}
+                                                                        className="mt-1 w-full rounded-[9px] border border-[#ccd9e8] bg-white/[0.90] px-3 py-2 text-[12px] text-[#0b1623] outline-none transition focus:border-[#2f80ed]"
+                                                                    >
+                                                                        <option value="completed">Completed</option>
+                                                                        <option value="current">In Progress</option>
+                                                                        <option value="upcoming">Upcoming</option>
+                                                                        <option value="deferred">Deferred</option>
+                                                                    </select>
+                                                                </label>
+                                                            </div>
+                                                            <label className="block text-[10.5px] font-semibold text-[#607993]">
+                                                                Summary
+                                                                <textarea
+                                                                    value={stage.summary}
+                                                                    onChange={(event) => updateStage(stage.id, { summary: event.target.value })}
+                                                                    rows={2}
+                                                                    className="mt-1 w-full rounded-[9px] border border-[#ccd9e8] bg-white/[0.90] px-3 py-2 text-[12px] text-[#0b1623] outline-none transition focus:border-[#2f80ed]"
+                                                                />
+                                                            </label>
+                                                            <div className="flex flex-wrap justify-end gap-2">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setEditingStageId(null)}
+                                                                    className="rounded-[9px] border border-[#ccd9e8] bg-white/[0.62] px-3 py-2 text-[11px] font-semibold text-[#607993] transition hover:bg-white/[0.86] active:scale-[0.97]"
+                                                                >
+                                                                    Cancel
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => void saveStage(stage)}
+                                                                    disabled={saving}
+                                                                    className="rounded-[9px] bg-[#2f80ed] px-4 py-2 text-[11px] font-semibold text-white transition hover:bg-[#236fcc] disabled:cursor-not-allowed disabled:opacity-60 active:scale-[0.97]"
+                                                                >
+                                                                    Save stage
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <>
+                                                            <div className="flex flex-wrap items-baseline gap-2">
+                                                                <h3 className="text-[13.5px] font-semibold leading-snug text-[#0b1623]">
+                                                                    {stage.title}
+                                                                </h3>
+                                                                <span className="text-[11px] font-semibold text-[#9ab0c4] md:hidden">
+                                                                    #{stage.number}
+                                                                </span>
+                                                            </div>
+                                                            <p className="mt-0.5 text-[12px] leading-[1.55] text-[#7a90a8]">
+                                                                {stage.summary}
+                                                            </p>
+                                                        </>
+                                                    )}
 
                                                     {expanded ? (
                                                         <div className="mt-4 space-y-3">
@@ -1107,6 +1334,31 @@ export default function Unit19RoadmapWorkspace(props: Props) {
                                                     </span>
 
                                                     <div className="flex items-center gap-1.5">
+                                                        <button
+                                                            type="button"
+                                                            onClick={(event) => {
+                                                                event.stopPropagation();
+                                                                setEditingStageId(stage.id);
+                                                                selectStage(stage.id);
+                                                            }}
+                                                            className="rounded-[8px] border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-2.5 py-1.5 text-[11px] font-medium text-[#1560bc] transition hover:bg-[#2f80ed]/[0.14] active:scale-[0.97]"
+                                                        >
+                                                            Edit
+                                                        </button>
+
+                                                        {stage.tasks.length === 0 ? (
+                                                            <button
+                                                                type="button"
+                                                                onClick={(event) => {
+                                                                    event.stopPropagation();
+                                                                    void removeStage(stage);
+                                                                }}
+                                                                className="rounded-[8px] border border-[#e2c4bb] bg-[#c78973]/[0.07] px-2.5 py-1.5 text-[11px] font-medium text-[#8c5947] transition hover:bg-[#c78973]/[0.15] active:scale-[0.97]"
+                                                            >
+                                                                Delete
+                                                            </button>
+                                                        ) : null}
+
                                                         <button
                                                             type="button"
                                                             onClick={(event) => {

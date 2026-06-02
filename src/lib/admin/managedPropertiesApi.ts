@@ -34,6 +34,22 @@ export type ManagedPropertyRoadmapStage = {
     updated_at: string;
 };
 
+export type ManagedPropertyRoadmapStageInsert = Omit<
+    ManagedPropertyRoadmapStage,
+    "id" | "created_at" | "updated_at"
+>;
+
+export type ManagedPropertyRoadmapStagePatch = Partial<
+    Pick<
+        ManagedPropertyRoadmapStage,
+        | "stable_key"
+        | "title"
+        | "description"
+        | "status"
+        | "sort_order"
+    >
+>;
+
 export type ManagedPropertyRoadmapTask = {
     id: string;
     managed_property_id: string;
@@ -263,6 +279,49 @@ export async function getManagedPropertyRoadmap(managedPropertyId: string) {
         stages: (stagesResult.data ?? []) as ManagedPropertyRoadmapStage[],
         tasks: (tasksResult.data ?? []) as ManagedPropertyRoadmapTask[],
     };
+}
+
+export async function createManagedPropertyRoadmapStage(payload: ManagedPropertyRoadmapStageInsert) {
+    const supabase = createClient();
+
+    const { data, error } = await supabase
+        .from("managed_property_roadmap_stages")
+        .insert(payload)
+        .select("*")
+        .single();
+
+    if (error) throwIfError(error, "Failed to create roadmap stage");
+
+    return data as ManagedPropertyRoadmapStage;
+}
+
+export async function updateManagedPropertyRoadmapStage(
+    id: string,
+    patch: ManagedPropertyRoadmapStagePatch,
+) {
+    const supabase = createClient();
+
+    const { data, error } = await supabase
+        .from("managed_property_roadmap_stages")
+        .update(patch)
+        .eq("id", id)
+        .select("*")
+        .single();
+
+    if (error) throwIfError(error, "Failed to update roadmap stage");
+
+    return data as ManagedPropertyRoadmapStage;
+}
+
+export async function deleteManagedPropertyRoadmapStage(id: string) {
+    const supabase = createClient();
+
+    const { error } = await supabase
+        .from("managed_property_roadmap_stages")
+        .delete()
+        .eq("id", id);
+
+    if (error) throwIfError(error, "Failed to delete roadmap stage");
 }
 
 export async function createManagedPropertyTask(payload: ManagedPropertyRoadmapTaskInsert) {
