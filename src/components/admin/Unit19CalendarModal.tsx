@@ -662,7 +662,7 @@ export default function Unit19CalendarModal({
                         </div>
 
                         <div className="flex flex-wrap items-center justify-end gap-2">
-                            <Unit19ModalSwitcher activePanel="calendar" onSwitchPanel={onSwitchPanel} />
+                            <Unit19ModalSwitcher activePanel="calendar" onSwitchPanel={onSwitchPanel} incomeLabel={propertySlug === "maria-northstar" ? "Budget" : "Income"} />
                             <button
                                 type="button"
                                 onClick={() => setDraftItem(blankItem(selectedDate))}
@@ -798,6 +798,7 @@ export default function Unit19CalendarModal({
                                 items={filteredItems}
                                 selectedItemId={selectedItem?.id ?? null}
                                 onSelect={(item) => setSelectedItemId(item.id)}
+                                onEdit={startEdit}
                                 onDone={markDone}
                             />
                         ) : null}
@@ -881,11 +882,13 @@ function AgendaView({
     items,
     selectedItemId,
     onSelect,
+    onEdit,
     onDone,
 }: {
     items: Unit19CalendarItem[];
     selectedItemId: string | null;
     onSelect: (item: Unit19CalendarItem) => void;
+    onEdit: (item: Unit19CalendarItem) => void;
     onDone: (item: Unit19CalendarItem) => void;
 }) {
     const groups = useMemo(() => {
@@ -931,6 +934,7 @@ function AgendaView({
                                 item={item}
                                 selected={item.id === selectedItemId}
                                 onSelect={() => onSelect(item)}
+                                onEdit={() => onEdit(item)}
                                 onDone={() => onDone(item)}
                             />
                         ))}
@@ -941,7 +945,19 @@ function AgendaView({
     );
 }
 
-function CalendarRow({ item, selected, onSelect, onDone }: { item: Unit19CalendarItem; selected: boolean; onSelect: () => void; onDone: () => void }) {
+function CalendarRow({
+    item,
+    selected,
+    onSelect,
+    onEdit,
+    onDone,
+}: {
+    item: Unit19CalendarItem;
+    selected: boolean;
+    onSelect: () => void;
+    onEdit: () => void;
+    onDone: () => void;
+}) {
     const overdue = isOverdue(item);
 
     return (
@@ -951,6 +967,10 @@ function CalendarRow({ item, selected, onSelect, onDone }: { item: Unit19Calenda
                 selected ? "bg-[#2f80ed]/[0.06]" : "",
                 item.status === "done" ? "opacity-60" : "",
             ].join(" ")}
+            onDoubleClick={(event) => {
+                event.stopPropagation();
+                onEdit();
+            }}
         >
             <button
                 type="button"

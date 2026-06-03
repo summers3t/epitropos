@@ -5,6 +5,7 @@ export type Unit19PanelKey = "expenses" | "documents" | "income" | "calendar";
 type Props = {
     activePanel: Unit19PanelKey;
     onSwitchPanel?: (panel: Unit19PanelKey) => void;
+    incomeLabel?: string;
 };
 
 const panels: Array<{ key: Unit19PanelKey; label: string; className: string; activeClassName: string }> = [
@@ -34,7 +35,7 @@ const panels: Array<{ key: Unit19PanelKey; label: string; className: string; act
     },
 ];
 
-export default function Unit19ModalSwitcher({ activePanel, onSwitchPanel }: Props) {
+export default function Unit19ModalSwitcher({ activePanel, onSwitchPanel, incomeLabel = "Income" }: Props) {
     if (!onSwitchPanel) return null;
 
     return (
@@ -53,7 +54,7 @@ export default function Unit19ModalSwitcher({ activePanel, onSwitchPanel }: Prop
                             active ? panel.activeClassName : panel.className,
                         ].join(" ")}
                     >
-                        {panel.label}
+                        {panel.key === "income" ? incomeLabel : panel.label}
                     </button>
                 );
             })}

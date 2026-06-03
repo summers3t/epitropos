@@ -240,6 +240,17 @@ function throwIfError(error: unknown, context: string): never {
     throw new Error(`${context}: ${normalizeError(error)}`);
 }
 
+function isDuplicateKeyError(error: unknown): boolean {
+    if (typeof error !== "object" || error === null) return false;
+
+    const candidate = error as { code?: unknown; message?: unknown; details?: unknown };
+    const code = typeof candidate.code === "string" ? candidate.code : "";
+    const message = typeof candidate.message === "string" ? candidate.message : "";
+    const details = typeof candidate.details === "string" ? candidate.details : "";
+
+    return code === "23505" || `${message} ${details}`.toLowerCase().includes("duplicate key value violates unique constraint");
+}
+
 export async function getManagedPropertyBySlug(slug: string) {
     const supabase = createClient();
 
@@ -814,7 +825,7 @@ export async function getManagedPropertyIncome(managedPropertyId: string, year: 
                 })),
             );
 
-        if (insertMonthsError) throwIfError(insertMonthsError, "Failed to create income months for selected year");
+        if (insertMonthsError && !isDuplicateKeyError(insertMonthsError)) throwIfError(insertMonthsError, "Failed to create income months for selected year");
 
         monthsResult = await supabase
             .from("managed_property_income_months")
@@ -849,7 +860,7 @@ export async function getManagedPropertyIncome(managedPropertyId: string, year: 
                 note: null,
             });
 
-        if (insertTaxReserveError) throwIfError(insertTaxReserveError, "Failed to create tax reserve for selected year");
+        if (insertTaxReserveError && !isDuplicateKeyError(insertTaxReserveError)) throwIfError(insertTaxReserveError, "Failed to create tax reserve for selected year");
 
         taxReserveResult = await supabase
             .from("managed_property_tax_reserve")

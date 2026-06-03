@@ -550,10 +550,9 @@ export default function Unit19IncomeModal({ open, onClose, onSwitchPanel, proper
         }
     }
 
-    async function changeYear(nextYear: number) {
+    function changeYear(nextYear: number) {
         const safeYear = Math.max(MIN_YEAR, Math.round(nextYear || DEFAULT_YEAR));
         setYear(safeYear);
-        await loadIncome(safeYear);
     }
 
     if (!open) return null;
@@ -566,7 +565,7 @@ export default function Unit19IncomeModal({ open, onClose, onSwitchPanel, proper
         <div className="fixed inset-0 z-[90] overflow-hidden px-3 py-3 sm:px-5">
             <button
                 type="button"
-                aria-label="Close income modal"
+                aria-label={isNorthStarWorkspace ? "Close budget modal" : "Close income modal"}
                 className="fixed inset-0 cursor-default bg-[#06101d]/[0.52] backdrop-blur-[10px]"
                 onClick={onClose}
             />
@@ -589,11 +588,11 @@ export default function Unit19IncomeModal({ open, onClose, onSwitchPanel, proper
                         </div>
 
                         <div className="flex flex-wrap items-center justify-end gap-2">
-                            <Unit19ModalSwitcher activePanel="income" onSwitchPanel={onSwitchPanel} />
+                            <Unit19ModalSwitcher activePanel="income" onSwitchPanel={onSwitchPanel} incomeLabel={isNorthStarWorkspace ? "Budget" : "Income"} />
                             <div className="inline-flex items-center gap-1 rounded-[13px] border border-white/[0.76] bg-white/[0.48] p-1">
                                 <button
                                     type="button"
-                                    onClick={() => void changeYear(year - 1)}
+                                    onClick={() => changeYear(year - 1)}
                                     disabled={saving || loading || year <= MIN_YEAR}
                                     className="rounded-[10px] px-2.5 py-1.5 text-[12px] font-semibold text-[#607993] transition hover:bg-white/[0.86] disabled:cursor-not-allowed disabled:opacity-40"
                                 >
@@ -602,7 +601,7 @@ export default function Unit19IncomeModal({ open, onClose, onSwitchPanel, proper
                                 <span className="min-w-[54px] text-center text-[12px] font-semibold text-[#0b1623]">{year}</span>
                                 <button
                                     type="button"
-                                    onClick={() => void changeYear(year + 1)}
+                                    onClick={() => changeYear(year + 1)}
                                     disabled={saving || loading}
                                     className="rounded-[10px] px-2.5 py-1.5 text-[12px] font-semibold text-[#607993] transition hover:bg-white/[0.86] disabled:cursor-not-allowed disabled:opacity-40"
                                 >
