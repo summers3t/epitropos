@@ -164,7 +164,7 @@ function IconPlus() {
     );
 }
 
-export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, propertySlug = PROPERTY_SLUG }: Props) {
+export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, propertySlug = PROPERTY_SLUG, projectLabel }: Props) {
     const [managedProperty, setManagedProperty] = useState<ManagedProperty | null>(null);
     const [expenses, setExpenses] = useState<ManagedPropertyExpense[]>([]);
     const [categoryFilter, setCategoryFilter] = useState<ExpenseFilter>("all");
@@ -245,6 +245,8 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
             .filter((expense) => expense.category === "credit_dsk")
             .reduce((sum, expense) => sum + Number(expense.amount_eur ?? 0), 0);
         const pending = activeExpenses.filter((expense) => expense.status === "pending");
+        const planned = activeExpenses.filter((expense) => expense.status === "planned");
+        const paid = activeExpenses.filter((expense) => expense.status === "paid");
 
         return {
             total,
@@ -252,9 +254,88 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
             credit,
             pendingAmount: pending.reduce((sum, expense) => sum + Number(expense.amount_eur ?? 0), 0),
             pendingCount: pending.length,
+            plannedAmount: planned.reduce((sum, expense) => sum + Number(expense.amount_eur ?? 0), 0),
+            plannedCount: planned.length,
+            paidAmount: paid.reduce((sum, expense) => sum + Number(expense.amount_eur ?? 0), 0),
+            paidCount: paid.length,
             trackedCount: activeExpenses.length,
         };
     }, [activeExpenses]);
+
+    const isNorthStarWorkspace =
+        propertySlug === "maria-northstar" ||
+        managedProperty?.property_type === "personal_roadmap" ||
+        managedProperty?.property_type === "student_roadmap";
+
+    const expenseSummaryCards = useMemo(() => {
+        if (isNorthStarWorkspace) {
+            return [
+                {
+                    label: "Total planned / tracked",
+                    value: formatEur(stats.total),
+                    helper: loading ? "Loading..." : `${stats.trackedCount} active rows`,
+                    variant: "default",
+                },
+                {
+                    label: "Planning reserve",
+                    value: formatEur(stats.plannedAmount),
+                    helper: `${stats.plannedCount} planned rows`,
+                    variant: "default",
+                },
+                {
+                    label: "Paid / committed",
+                    value: formatEur(stats.paidAmount),
+                    helper: `${stats.paidCount} paid rows`,
+                    variant: "default",
+                },
+                {
+                    label: "Need clarification",
+                    value: formatEur(stats.pendingAmount),
+                    helper: `${stats.pendingCount} rows to verify`,
+                    variant: "warm",
+                },
+                {
+                    label: "BGN equivalent",
+                    value: formatBgn(stats.total * EUR_TO_BGN),
+                    helper: "fixed 1.95583",
+                    variant: "default",
+                },
+            ];
+        }
+
+        return [
+            {
+                label: "Total tracked",
+                value: formatEur(stats.total),
+                helper: loading ? "Loading..." : `${stats.trackedCount} active rows`,
+                variant: "default",
+            },
+            {
+                label: "Greek closing",
+                value: formatEur(stats.greekClosing),
+                helper: "tax, notary, broker",
+                variant: "default",
+            },
+            {
+                label: "Credit / DSK",
+                value: formatEur(stats.credit),
+                helper: "loan path costs",
+                variant: "default",
+            },
+            {
+                label: "Need clarification",
+                value: formatEur(stats.pendingAmount),
+                helper: `${stats.pendingCount} rows to verify`,
+                variant: "warm",
+            },
+            {
+                label: "BGN equivalent",
+                value: formatBgn(stats.total * EUR_TO_BGN),
+                helper: "fixed 1.95583",
+                variant: "default",
+            },
+        ];
+    }, [isNorthStarWorkspace, loading, stats]);
 
     const categoryTotals = useMemo(() => {
         const values = categoryOrder.map((category) => {
@@ -438,7 +519,7 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
                                 Expense cockpit · DB live
                             </div>
                             <h2 className="font-display text-[28px] font-normal leading-tight tracking-[-0.03em] text-[#0b1623] sm:text-[34px]">
-                                {managedProperty?.display_name ?? "Unit 19"} Expense Tracker
+                                {managedProperty?.display_name ?? projectLabel ?? "Unit 19"} Expense Tracker
                             </h2>
                         </div>
 
@@ -470,31 +551,32 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
                     ) : null}
 
                     <div className="mt-2.5 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
-                        <div className="rounded-[16px] border border-white/[0.80] bg-white/[0.62] px-3.5 py-2.5 shadow-[0_10px_28px_rgba(41,73,112,0.07)]">
-                            <div className="text-[9px] font-semibold uppercase tracking-[0.13em] text-[#7a90a8]">Total tracked</div>
-                            <div className="mt-1 text-[21px] font-semibold leading-none text-[#0b1623]">{formatEur(stats.total)}</div>
-                            <div className="mt-1 text-[10px] text-[#7a90a8]">{loading ? "Loading..." : `${stats.trackedCount} active rows`}</div>
-                        </div>
-                        <div className="rounded-[16px] border border-white/[0.80] bg-white/[0.62] px-3.5 py-2.5 shadow-[0_10px_28px_rgba(41,73,112,0.07)]">
-                            <div className="text-[9px] font-semibold uppercase tracking-[0.13em] text-[#7a90a8]">Greek closing</div>
-                            <div className="mt-1 text-[21px] font-semibold leading-none text-[#0b1623]">{formatEur(stats.greekClosing)}</div>
-                            <div className="mt-1 text-[10px] text-[#7a90a8]">tax, notary, broker</div>
-                        </div>
-                        <div className="rounded-[16px] border border-white/[0.80] bg-white/[0.62] px-3.5 py-2.5 shadow-[0_10px_28px_rgba(41,73,112,0.07)]">
-                            <div className="text-[9px] font-semibold uppercase tracking-[0.13em] text-[#7a90a8]">Credit / DSK</div>
-                            <div className="mt-1 text-[21px] font-semibold leading-none text-[#0b1623]">{formatEur(stats.credit)}</div>
-                            <div className="mt-1 text-[10px] text-[#7a90a8]">loan path costs</div>
-                        </div>
-                        <div className="rounded-[16px] border border-[#cfa090]/[0.24] bg-[#cfa090]/[0.08] px-3.5 py-2.5 shadow-[0_10px_28px_rgba(41,73,112,0.06)]">
-                            <div className="text-[9px] font-semibold uppercase tracking-[0.13em] text-[#8c5947]">Need clarification</div>
-                            <div className="mt-1 text-[21px] font-semibold leading-none text-[#0b1623]">{formatEur(stats.pendingAmount)}</div>
-                            <div className="mt-1 text-[10px] text-[#8c5947]">{stats.pendingCount} rows to verify</div>
-                        </div>
-                        <div className="rounded-[16px] border border-white/[0.80] bg-white/[0.62] px-3.5 py-2.5 shadow-[0_10px_28px_rgba(41,73,112,0.07)]">
-                            <div className="text-[9px] font-semibold uppercase tracking-[0.13em] text-[#7a90a8]">BGN equivalent</div>
-                            <div className="mt-1 text-[21px] font-semibold leading-none text-[#0b1623]">{formatBgn(stats.total * EUR_TO_BGN)}</div>
-                            <div className="mt-1 text-[10px] text-[#7a90a8]">fixed 1.95583</div>
-                        </div>
+                        {expenseSummaryCards.map((card) => {
+                            const warm = card.variant === "warm";
+
+                            return (
+                                <div
+                                    key={card.label}
+                                    className={[
+                                        "rounded-[16px] px-3.5 py-2.5 shadow-[0_10px_28px_rgba(41,73,112,0.07)]",
+                                        warm
+                                            ? "border border-[#cfa090]/[0.24] bg-[#cfa090]/[0.08]"
+                                            : "border border-white/[0.80] bg-white/[0.62]",
+                                    ].join(" ")}
+                                >
+                                    <div
+                                        className={[
+                                            "text-[9px] font-semibold uppercase tracking-[0.13em]",
+                                            warm ? "text-[#8c5947]" : "text-[#7a90a8]",
+                                        ].join(" ")}
+                                    >
+                                        {card.label}
+                                    </div>
+                                    <div className="mt-1 text-[21px] font-semibold leading-none text-[#0b1623]">{card.value}</div>
+                                    <div className={["mt-1 text-[10px]", warm ? "text-[#8c5947]" : "text-[#7a90a8]"].join(" ")}>{card.helper}</div>
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
 
