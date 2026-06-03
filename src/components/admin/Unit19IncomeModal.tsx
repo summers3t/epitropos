@@ -56,6 +56,7 @@ type NorthStarBudgetEntry = {
 type NorthStarBudgetState = {
     marker: "northstar_budget_v1";
     tuition_paid?: boolean;
+    tuition_expected_eur?: number;
     entries?: Partial<Record<NorthStarBudgetKey, { checked?: boolean; amount_eur?: number }>>;
 };
 
@@ -162,6 +163,7 @@ function parseNorthStarBudgetState(note: string | null | undefined): NorthStarBu
             return {
                 marker: "northstar_budget_v1",
                 tuition_paid: Boolean(parsed.tuition_paid),
+                tuition_expected_eur: Number(parsed.tuition_expected_eur ?? 0),
                 entries: parsed.entries ?? {},
             };
         }
@@ -173,7 +175,12 @@ function parseNorthStarBudgetState(note: string | null | undefined): NorthStarBu
 }
 
 function serializeNorthStarBudgetState(state: NorthStarBudgetState) {
-    return JSON.stringify({ marker: "northstar_budget_v1", tuition_paid: Boolean(state.tuition_paid), entries: state.entries ?? {} });
+    return JSON.stringify({
+        marker: "northstar_budget_v1",
+        tuition_paid: Boolean(state.tuition_paid),
+        tuition_expected_eur: Number(state.tuition_expected_eur ?? 0),
+        entries: state.entries ?? {},
+    });
 }
 
 function defaultNorthStarTuitionConfig(): NorthStarTuitionConfig {
@@ -225,6 +232,11 @@ function getTuitionExpectedForMonth(month: number, config: NorthStarTuitionConfi
     if (config.amount_eur <= 0) return 0;
     if (config.payment_mode === "once") return month === config.start_month ? config.amount_eur : 0;
     return isMonthInRange(month, config.start_month, config.end_month) ? config.amount_eur : 0;
+}
+
+function getTuitionExpectedForState(month: number, config: NorthStarTuitionConfig, state: NorthStarBudgetState) {
+    if (Number(state.tuition_expected_eur ?? 0) > 0) return Number(state.tuition_expected_eur ?? 0);
+    return getTuitionExpectedForMonth(month, config);
 }
 
 function getBudgetAmount(state: NorthStarBudgetState, key: NorthStarBudgetKey) {
@@ -377,10 +389,13 @@ export default function Unit19IncomeModal({ open, onClose, onSwitchPanel, proper
         const taxRate = taxReserve?.tax_rate_percent ?? 15;
         const estimatedTax = Math.round((collectedRent * taxRate) / 100);
 
-        const tuitionExpected = months.reduce((sum, month) => sum + getTuitionExpectedForMonth(month.month, tuitionConfig), 0);
+        const tuitionExpected = months.reduce((sum, month) => {
+            const state = northStarMonthState.get(month.id) ?? defaultNorthStarBudgetState();
+            return sum + getTuitionExpectedForState(month.month, tuitionConfig, state);
+        }, 0);
         const tuitionPaid = months.reduce((sum, month) => {
             const state = northStarMonthState.get(month.id) ?? defaultNorthStarBudgetState();
-            return state.tuition_paid ? sum + getTuitionExpectedForMonth(month.month, tuitionConfig) : sum;
+            return state.tuition_paid ? sum + getTuitionExpectedForState(month.month, tuitionConfig, state) : sum;
         }, 0);
         const northStarIncome = months.reduce((sum, month) => {
             const state = northStarMonthState.get(month.id) ?? defaultNorthStarBudgetState();
@@ -434,18 +449,22 @@ export default function Unit19IncomeModal({ open, onClose, onSwitchPanel, proper
             setSaving(true);
             setError(null);
 
-            const patches = months.map((month) => {
-                const expected = isMonthInRange(month.month, rentStartMonth, rentEndMonth) ? monthlyRentEur : 0;
-                const paid = expected > 0 ? month.rent_paid_eur : 0;
-                return {
-                    id: month.id,
-                    patch: {
-                        rent_expected_eur: expected,
-                        rent_paid_eur: paid,
-                        rent_status: deriveRentStatus(expected, paid),
-                    },
-                };
-            });
+            const patches = months
+                .filter((month) => isMonthInRange(month.month, rentStartMonth, rentEndMonth))
+                .map((month) => {
+                    const expected = Number(monthlyRentEur || 0);
+                    const paid = expected > 0 ? month.rent_paid_eur : 0;
+                    return {
+                        id: month.id,
+                        patch: {
+                            rent_expected_eur: expected,
+                            rent_paid_eur: paid,
+                            rent_status: deriveRentStatus(expected, paid),
+                        },
+                    };
+                });
+
+            if (patches.length === 0) return;
 
             const updated = await updateManagedPropertyIncomeMonths(patches);
             setMonths((current) => current.map((month) => updated.find((item) => item.id === month.id) ?? month));
@@ -463,11 +482,33 @@ export default function Unit19IncomeModal({ open, onClose, onSwitchPanel, proper
             setSaving(true);
             setError(null);
 
-            const updated = await updateManagedPropertyTaxReserve(taxReserve.id, {
+            const updatedReserve = await updateManagedPropertyTaxReserve(taxReserve.id, {
                 estimated_tax_eur: Number(tuitionAmountEur || 0),
                 note: serializeNorthStarTuitionConfig(tuitionConfig),
             });
-            setTaxReserve(updated);
+            setTaxReserve(updatedReserve);
+
+            const patches = months
+                .filter((month) => (tuitionPaymentMode === "once" ? month.month === tuitionStartMonth : isMonthInRange(month.month, tuitionStartMonth, tuitionEndMonth)))
+                .map((month) => {
+                    const currentState = northStarMonthState.get(month.id) ?? defaultNorthStarBudgetState();
+                    const expected = Number(tuitionAmountEur || 0);
+                    return {
+                        id: month.id,
+                        patch: {
+                            note: serializeNorthStarBudgetState({
+                                ...currentState,
+                                tuition_expected_eur: expected,
+                                tuition_paid: expected > 0 ? currentState.tuition_paid : false,
+                            }),
+                        },
+                    };
+                });
+
+            if (patches.length > 0) {
+                const updatedMonths = await updateManagedPropertyIncomeMonths(patches);
+                setMonths((current) => current.map((month) => updatedMonths.find((item) => item.id === month.id) ?? month));
+            }
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to save tuition setup");
         } finally {
@@ -550,10 +591,9 @@ export default function Unit19IncomeModal({ open, onClose, onSwitchPanel, proper
         }
     }
 
-    async function changeYear(nextYear: number) {
+    function changeYear(nextYear: number) {
         const safeYear = Math.max(MIN_YEAR, Math.round(nextYear || DEFAULT_YEAR));
         setYear(safeYear);
-        await loadIncome(safeYear);
     }
 
     if (!open) return null;
@@ -706,7 +746,7 @@ export default function Unit19IncomeModal({ open, onClose, onSwitchPanel, proper
                                     const utilityCount = utilityOrder.filter((key) => month[key]).length;
                                     const northStarState = northStarMonthState.get(month.id) ?? defaultNorthStarBudgetState();
                                     const northStarTotals = getBudgetTotals(northStarState);
-                                    const tuitionExpected = getTuitionExpectedForMonth(month.month, tuitionConfig);
+                                    const tuitionExpected = getTuitionExpectedForState(month.month, tuitionConfig, northStarState);
 
                                     return (
                                         <button
@@ -778,7 +818,7 @@ export default function Unit19IncomeModal({ open, onClose, onSwitchPanel, proper
                             isNorthStarWorkspace ? (
                                 <NorthStarMonthDetails
                                     month={selected}
-                                    tuitionExpected={getTuitionExpectedForMonth(selected.month, tuitionConfig)}
+                                    tuitionExpected={getTuitionExpectedForState(selected.month, tuitionConfig, northStarMonthState.get(selected.id) ?? defaultNorthStarBudgetState())}
                                     tuitionPaymentMode={tuitionPaymentMode}
                                     budgetState={northStarMonthState.get(selected.id) ?? defaultNorthStarBudgetState()}
                                     onToggleRentPaid={() => void markRentPaid(selected)}
