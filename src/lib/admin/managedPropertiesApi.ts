@@ -781,30 +781,94 @@ export type ManagedPropertyTaxReservePatch = Partial<
 export async function getManagedPropertyIncome(managedPropertyId: string, year: number) {
     const supabase = createClient();
 
-    const [monthsResult, ownerExpensesResult, taxReserveResult] = await Promise.all([
-        supabase
+    let monthsResult = await supabase
+        .from("managed_property_income_months")
+        .select("*")
+        .eq("managed_property_id", managedPropertyId)
+        .eq("year", year)
+        .order("month", { ascending: true });
+
+    if (monthsResult.error) throwIfError(monthsResult.error, "Failed to load managed property income months");
+
+    const existingMonths = (monthsResult.data ?? []) as ManagedPropertyIncomeMonth[];
+    const existingMonthNumbers = new Set(existingMonths.map((month) => month.month));
+    const missingMonths = Array.from({ length: 12 }, (_, index) => index + 1).filter((month) => !existingMonthNumbers.has(month));
+
+    if (missingMonths.length > 0) {
+        const { error: insertMonthsError } = await supabase
+            .from("managed_property_income_months")
+            .insert(
+                missingMonths.map((month) => ({
+                    managed_property_id: managedPropertyId,
+                    year,
+                    month,
+                    rent_expected_eur: 0,
+                    rent_paid_eur: 0,
+                    rent_paid_date: null,
+                    rent_status: "no_rent",
+                    electricity_confirmed: false,
+                    water_confirmed: false,
+                    gas_confirmed: false,
+                    building_fees_confirmed: false,
+                    note: null,
+                })),
+            );
+
+        if (insertMonthsError) throwIfError(insertMonthsError, "Failed to create income months for selected year");
+
+        monthsResult = await supabase
             .from("managed_property_income_months")
             .select("*")
             .eq("managed_property_id", managedPropertyId)
             .eq("year", year)
-            .order("month", { ascending: true }),
-        supabase
-            .from("managed_property_income_owner_expenses")
-            .select("*")
-            .eq("managed_property_id", managedPropertyId)
-            .order("expense_date", { ascending: false, nullsFirst: false })
-            .order("created_at", { ascending: false }),
-        supabase
+            .order("month", { ascending: true });
+
+        if (monthsResult.error) throwIfError(monthsResult.error, "Failed to reload managed property income months");
+    }
+
+    let taxReserveResult = await supabase
+        .from("managed_property_tax_reserve")
+        .select("*")
+        .eq("managed_property_id", managedPropertyId)
+        .eq("year", year)
+        .maybeSingle();
+
+    if (taxReserveResult.error) throwIfError(taxReserveResult.error, "Failed to load managed property tax reserve");
+
+    if (!taxReserveResult.data) {
+        const { error: insertTaxReserveError } = await supabase
+            .from("managed_property_tax_reserve")
+            .insert({
+                managed_property_id: managedPropertyId,
+                year,
+                tax_rate_percent: 15,
+                estimated_tax_eur: 0,
+                due_date: null,
+                paid: false,
+                paid_date: null,
+                note: null,
+            });
+
+        if (insertTaxReserveError) throwIfError(insertTaxReserveError, "Failed to create tax reserve for selected year");
+
+        taxReserveResult = await supabase
             .from("managed_property_tax_reserve")
             .select("*")
             .eq("managed_property_id", managedPropertyId)
             .eq("year", year)
-            .maybeSingle(),
-    ]);
+            .maybeSingle();
 
-    if (monthsResult.error) throwIfError(monthsResult.error, "Failed to load managed property income months");
+        if (taxReserveResult.error) throwIfError(taxReserveResult.error, "Failed to reload managed property tax reserve");
+    }
+
+    const ownerExpensesResult = await supabase
+        .from("managed_property_income_owner_expenses")
+        .select("*")
+        .eq("managed_property_id", managedPropertyId)
+        .order("expense_date", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false });
+
     if (ownerExpensesResult.error) throwIfError(ownerExpensesResult.error, "Failed to load managed property owner expenses");
-    if (taxReserveResult.error) throwIfError(taxReserveResult.error, "Failed to load managed property tax reserve");
 
     return {
         months: (monthsResult.data ?? []) as ManagedPropertyIncomeMonth[],

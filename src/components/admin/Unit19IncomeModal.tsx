@@ -11,6 +11,7 @@ import {
     updateManagedPropertyIncomeMonth,
     updateManagedPropertyIncomeMonths,
     updateManagedPropertyTaxReserve,
+    type ManagedProperty,
     type ManagedPropertyIncomeMonth,
     type ManagedPropertyIncomeMonthPatch,
     type ManagedPropertyIncomeOwnerExpense,
@@ -32,9 +33,43 @@ type ExpenseDraft = {
 };
 
 type UtilityKey = "electricity_confirmed" | "water_confirmed" | "gas_confirmed" | "building_fees_confirmed";
+type NorthStarBudgetKind = "income" | "expense";
+type NorthStarBudgetKey =
+    | "electricity"
+    | "water"
+    | "gas"
+    | "building_fees"
+    | "health_insurance"
+    | "monthly_living_costs"
+    | "duo"
+    | "healthcare_allowance"
+    | "salary"
+    | "savings"
+    | "family_support";
+
+type NorthStarBudgetEntry = {
+    key: NorthStarBudgetKey;
+    label: string;
+    kind: NorthStarBudgetKind;
+};
+
+type NorthStarBudgetState = {
+    marker: "northstar_budget_v1";
+    tuition_paid?: boolean;
+    entries?: Partial<Record<NorthStarBudgetKey, { checked?: boolean; amount_eur?: number }>>;
+};
+
+type NorthStarTuitionConfig = {
+    marker: "northstar_tuition_v1";
+    amount_eur: number;
+    start_month: number;
+    end_month: number;
+    payment_mode: "monthly" | "once";
+};
 
 const PROPERTY_SLUG = "unit-19";
 const DEFAULT_YEAR = 2026;
+const MIN_YEAR = 2025;
 const utilityOrder: UtilityKey[] = ["electricity_confirmed", "water_confirmed", "gas_confirmed", "building_fees_confirmed"];
 
 const utilityLabels: Record<UtilityKey, string> = {
@@ -43,6 +78,23 @@ const utilityLabels: Record<UtilityKey, string> = {
     gas_confirmed: "Gas",
     building_fees_confirmed: "Building fees",
 };
+
+const northStarBudgetEntries: NorthStarBudgetEntry[] = [
+    { key: "electricity", label: "Electricity", kind: "expense" },
+    { key: "water", label: "Water", kind: "expense" },
+    { key: "gas", label: "Gas", kind: "expense" },
+    { key: "building_fees", label: "Building fees", kind: "expense" },
+    { key: "health_insurance", label: "Health insurance", kind: "expense" },
+    { key: "monthly_living_costs", label: "Monthly living costs", kind: "expense" },
+    { key: "duo", label: "DUO income", kind: "income" },
+    { key: "healthcare_allowance", label: "Healthcare allowance", kind: "income" },
+    { key: "salary", label: "Salary", kind: "income" },
+    { key: "savings", label: "Savings", kind: "income" },
+    { key: "family_support", label: "Family support", kind: "income" },
+];
+
+const northStarIncomeEntries = northStarBudgetEntries.filter((entry) => entry.kind === "income");
+const northStarExpenseEntries = northStarBudgetEntries.filter((entry) => entry.kind === "expense");
 
 const monthLabels = [
     "January",
@@ -97,6 +149,101 @@ function deriveRentStatus(expected: number, paid: number) {
     return "paid" as const;
 }
 
+function defaultNorthStarBudgetState(): NorthStarBudgetState {
+    return { marker: "northstar_budget_v1", tuition_paid: false, entries: {} };
+}
+
+function parseNorthStarBudgetState(note: string | null | undefined): NorthStarBudgetState {
+    if (!note) return defaultNorthStarBudgetState();
+
+    try {
+        const parsed = JSON.parse(note) as Partial<NorthStarBudgetState>;
+        if (parsed?.marker === "northstar_budget_v1") {
+            return {
+                marker: "northstar_budget_v1",
+                tuition_paid: Boolean(parsed.tuition_paid),
+                entries: parsed.entries ?? {},
+            };
+        }
+    } catch {
+        return defaultNorthStarBudgetState();
+    }
+
+    return defaultNorthStarBudgetState();
+}
+
+function serializeNorthStarBudgetState(state: NorthStarBudgetState) {
+    return JSON.stringify({ marker: "northstar_budget_v1", tuition_paid: Boolean(state.tuition_paid), entries: state.entries ?? {} });
+}
+
+function defaultNorthStarTuitionConfig(): NorthStarTuitionConfig {
+    return { marker: "northstar_tuition_v1", amount_eur: 0, start_month: 9, end_month: 6, payment_mode: "monthly" };
+}
+
+function parseNorthStarTuitionConfig(note: string | null | undefined): NorthStarTuitionConfig {
+    if (!note) return defaultNorthStarTuitionConfig();
+
+    try {
+        const parsed = JSON.parse(note) as Partial<NorthStarTuitionConfig>;
+        if (parsed?.marker === "northstar_tuition_v1") {
+            return {
+                marker: "northstar_tuition_v1",
+                amount_eur: Number(parsed.amount_eur ?? 0),
+                start_month: clampMonth(Number(parsed.start_month ?? 9)),
+                end_month: clampMonth(Number(parsed.end_month ?? 6)),
+                payment_mode: parsed.payment_mode === "once" ? "once" : "monthly",
+            };
+        }
+    } catch {
+        return defaultNorthStarTuitionConfig();
+    }
+
+    return defaultNorthStarTuitionConfig();
+}
+
+function serializeNorthStarTuitionConfig(config: NorthStarTuitionConfig) {
+    return JSON.stringify({
+        marker: "northstar_tuition_v1",
+        amount_eur: Number(config.amount_eur || 0),
+        start_month: clampMonth(config.start_month),
+        end_month: clampMonth(config.end_month),
+        payment_mode: config.payment_mode,
+    });
+}
+
+function clampMonth(value: number) {
+    if (!Number.isFinite(value)) return 1;
+    return Math.min(Math.max(Math.round(value), 1), 12);
+}
+
+function isMonthInRange(month: number, startMonth: number, endMonth: number) {
+    if (startMonth <= endMonth) return month >= startMonth && month <= endMonth;
+    return month >= startMonth || month <= endMonth;
+}
+
+function getTuitionExpectedForMonth(month: number, config: NorthStarTuitionConfig) {
+    if (config.amount_eur <= 0) return 0;
+    if (config.payment_mode === "once") return month === config.start_month ? config.amount_eur : 0;
+    return isMonthInRange(month, config.start_month, config.end_month) ? config.amount_eur : 0;
+}
+
+function getBudgetAmount(state: NorthStarBudgetState, key: NorthStarBudgetKey) {
+    return Number(state.entries?.[key]?.amount_eur ?? 0);
+}
+
+function getBudgetChecked(state: NorthStarBudgetState, key: NorthStarBudgetKey) {
+    return Boolean(state.entries?.[key]?.checked);
+}
+
+function getBudgetTotals(state: NorthStarBudgetState) {
+    const income = northStarIncomeEntries.reduce((sum, entry) => (getBudgetChecked(state, entry.key) ? sum + getBudgetAmount(state, entry.key) : sum), 0);
+    const expenses = northStarExpenseEntries.reduce((sum, entry) => (getBudgetChecked(state, entry.key) ? sum + getBudgetAmount(state, entry.key) : sum), 0);
+    const incomeChecked = northStarIncomeEntries.filter((entry) => getBudgetChecked(state, entry.key)).length;
+    const expenseChecked = northStarExpenseEntries.filter((entry) => getBudgetChecked(state, entry.key)).length;
+
+    return { income, expenses, incomeChecked, expenseChecked };
+}
+
 function IconClose() {
     return (
         <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -119,6 +266,7 @@ function IconIncome() {
 }
 
 export default function Unit19IncomeModal({ open, onClose, onSwitchPanel, propertySlug = PROPERTY_SLUG, projectLabel = "Unit 19" }: Props) {
+    const [managedProperty, setManagedProperty] = useState<ManagedProperty | null>(null);
     const [managedPropertyId, setManagedPropertyId] = useState<string | null>(null);
     const [year, setYear] = useState(DEFAULT_YEAR);
     const [months, setMonths] = useState<ManagedPropertyIncomeMonth[]>([]);
@@ -129,9 +277,26 @@ export default function Unit19IncomeModal({ open, onClose, onSwitchPanel, proper
     const [monthlyRentEur, setMonthlyRentEur] = useState(450);
     const [rentStartMonth, setRentStartMonth] = useState(5);
     const [rentEndMonth, setRentEndMonth] = useState(9);
+    const [tuitionAmountEur, setTuitionAmountEur] = useState(0);
+    const [tuitionStartMonth, setTuitionStartMonth] = useState(9);
+    const [tuitionEndMonth, setTuitionEndMonth] = useState(6);
+    const [tuitionPaymentMode, setTuitionPaymentMode] = useState<"monthly" | "once">("monthly");
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    const isNorthStarWorkspace =
+        propertySlug === "maria-northstar" ||
+        managedProperty?.property_type === "personal_roadmap" ||
+        managedProperty?.property_type === "student_roadmap";
+
+    const tuitionConfig = useMemo<NorthStarTuitionConfig>(() => ({
+        marker: "northstar_tuition_v1",
+        amount_eur: Number(tuitionAmountEur || 0),
+        start_month: tuitionStartMonth,
+        end_month: tuitionEndMonth,
+        payment_mode: tuitionPaymentMode,
+    }), [tuitionAmountEur, tuitionStartMonth, tuitionEndMonth, tuitionPaymentMode]);
 
     async function loadIncome(targetYear = year) {
         try {
@@ -141,6 +306,7 @@ export default function Unit19IncomeModal({ open, onClose, onSwitchPanel, proper
             const property = await getManagedPropertyBySlug(propertySlug);
             const result = await getManagedPropertyIncome(property.id, targetYear);
 
+            setManagedProperty(property);
             setManagedPropertyId(property.id);
             setMonths(result.months);
             setOwnerExpenses(result.ownerExpenses);
@@ -151,7 +317,17 @@ export default function Unit19IncomeModal({ open, onClose, onSwitchPanel, proper
                 setMonthlyRentEur(activeMonths[0].rent_expected_eur);
                 setRentStartMonth(Math.min(...activeMonths.map((month) => month.month)));
                 setRentEndMonth(Math.max(...activeMonths.map((month) => month.month)));
+            } else if (property.slug === "maria-northstar") {
+                setMonthlyRentEur(270);
+                setRentStartMonth(1);
+                setRentEndMonth(12);
             }
+
+            const tuition = parseNorthStarTuitionConfig(result.taxReserve?.note);
+            setTuitionAmountEur(tuition.amount_eur);
+            setTuitionStartMonth(tuition.start_month);
+            setTuitionEndMonth(tuition.end_month);
+            setTuitionPaymentMode(tuition.payment_mode);
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to load income data");
         } finally {
@@ -187,6 +363,12 @@ export default function Unit19IncomeModal({ open, onClose, onSwitchPanel, proper
         return map;
     }, [ownerExpenses]);
 
+    const northStarMonthState = useMemo(() => {
+        const map = new Map<string, NorthStarBudgetState>();
+        for (const month of months) map.set(month.id, parseNorthStarBudgetState(month.note));
+        return map;
+    }, [months]);
+
     const stats = useMemo(() => {
         const expectedRent = months.reduce((sum, month) => sum + month.rent_expected_eur, 0);
         const collectedRent = months.reduce((sum, month) => sum + month.rent_paid_eur, 0);
@@ -194,6 +376,20 @@ export default function Unit19IncomeModal({ open, onClose, onSwitchPanel, proper
         const unpaidMonths = months.filter((month) => month.rent_expected_eur > 0 && month.rent_status !== "paid").length;
         const taxRate = taxReserve?.tax_rate_percent ?? 15;
         const estimatedTax = Math.round((collectedRent * taxRate) / 100);
+
+        const tuitionExpected = months.reduce((sum, month) => sum + getTuitionExpectedForMonth(month.month, tuitionConfig), 0);
+        const tuitionPaid = months.reduce((sum, month) => {
+            const state = northStarMonthState.get(month.id) ?? defaultNorthStarBudgetState();
+            return state.tuition_paid ? sum + getTuitionExpectedForMonth(month.month, tuitionConfig) : sum;
+        }, 0);
+        const northStarIncome = months.reduce((sum, month) => {
+            const state = northStarMonthState.get(month.id) ?? defaultNorthStarBudgetState();
+            return sum + getBudgetTotals(state).income;
+        }, 0);
+        const northStarExpenses = months.reduce((sum, month) => {
+            const state = northStarMonthState.get(month.id) ?? defaultNorthStarBudgetState();
+            return sum + getBudgetTotals(state).expenses;
+        }, 0);
 
         return {
             expectedRent,
@@ -203,8 +399,13 @@ export default function Unit19IncomeModal({ open, onClose, onSwitchPanel, proper
             estimatedTax,
             netAfterOwnerCosts: collectedRent - ownerCostTotal - estimatedTax,
             unpaidMonths,
+            tuitionExpected,
+            tuitionPaid,
+            northStarIncome,
+            northStarExpenses,
+            northStarNetEstimate: northStarIncome - expectedRent - tuitionExpected - northStarExpenses,
         };
-    }, [months, ownerExpenses, taxReserve]);
+    }, [months, northStarMonthState, ownerExpenses, taxReserve, tuitionConfig]);
 
     async function patchMonth(month: ManagedPropertyIncomeMonth, patch: ManagedPropertyIncomeMonthPatch) {
         try {
@@ -224,13 +425,17 @@ export default function Unit19IncomeModal({ open, onClose, onSwitchPanel, proper
         await patchMonth(month, { [key]: !month[key] } as ManagedPropertyIncomeMonthPatch);
     }
 
+    async function patchNorthStarBudget(month: ManagedPropertyIncomeMonth, nextState: NorthStarBudgetState) {
+        await patchMonth(month, { note: serializeNorthStarBudgetState(nextState) });
+    }
+
     async function applyRentSchedule() {
         try {
             setSaving(true);
             setError(null);
 
             const patches = months.map((month) => {
-                const expected = month.month >= rentStartMonth && month.month <= rentEndMonth ? monthlyRentEur : 0;
+                const expected = isMonthInRange(month.month, rentStartMonth, rentEndMonth) ? monthlyRentEur : 0;
                 const paid = expected > 0 ? month.rent_paid_eur : 0;
                 return {
                     id: month.id,
@@ -251,6 +456,30 @@ export default function Unit19IncomeModal({ open, onClose, onSwitchPanel, proper
         }
     }
 
+    async function applyTuitionSetup() {
+        if (!taxReserve) return;
+
+        try {
+            setSaving(true);
+            setError(null);
+
+            const updated = await updateManagedPropertyTaxReserve(taxReserve.id, {
+                estimated_tax_eur: Number(tuitionAmountEur || 0),
+                note: serializeNorthStarTuitionConfig(tuitionConfig),
+            });
+            setTaxReserve(updated);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to save tuition setup");
+        } finally {
+            setSaving(false);
+        }
+    }
+
+    async function applyPrimarySchedule() {
+        await applyRentSchedule();
+        if (isNorthStarWorkspace) await applyTuitionSetup();
+    }
+
     async function markRentPaid(month: ManagedPropertyIncomeMonth) {
         const nextPaid = month.rent_status !== "paid";
         const nextPaidAmount = nextPaid ? month.rent_expected_eur : 0;
@@ -260,6 +489,11 @@ export default function Unit19IncomeModal({ open, onClose, onSwitchPanel, proper
             rent_paid_date: nextPaid ? month.rent_paid_date || todayIso() : null,
             rent_status: deriveRentStatus(month.rent_expected_eur, nextPaidAmount),
         });
+    }
+
+    async function markTuitionPaid(month: ManagedPropertyIncomeMonth) {
+        const state = northStarMonthState.get(month.id) ?? defaultNorthStarBudgetState();
+        await patchNorthStarBudget(month, { ...state, tuition_paid: !state.tuition_paid });
     }
 
     async function saveExpense() {
@@ -317,11 +551,16 @@ export default function Unit19IncomeModal({ open, onClose, onSwitchPanel, proper
     }
 
     async function changeYear(nextYear: number) {
-        setYear(nextYear);
-        await loadIncome(nextYear);
+        const safeYear = Math.max(MIN_YEAR, Math.round(nextYear || DEFAULT_YEAR));
+        setYear(safeYear);
+        await loadIncome(safeYear);
     }
 
     if (!open) return null;
+
+    const cockpitLabel = isNorthStarWorkspace ? "Budget cockpit · DB live" : "Income cockpit · DB live";
+    const titleLabel = isNorthStarWorkspace ? `${projectLabel} Budget` : `${projectLabel} Income`;
+    const applyLabel = saving ? "Saving..." : isNorthStarWorkspace ? "Apply schedules" : "Apply rent schedule";
 
     return (
         <div className="fixed inset-0 z-[90] overflow-hidden px-3 py-3 sm:px-5">
@@ -341,23 +580,42 @@ export default function Unit19IncomeModal({ open, onClose, onSwitchPanel, proper
                         <div>
                             <div className="mb-1 inline-flex items-center gap-2 rounded-full border border-[#20a76b]/[0.24] bg-[#20a76b]/[0.08] px-3 py-1 text-[9.5px] font-semibold uppercase tracking-[0.18em] text-[#0f7448]">
                                 <IconIncome />
-                                Income cockpit · DB live
+                                {cockpitLabel}
                             </div>
                             <h2 className="font-display text-[28px] font-normal leading-tight tracking-[-0.03em] text-[#0b1623] sm:text-[34px]">
-                                {projectLabel} Income
+                                {titleLabel}
                             </h2>
                             {error ? <p className="mt-1 text-[12px] font-semibold text-[#9d2f2f]">{error}</p> : null}
                         </div>
 
                         <div className="flex flex-wrap items-center justify-end gap-2">
                             <Unit19ModalSwitcher activePanel="income" onSwitchPanel={onSwitchPanel} />
+                            <div className="inline-flex items-center gap-1 rounded-[13px] border border-white/[0.76] bg-white/[0.48] p-1">
+                                <button
+                                    type="button"
+                                    onClick={() => void changeYear(year - 1)}
+                                    disabled={saving || loading || year <= MIN_YEAR}
+                                    className="rounded-[10px] px-2.5 py-1.5 text-[12px] font-semibold text-[#607993] transition hover:bg-white/[0.86] disabled:cursor-not-allowed disabled:opacity-40"
+                                >
+                                    ←
+                                </button>
+                                <span className="min-w-[54px] text-center text-[12px] font-semibold text-[#0b1623]">{year}</span>
+                                <button
+                                    type="button"
+                                    onClick={() => void changeYear(year + 1)}
+                                    disabled={saving || loading}
+                                    className="rounded-[10px] px-2.5 py-1.5 text-[12px] font-semibold text-[#607993] transition hover:bg-white/[0.86] disabled:cursor-not-allowed disabled:opacity-40"
+                                >
+                                    →
+                                </button>
+                            </div>
                             <button
                                 type="button"
-                                onClick={applyRentSchedule}
+                                onClick={applyPrimarySchedule}
                                 disabled={saving || loading || months.length === 0}
                                 className="rounded-[13px] border border-[#20a76b]/[0.24] bg-[#20a76b]/[0.08] px-4 py-2.5 text-[12px] font-semibold text-[#0f7448] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#20a76b]/[0.13] active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-50"
                             >
-                                {saving ? "Saving..." : "Apply rent schedule"}
+                                {applyLabel}
                             </button>
                             <button
                                 type="button"
@@ -378,80 +636,61 @@ export default function Unit19IncomeModal({ open, onClose, onSwitchPanel, proper
                     </div>
 
                     <div className="mt-2.5 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
-                        <StatCard label="Expected rent" value={formatEur(stats.expectedRent)} detail={`${year} schedule`} />
-                        <StatCard label="Collected" value={formatEur(stats.collectedRent)} detail="paid rent" tone="ok" />
-                        <StatCard label="Outstanding" value={formatEur(stats.outstanding)} detail={`${stats.unpaidMonths} unpaid months`} tone={stats.outstanding > 0 ? "warn" : "ok"} />
-                        <StatCard label="Owner expenses" value={formatEur(stats.ownerExpenses)} detail="not tenant utilities" tone="base" />
-                        <StatCard label="Net estimate" value={formatEur(stats.netAfterOwnerCosts)} detail="after tax reserve" tone={stats.netAfterOwnerCosts >= 0 ? "ok" : "warn"} />
+                        {isNorthStarWorkspace ? (
+                            <>
+                                <StatCard label="Expected rent" value={formatEur(stats.expectedRent)} detail={`${year} schedule`} />
+                                <StatCard label="Tuition fees" value={formatEur(stats.tuitionExpected)} detail={`${formatEur(stats.tuitionPaid)} marked paid`} tone={stats.tuitionExpected > stats.tuitionPaid ? "warn" : "ok"} />
+                                <StatCard label="Confirmed income" value={formatEur(stats.northStarIncome)} detail="DUO, allowance, salary" tone="ok" />
+                                <StatCard label="Monthly expenses" value={formatEur(stats.northStarExpenses)} detail="tracked checks only" />
+                                <StatCard label="Net estimate" value={formatEur(stats.northStarNetEstimate)} detail="income minus planned outflow" tone={stats.northStarNetEstimate >= 0 ? "ok" : "warn"} />
+                            </>
+                        ) : (
+                            <>
+                                <StatCard label="Expected rent" value={formatEur(stats.expectedRent)} detail={`${year} schedule`} />
+                                <StatCard label="Collected" value={formatEur(stats.collectedRent)} detail="paid rent" tone="ok" />
+                                <StatCard label="Outstanding" value={formatEur(stats.outstanding)} detail={`${stats.unpaidMonths} unpaid months`} tone={stats.outstanding > 0 ? "warn" : "ok"} />
+                                <StatCard label="Owner expenses" value={formatEur(stats.ownerExpenses)} detail="not tenant utilities" tone="base" />
+                                <StatCard label="Net estimate" value={formatEur(stats.netAfterOwnerCosts)} detail="after tax reserve" tone={stats.netAfterOwnerCosts >= 0 ? "ok" : "warn"} />
+                            </>
+                        )}
                     </div>
                 </div>
 
                 <div className="relative grid min-h-0 flex-1 overflow-hidden lg:grid-cols-[258px_minmax(0,1fr)_330px]">
                     <aside className="h-full min-h-0 overflow-y-auto overscroll-contain border-b border-white/[0.65] bg-white/[0.42] p-3.5 lg:border-b-0 lg:border-r">
-                        <div className="rounded-[16px] border border-white/[0.78] bg-white/[0.58] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
-                            <div className="mb-2 text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">Rent setup</div>
-                            <div className="space-y-2">
-                                <Field label="Year">
-                                    <input
-                                        type="number"
-                                        value={year}
-                                        onChange={(event) => void changeYear(Number(event.target.value || DEFAULT_YEAR))}
-                                        className={inputClass}
-                                    />
-                                </Field>
-                                <Field label="Monthly rent">
-                                    <input
-                                        type="number"
-                                        value={monthlyRentEur}
-                                        onChange={(event) => setMonthlyRentEur(Number(event.target.value || 0))}
-                                        className={inputClass}
-                                    />
-                                </Field>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <Field label="From">
-                                        <MonthSelect value={rentStartMonth} onChange={setRentStartMonth} />
-                                    </Field>
-                                    <Field label="To">
-                                        <MonthSelect value={rentEndMonth} onChange={setRentEndMonth} />
-                                    </Field>
-                                </div>
-                            </div>
-                        </div>
+                        <ScheduleSetupCard
+                            title="Rent setup"
+                            year={year}
+                            amountLabel="Monthly rent"
+                            amount={monthlyRentEur}
+                            startMonth={rentStartMonth}
+                            endMonth={rentEndMonth}
+                            onYearChange={(value) => void changeYear(value)}
+                            onAmountChange={setMonthlyRentEur}
+                            onStartMonthChange={setRentStartMonth}
+                            onEndMonthChange={setRentEndMonth}
+                        />
 
-                        <div className="mt-2.5 rounded-[16px] border border-white/[0.78] bg-white/[0.58] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
-                            <div className="mb-2 text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">Tax reserve</div>
-                            <div className="space-y-2">
-                                <Field label="Rate %">
-                                    <input
-                                        type="number"
-                                        value={taxReserve?.tax_rate_percent ?? 15}
-                                        onChange={(event) => void patchTaxReserve({ tax_rate_percent: Number(event.target.value || 0), estimated_tax_eur: stats.estimatedTax })}
-                                        className={inputClass}
-                                    />
-                                </Field>
-                                <Field label="Due date">
-                                    <AdminDatePicker value={taxReserve?.due_date ?? ""} onChange={(date) => void patchTaxReserve({ due_date: date })} />
-                                </Field>
-                                <button
-                                    type="button"
-                                    onClick={() => void patchTaxReserve({ paid: !taxReserve?.paid, paid_date: !taxReserve?.paid ? todayIso() : null })}
-                                    disabled={!taxReserve}
-                                    className={[
-                                        "w-full rounded-xl border px-3 py-2 text-[12px] font-semibold transition hover:-translate-y-0.5 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50",
-                                        taxReserve?.paid
-                                            ? "border-[#20a76b]/[0.24] bg-[#20a76b]/[0.08] text-[#0f7448]"
-                                            : isTaxDue(taxReserve)
-                                                ? "border-[#d96969]/[0.28] bg-[#d96969]/[0.08] text-[#9d2f2f]"
-                                                : "border-[#cfa090]/[0.24] bg-[#cfa090]/[0.08] text-[#8c5947]",
-                                    ].join(" ")}
-                                >
-                                    {taxReserve?.paid ? "Tax marked paid" : isTaxDue(taxReserve) ? "Tax due / unpaid" : "Tax pending"}
-                                </button>
-                                <div className="rounded-xl border border-[#ccd9e8] bg-white/[0.56] px-3 py-2 text-[11px] leading-4 text-[#607993]">
-                                    Estimate: <span className="font-semibold text-[#0b1623]">{formatEur(stats.estimatedTax)}</span>. Editable reserve only; verify with accountant before payment.
-                                </div>
+                        {isNorthStarWorkspace ? (
+                            <div className="mt-2.5">
+                                <ScheduleSetupCard
+                                    title="Tuition fees setup"
+                                    year={year}
+                                    amountLabel="Tuition fee"
+                                    amount={tuitionAmountEur}
+                                    startMonth={tuitionStartMonth}
+                                    endMonth={tuitionEndMonth}
+                                    onYearChange={(value) => void changeYear(value)}
+                                    onAmountChange={setTuitionAmountEur}
+                                    onStartMonthChange={setTuitionStartMonth}
+                                    onEndMonthChange={setTuitionEndMonth}
+                                    paymentMode={tuitionPaymentMode}
+                                    onPaymentModeChange={setTuitionPaymentMode}
+                                />
                             </div>
-                        </div>
+                        ) : (
+                            <TaxReservePanel taxReserve={taxReserve} statsEstimatedTax={stats.estimatedTax} onPatchTaxReserve={(patch) => void patchTaxReserve(patch)} />
+                        )}
                     </aside>
 
                     <main className="h-full min-h-0 overflow-y-auto overscroll-contain p-3.5">
@@ -465,6 +704,9 @@ export default function Unit19IncomeModal({ open, onClose, onSwitchPanel, proper
                                     const monthExpenses = expensesByMonthId.get(month.id) ?? [];
                                     const ownerCostTotal = monthExpenses.reduce((sum, expense) => sum + expense.amount_eur, 0);
                                     const utilityCount = utilityOrder.filter((key) => month[key]).length;
+                                    const northStarState = northStarMonthState.get(month.id) ?? defaultNorthStarBudgetState();
+                                    const northStarTotals = getBudgetTotals(northStarState);
+                                    const tuitionExpected = getTuitionExpectedForMonth(month.month, tuitionConfig);
 
                                     return (
                                         <button
@@ -496,23 +738,34 @@ export default function Unit19IncomeModal({ open, onClose, onSwitchPanel, proper
 
                                             <div className="mt-3 grid grid-cols-2 gap-2">
                                                 <div className="rounded-xl border border-[#ccd9e8] bg-white/[0.52] px-2.5 py-2">
-                                                    <div className="text-[9px] uppercase tracking-[0.12em] text-[#7a90a8]">Expected</div>
-                                                    <div className="mt-1 text-[15px] font-semibold text-[#0b1623]">{formatEur(month.rent_expected_eur)}</div>
+                                                    <div className="text-[9px] uppercase tracking-[0.12em] text-[#7a90a8]">{isNorthStarWorkspace ? "Rent" : "Expected"}</div>
+                                                    <div className="mt-1 text-[15px] font-semibold text-[#0b1623]">{formatEur(isNorthStarWorkspace ? month.rent_paid_eur : month.rent_expected_eur)}</div>
                                                 </div>
                                                 <div className="rounded-xl border border-[#ccd9e8] bg-white/[0.52] px-2.5 py-2">
-                                                    <div className="text-[9px] uppercase tracking-[0.12em] text-[#7a90a8]">Paid</div>
-                                                    <div className="mt-1 text-[15px] font-semibold text-[#0b1623]">{formatEur(month.rent_paid_eur)}</div>
+                                                    <div className="text-[9px] uppercase tracking-[0.12em] text-[#7a90a8]">{isNorthStarWorkspace ? "Tuition" : "Paid"}</div>
+                                                    <div className="mt-1 text-[15px] font-semibold text-[#0b1623]">{formatEur(isNorthStarWorkspace ? (northStarState.tuition_paid ? tuitionExpected : 0) : month.rent_paid_eur)}</div>
                                                 </div>
                                             </div>
 
                                             <div className="mt-3 flex flex-wrap gap-1.5">
-                                                <span className="rounded-full border border-[#ccd9e8] bg-white/[0.52] px-2 py-0.5 text-[10px] text-[#607993]">Utilities {utilityCount}/4</span>
-                                                {ownerCostTotal > 0 ? (
-                                                    <span className="rounded-full border border-[#cfa090]/[0.24] bg-[#cfa090]/[0.08] px-2 py-0.5 text-[10px] text-[#8c5947]">Owner costs {formatEur(ownerCostTotal)}</span>
-                                                ) : null}
+                                                {isNorthStarWorkspace ? (
+                                                    <>
+                                                        <span className="rounded-full border border-[#ccd9e8] bg-white/[0.52] px-2 py-0.5 text-[10px] text-[#607993]">Income {northStarTotals.incomeChecked}/{northStarIncomeEntries.length}</span>
+                                                        <span className="rounded-full border border-[#ccd9e8] bg-white/[0.52] px-2 py-0.5 text-[10px] text-[#607993]">Monthly expenses {northStarTotals.expenseChecked}/{northStarExpenseEntries.length}</span>
+                                                        {northStarTotals.income > 0 ? <span className="rounded-full border border-[#20a76b]/[0.24] bg-[#20a76b]/[0.08] px-2 py-0.5 text-[10px] text-[#0f7448]">+{formatEur(northStarTotals.income)}</span> : null}
+                                                        {northStarTotals.expenses > 0 ? <span className="rounded-full border border-[#cfa090]/[0.24] bg-[#cfa090]/[0.08] px-2 py-0.5 text-[10px] text-[#8c5947]">-{formatEur(northStarTotals.expenses)}</span> : null}
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <span className="rounded-full border border-[#ccd9e8] bg-white/[0.52] px-2 py-0.5 text-[10px] text-[#607993]">Utilities {utilityCount}/4</span>
+                                                        {ownerCostTotal > 0 ? (
+                                                            <span className="rounded-full border border-[#cfa090]/[0.24] bg-[#cfa090]/[0.08] px-2 py-0.5 text-[10px] text-[#8c5947]">Owner costs {formatEur(ownerCostTotal)}</span>
+                                                        ) : null}
+                                                    </>
+                                                )}
                                             </div>
 
-                                            {month.note ? <div className="mt-2 line-clamp-2 text-[11px] leading-4 text-[#7a90a8]">{month.note}</div> : null}
+                                            {!isNorthStarWorkspace && month.note ? <div className="mt-2 line-clamp-2 text-[11px] leading-4 text-[#7a90a8]">{month.note}</div> : null}
                                         </button>
                                     );
                                 })}
@@ -522,15 +775,27 @@ export default function Unit19IncomeModal({ open, onClose, onSwitchPanel, proper
 
                     <aside className="h-full min-h-0 overflow-y-auto overscroll-contain border-t border-white/[0.65] bg-white/[0.36] p-3.5 lg:border-l lg:border-t-0">
                         {selected ? (
-                            <MonthDetails
-                                month={selected}
-                                ownerExpenses={expensesByMonthId.get(selected.id) ?? []}
-                                onTogglePaid={() => void markRentPaid(selected)}
-                                onPatch={(patch) => void patchMonth(selected, patch)}
-                                onToggleUtility={(key) => void toggleUtility(selected, key)}
-                                onAddExpense={() => setExpenseDraft({ monthId: selected.id, title: "", amountEur: 0 })}
-                                onDeleteExpense={(id) => void deleteExpense(id)}
-                            />
+                            isNorthStarWorkspace ? (
+                                <NorthStarMonthDetails
+                                    month={selected}
+                                    tuitionExpected={getTuitionExpectedForMonth(selected.month, tuitionConfig)}
+                                    tuitionPaymentMode={tuitionPaymentMode}
+                                    budgetState={northStarMonthState.get(selected.id) ?? defaultNorthStarBudgetState()}
+                                    onToggleRentPaid={() => void markRentPaid(selected)}
+                                    onToggleTuitionPaid={() => void markTuitionPaid(selected)}
+                                    onPatchBudget={(state) => void patchNorthStarBudget(selected, state)}
+                                />
+                            ) : (
+                                <MonthDetails
+                                    month={selected}
+                                    ownerExpenses={expensesByMonthId.get(selected.id) ?? []}
+                                    onTogglePaid={() => void markRentPaid(selected)}
+                                    onPatch={(patch) => void patchMonth(selected, patch)}
+                                    onToggleUtility={(key) => void toggleUtility(selected, key)}
+                                    onAddExpense={() => setExpenseDraft({ monthId: selected.id, title: "", amountEur: 0 })}
+                                    onDeleteExpense={(id) => void deleteExpense(id)}
+                                />
+                            )
                         ) : (
                             <div className="rounded-[16px] border border-white/[0.78] bg-white/[0.58] p-3.5 text-[12px] text-[#607993]">No month selected.</div>
                         )}
@@ -585,6 +850,122 @@ function MonthSelect({ value, onChange }: { value: number; onChange: (value: num
                 </option>
             ))}
         </select>
+    );
+}
+
+function ScheduleSetupCard({
+    title,
+    year,
+    amountLabel,
+    amount,
+    startMonth,
+    endMonth,
+    onYearChange,
+    onAmountChange,
+    onStartMonthChange,
+    onEndMonthChange,
+    paymentMode,
+    onPaymentModeChange,
+}: {
+    title: string;
+    year: number;
+    amountLabel: string;
+    amount: number;
+    startMonth: number;
+    endMonth: number;
+    onYearChange: (value: number) => void;
+    onAmountChange: (value: number) => void;
+    onStartMonthChange: (value: number) => void;
+    onEndMonthChange: (value: number) => void;
+    paymentMode?: "monthly" | "once";
+    onPaymentModeChange?: (value: "monthly" | "once") => void;
+}) {
+    return (
+        <div className="rounded-[16px] border border-white/[0.78] bg-white/[0.58] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+            <div className="mb-2 text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">{title}</div>
+            <div className="space-y-2">
+                <Field label="Year">
+                    <input
+                        type="number"
+                        min={MIN_YEAR}
+                        value={year}
+                        onChange={(event) => onYearChange(Number(event.target.value || DEFAULT_YEAR))}
+                        className={inputClass}
+                    />
+                </Field>
+                <Field label={amountLabel}>
+                    <input
+                        type="number"
+                        value={amount}
+                        onChange={(event) => onAmountChange(Number(event.target.value || 0))}
+                        className={inputClass}
+                    />
+                </Field>
+                {onPaymentModeChange ? (
+                    <Field label="Payment mode">
+                        <select value={paymentMode ?? "monthly"} onChange={(event) => onPaymentModeChange(event.target.value === "once" ? "once" : "monthly")} className={inputClass}>
+                            <option value="monthly">Monthly</option>
+                            <option value="once">One-time</option>
+                        </select>
+                    </Field>
+                ) : null}
+                <div className="grid grid-cols-2 gap-2">
+                    <Field label="From">
+                        <MonthSelect value={startMonth} onChange={onStartMonthChange} />
+                    </Field>
+                    <Field label="To">
+                        <MonthSelect value={endMonth} onChange={onEndMonthChange} />
+                    </Field>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function TaxReservePanel({
+    taxReserve,
+    statsEstimatedTax,
+    onPatchTaxReserve,
+}: {
+    taxReserve: ManagedPropertyTaxReserve | null;
+    statsEstimatedTax: number;
+    onPatchTaxReserve: (patch: Partial<ManagedPropertyTaxReserve>) => void;
+}) {
+    return (
+        <div className="mt-2.5 rounded-[16px] border border-white/[0.78] bg-white/[0.58] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+            <div className="mb-2 text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">Tax reserve</div>
+            <div className="space-y-2">
+                <Field label="Rate %">
+                    <input
+                        type="number"
+                        value={taxReserve?.tax_rate_percent ?? 15}
+                        onChange={(event) => onPatchTaxReserve({ tax_rate_percent: Number(event.target.value || 0), estimated_tax_eur: statsEstimatedTax })}
+                        className={inputClass}
+                    />
+                </Field>
+                <Field label="Due date">
+                    <AdminDatePicker value={taxReserve?.due_date ?? ""} onChange={(date) => onPatchTaxReserve({ due_date: date })} />
+                </Field>
+                <button
+                    type="button"
+                    onClick={() => onPatchTaxReserve({ paid: !taxReserve?.paid, paid_date: !taxReserve?.paid ? todayIso() : null })}
+                    disabled={!taxReserve}
+                    className={[
+                        "w-full rounded-xl border px-3 py-2 text-[12px] font-semibold transition hover:-translate-y-0.5 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50",
+                        taxReserve?.paid
+                            ? "border-[#20a76b]/[0.24] bg-[#20a76b]/[0.08] text-[#0f7448]"
+                            : isTaxDue(taxReserve)
+                                ? "border-[#d96969]/[0.28] bg-[#d96969]/[0.08] text-[#9d2f2f]"
+                                : "border-[#cfa090]/[0.24] bg-[#cfa090]/[0.08] text-[#8c5947]",
+                    ].join(" ")}
+                >
+                    {taxReserve?.paid ? "Tax marked paid" : isTaxDue(taxReserve) ? "Tax due / unpaid" : "Tax pending"}
+                </button>
+                <div className="rounded-xl border border-[#ccd9e8] bg-white/[0.56] px-3 py-2 text-[11px] leading-4 text-[#607993]">
+                    Estimate: <span className="font-semibold text-[#0b1623]">{formatEur(statsEstimatedTax)}</span>. Editable reserve only; verify with accountant before payment.
+                </div>
+            </div>
+        </div>
     );
 }
 
@@ -718,6 +1099,155 @@ function MonthDetails({
                     placeholder="Month note"
                 />
             </div>
+        </div>
+    );
+}
+
+function NorthStarMonthDetails({
+    month,
+    tuitionExpected,
+    tuitionPaymentMode,
+    budgetState,
+    onToggleRentPaid,
+    onToggleTuitionPaid,
+    onPatchBudget,
+}: {
+    month: ManagedPropertyIncomeMonth;
+    tuitionExpected: number;
+    tuitionPaymentMode: "monthly" | "once";
+    budgetState: NorthStarBudgetState;
+    onToggleRentPaid: () => void;
+    onToggleTuitionPaid: () => void;
+    onPatchBudget: (state: NorthStarBudgetState) => void;
+}) {
+    const showTuitionButton = tuitionExpected > 0;
+
+    function patchEntry(key: NorthStarBudgetKey, patch: { checked?: boolean; amount_eur?: number }) {
+        const currentEntry = budgetState.entries?.[key] ?? {};
+        onPatchBudget({
+            ...budgetState,
+            entries: {
+                ...(budgetState.entries ?? {}),
+                [key]: { ...currentEntry, ...patch },
+            },
+        });
+    }
+
+    return (
+        <div className="space-y-2.5">
+            <div className="rounded-[16px] border border-white/[0.78] bg-white/[0.58] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                <div className="mb-2 text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">Selected month</div>
+                <div className="text-[17px] font-semibold text-[#0b1623]">{monthLabels[month.month - 1]}</div>
+                <div className="mt-1 text-[11px] text-[#7a90a8]">Rent, tuition and monthly budget checks</div>
+
+                <button
+                    type="button"
+                    onClick={onToggleRentPaid}
+                    disabled={month.rent_expected_eur <= 0}
+                    className={[
+                        "mt-3 w-full rounded-xl border px-3 py-2 text-[12px] font-semibold transition hover:-translate-y-0.5 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50",
+                        month.rent_status === "paid"
+                            ? "border-[#20a76b]/[0.24] bg-[#20a76b]/[0.08] text-[#0f7448]"
+                            : "border-[#d96969]/[0.28] bg-[#d96969]/[0.08] text-[#9d2f2f]",
+                    ].join(" ")}
+                >
+                    {month.rent_status === "paid" ? "Rent paid" : "Mark rent paid"}
+                </button>
+
+                {showTuitionButton ? (
+                    <button
+                        type="button"
+                        onClick={onToggleTuitionPaid}
+                        className={[
+                            "mt-2 w-full rounded-xl border px-3 py-2 text-[12px] font-semibold transition hover:-translate-y-0.5 active:scale-[0.98]",
+                            budgetState.tuition_paid
+                                ? "border-[#20a76b]/[0.24] bg-[#20a76b]/[0.08] text-[#0f7448]"
+                                : "border-[#cfa090]/[0.24] bg-[#cfa090]/[0.08] text-[#8c5947]",
+                        ].join(" ")}
+                    >
+                        {budgetState.tuition_paid ? `Tuition paid · ${formatEur(tuitionExpected)}` : `Mark tuition paid · ${formatEur(tuitionExpected)}`}
+                    </button>
+                ) : (
+                    <div className="mt-2 rounded-xl border border-[#ccd9e8] bg-white/[0.50] px-3 py-2 text-[11px] text-[#607993]">
+                        No tuition expected this month{tuitionPaymentMode === "once" ? " under the one-time setup" : ""}.
+                    </div>
+                )}
+            </div>
+
+            <div className="rounded-[16px] border border-white/[0.78] bg-white/[0.58] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                <div className="mb-2 text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">Income / Monthly expenses</div>
+                <div className="space-y-2">
+                    <div>
+                        <div className="mb-1 text-[9px] font-semibold uppercase tracking-[0.13em] text-[#7a90a8]">Monthly expenses</div>
+                        <div className="space-y-1.5">
+                            {northStarExpenseEntries.map((entry) => (
+                                <BudgetEntryRow
+                                    key={entry.key}
+                                    entry={entry}
+                                    checked={getBudgetChecked(budgetState, entry.key)}
+                                    amount={getBudgetAmount(budgetState, entry.key)}
+                                    onToggle={() => patchEntry(entry.key, { checked: !getBudgetChecked(budgetState, entry.key) })}
+                                    onAmountChange={(amount) => patchEntry(entry.key, { amount_eur: amount })}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                    <div>
+                        <div className="mb-1 text-[9px] font-semibold uppercase tracking-[0.13em] text-[#7a90a8]">Income</div>
+                        <div className="space-y-1.5">
+                            {northStarIncomeEntries.map((entry) => (
+                                <BudgetEntryRow
+                                    key={entry.key}
+                                    entry={entry}
+                                    checked={getBudgetChecked(budgetState, entry.key)}
+                                    amount={getBudgetAmount(budgetState, entry.key)}
+                                    onToggle={() => patchEntry(entry.key, { checked: !getBudgetChecked(budgetState, entry.key) })}
+                                    onAmountChange={(amount) => patchEntry(entry.key, { amount_eur: amount })}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function BudgetEntryRow({
+    entry,
+    checked,
+    amount,
+    onToggle,
+    onAmountChange,
+}: {
+    entry: NorthStarBudgetEntry;
+    checked: boolean;
+    amount: number;
+    onToggle: () => void;
+    onAmountChange: (amount: number) => void;
+}) {
+    return (
+        <div className="grid grid-cols-[minmax(0,1fr)_88px] gap-1.5">
+            <button
+                type="button"
+                onClick={onToggle}
+                className={[
+                    "rounded-xl border px-2 py-2 text-left text-[11px] font-semibold transition hover:-translate-y-0.5 active:scale-[0.98]",
+                    checked
+                        ? "border-[#20a76b]/[0.24] bg-[#20a76b]/[0.08] text-[#0f7448]"
+                        : "border-[#ccd9e8] bg-white/[0.56] text-[#607993]",
+                ].join(" ")}
+            >
+                {checked ? "✓ " : "○ "}{entry.label}
+            </button>
+            <input
+                key={`${entry.key}-${amount}`}
+                type="number"
+                defaultValue={amount || ""}
+                onBlur={(event) => onAmountChange(Number(event.target.value || 0))}
+                className="rounded-xl border border-[#ccd9e8] bg-white/[0.76] px-2 py-2 text-[11px] text-[#0b1623] outline-none transition focus:border-[#2f80ed] focus:ring-2 focus:ring-[#2f80ed]/[0.12]"
+                placeholder="€"
+            />
         </div>
     );
 }
