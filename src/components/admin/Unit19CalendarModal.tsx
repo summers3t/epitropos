@@ -74,6 +74,8 @@ const priorityLabels: Record<Unit19CalendarItemPriority, string> = {
 
 const typeOrder: Unit19CalendarItemType[] = ["task", "deadline", "appointment", "payment", "document_followup", "reminder"];
 const weekDayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const monthLabels = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
 
 function isWeekend(date: Date) {
     const day = date.getDay();
@@ -336,6 +338,29 @@ export default function Unit19CalendarModal({
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    const selectedDateObject = useMemo(() => parseLocalDate(selectedDate), [selectedDate]);
+    const selectedMonth = selectedDateObject.getMonth();
+    const selectedYear = selectedDateObject.getFullYear();
+    const yearOptions = useMemo(() => {
+        const currentYear = new Date().getFullYear();
+        const startYear = Math.min(2025, selectedYear - 2);
+        const endYear = Math.max(currentYear + 4, selectedYear + 4);
+
+        return Array.from({ length: endYear - startYear + 1 }, (_, index) => startYear + index);
+    }, [selectedYear]);
+
+    function changeCalendarMonth(monthIndex: number) {
+        const nextDate = parseLocalDate(selectedDate);
+        nextDate.setMonth(monthIndex);
+        setSelectedDate(toIsoDate(nextDate));
+    }
+
+    function changeCalendarYear(year: number) {
+        const nextDate = parseLocalDate(selectedDate);
+        nextDate.setFullYear(year);
+        setSelectedDate(toIsoDate(nextDate));
+    }
 
     const loadCalendar = useCallback(async () => {
         setLoading(true);
@@ -716,6 +741,37 @@ export default function Unit19CalendarModal({
                                     </button>
                                 ))}
                             </div>
+                        </div>
+
+                        <div className="mt-2.5 rounded-[16px] border border-white/[0.78] bg-white/[0.58] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                            <div className="mb-2 text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">Date navigator</div>
+                            <div className="grid grid-cols-[minmax(0,1fr)_86px] gap-2">
+                                <select
+                                    value={selectedMonth}
+                                    onChange={(event) => changeCalendarMonth(Number(event.target.value))}
+                                    className="w-full rounded-xl border border-[#ccd9e8] bg-white/[0.76] px-3 py-1.5 text-[12.5px] text-[#0b1623] outline-none transition focus:border-[#2f80ed] focus:ring-2 focus:ring-[#2f80ed]/[0.12]"
+                                >
+                                    {monthLabels.map((month, index) => (
+                                        <option key={month} value={index}>{month}</option>
+                                    ))}
+                                </select>
+                                <select
+                                    value={selectedYear}
+                                    onChange={(event) => changeCalendarYear(Number(event.target.value))}
+                                    className="w-full rounded-xl border border-[#ccd9e8] bg-white/[0.76] px-3 py-1.5 text-[12.5px] text-[#0b1623] outline-none transition focus:border-[#2f80ed] focus:ring-2 focus:ring-[#2f80ed]/[0.12]"
+                                >
+                                    {yearOptions.map((year) => (
+                                        <option key={year} value={year}>{year}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setSelectedDate(toIsoDate(new Date()))}
+                                className="mt-2 w-full rounded-xl border border-[#20a76b]/[0.24] bg-[#20a76b]/[0.08] px-3 py-1.5 text-[12px] font-semibold text-[#0f7448] transition hover:bg-[#20a76b]/[0.13] active:scale-[0.97]"
+                            >
+                                Jump to today
+                            </button>
                         </div>
 
                         <div className="mt-2.5 rounded-[16px] border border-white/[0.78] bg-white/[0.58] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">

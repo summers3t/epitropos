@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AdminDatePicker from "@/components/admin/AdminDatePicker";
 import {
     unit19FocusNotes,
@@ -337,7 +337,7 @@ export default function Unit19RoadmapWorkspace({
     const [stages, setStages] = useState<Unit19RoadmapStage[]>([]);
     const [selectedStageId, setSelectedStageId] = useState<string | null>(null);
     const [expandedStageIds, setExpandedStageIds] = useState<Set<string>>(() => new Set());
-    const [filterMode, setFilterMode] = useState<FilterMode>("all");
+    const [filterMode, setFilterMode] = useState<FilterMode>("current");
     const [focusedStageStatus, setFocusedStageStatus] = useState<FocusStatus | null>(null);
     const [editingStageId, setEditingStageId] = useState<string | null>(null);
     const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
@@ -355,12 +355,55 @@ export default function Unit19RoadmapWorkspace({
     const [documentsOpen, setDocumentsOpen] = useState(false);
     const [incomeOpen, setIncomeOpen] = useState(false);
     const [calendarOpen, setCalendarOpen] = useState(false);
+    const pendingDeletionRef = useRef<PendingDeletionRecord | null>(null);
+    const [pendingDeletionLabel, setPendingDeletionLabel] = useState<string | null>(null);
 
     const switchPanel = useCallback((panel: Unit19PanelKey) => {
         setExpensesOpen(panel === "expenses");
         setDocumentsOpen(panel === "documents");
         setIncomeOpen(panel === "income");
         setCalendarOpen(panel === "calendar");
+    }, []);
+
+    const queuePendingDeletion = useCallback((record: Omit<PendingDeletionRecord, "timeoutId">) => {
+        const existing = pendingDeletionRef.current;
+        if (existing) {
+            window.clearTimeout(existing.timeoutId);
+            void existing.commit();
+        }
+
+        const timeoutId = window.setTimeout(() => {
+            const pending = pendingDeletionRef.current;
+            if (!pending) return;
+
+            pendingDeletionRef.current = null;
+            setPendingDeletionLabel(null);
+            void pending.commit();
+        }, 5000);
+
+        pendingDeletionRef.current = { ...record, timeoutId };
+        setPendingDeletionLabel(record.label);
+    }, []);
+
+    const undoPendingDeletion = useCallback(() => {
+        const pending = pendingDeletionRef.current;
+        if (!pending) return;
+
+        window.clearTimeout(pending.timeoutId);
+        pendingDeletionRef.current = null;
+        setPendingDeletionLabel(null);
+        pending.undo();
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            const pending = pendingDeletionRef.current;
+            if (!pending) return;
+
+            window.clearTimeout(pending.timeoutId);
+            pendingDeletionRef.current = null;
+            void pending.commit();
+        };
     }, []);
 
     const loadRoadmap = useCallback(async () => {
@@ -376,10 +419,7 @@ export default function Unit19RoadmapWorkspace({
             setManagedPropertyId(property.id);
             setStages(mappedStages);
             setSelectedStageId((current) => current ?? currentStage?.id ?? null);
-            setExpandedStageIds((current) => {
-                if (current.size > 0) return current;
-                return currentStage ? new Set([currentStage.id]) : new Set();
-            });
+            setExpandedStageIds((current) => current);
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to load roadmap data");
         } finally {
@@ -643,34 +683,54 @@ export default function Unit19RoadmapWorkspace({
         }
     }
 
-    async function removeStage(stage: Unit19RoadmapStage) {
+    function removeStage(stage: Unit19RoadmapStage) {
         if (stage.tasks.length > 0) {
             setError("Only empty stages can be deleted. Delete or move the tasks first.");
             return;
         }
 
-        setSaving(true);
+        const previousStages = stages;
+        const previousExpandedStageIds = expandedStageIds;
+        const previousEditingStageId = editingStageId;
+        const previousSelectedStageId = selectedStageId;
+        const nextStages = renumberStages(getOrderedStages().filter((item) => item.id !== stage.id));
+
         setError(null);
+        setStages(nextStages);
+        setExpandedStageIds((current) => {
+            const next = new Set(current);
+            next.delete(stage.id);
+            return next;
+        });
+        setEditingStageId((current) => (current === stage.id ? null : current));
+        setSelectedStageId((current) => (current === stage.id ? nextStages[0]?.id ?? null : current));
 
-        try {
-            await deleteManagedPropertyRoadmapStage(stage.dbStageId);
+        queuePendingDeletion({
+            label: `Stage deleted: ${stage.title}`,
+            undo: () => {
+                setStages(previousStages);
+                setExpandedStageIds(previousExpandedStageIds);
+                setEditingStageId(previousEditingStageId);
+                setSelectedStageId(previousSelectedStageId);
+            },
+            commit: async () => {
+                setSaving(true);
+                setError(null);
 
-            const nextStages = renumberStages(getOrderedStages().filter((item) => item.id !== stage.id));
-            await persistStageOrder(nextStages);
-
-            setStages(nextStages);
-            setExpandedStageIds((current) => {
-                const next = new Set(current);
-                next.delete(stage.id);
-                return next;
-            });
-            setEditingStageId((current) => (current === stage.id ? null : current));
-            setSelectedStageId((current) => (current === stage.id ? nextStages[0]?.id ?? null : current));
-        } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed to delete roadmap stage");
-        } finally {
-            setSaving(false);
-        }
+                try {
+                    await deleteManagedPropertyRoadmapStage(stage.dbStageId);
+                    await persistStageOrder(nextStages);
+                } catch (err) {
+                    setError(err instanceof Error ? err.message : "Failed to delete roadmap stage");
+                    setStages(previousStages);
+                    setExpandedStageIds(previousExpandedStageIds);
+                    setEditingStageId(previousEditingStageId);
+                    setSelectedStageId(previousSelectedStageId);
+                } finally {
+                    setSaving(false);
+                }
+            },
+        });
     }
 
     function toggleRearrangeMode() {
@@ -812,24 +872,43 @@ export default function Unit19RoadmapWorkspace({
         }
     }
 
-    async function removeTask(stageId: string, taskId: string) {
-        setSaving(true);
+    function removeTask(stageId: string, taskId: string) {
+        const stage = stages.find((item) => item.id === stageId);
+        const task = stage?.tasks.find((item) => item.id === taskId);
+        if (!stage || !task) return;
+
+        const previousStages = stages;
+        const previousEditingTaskId = editingTaskId;
+
         setError(null);
+        setStages((current) =>
+            current.map((currentStage) =>
+                currentStage.id === stageId ? { ...currentStage, tasks: currentStage.tasks.filter((item) => item.id !== taskId) } : currentStage,
+            ),
+        );
+        if (editingTaskId === taskId) setEditingTaskId(null);
 
-        try {
-            await deleteManagedPropertyTask(taskId);
-            setStages((current) =>
-                current.map((stage) =>
-                    stage.id === stageId ? { ...stage, tasks: stage.tasks.filter((task) => task.id !== taskId) } : stage,
-                ),
-            );
+        queuePendingDeletion({
+            label: `Task deleted: ${task.title}`,
+            undo: () => {
+                setStages(previousStages);
+                setEditingTaskId(previousEditingTaskId);
+            },
+            commit: async () => {
+                setSaving(true);
+                setError(null);
 
-            if (editingTaskId === taskId) setEditingTaskId(null);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed to delete roadmap task");
-        } finally {
-            setSaving(false);
-        }
+                try {
+                    await deleteManagedPropertyTask(taskId);
+                } catch (err) {
+                    setError(err instanceof Error ? err.message : "Failed to delete roadmap task");
+                    setStages(previousStages);
+                    setEditingTaskId(previousEditingTaskId);
+                } finally {
+                    setSaving(false);
+                }
+            },
+        });
     }
 
     function updateTask(stageId: string, taskId: string, patch: Partial<Unit19RoadmapTask>) {
@@ -1172,6 +1251,19 @@ export default function Unit19RoadmapWorkspace({
                             </div>
                         ) : null}
 
+                        {pendingDeletionLabel ? (
+                            <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-[14px] border border-[#c78973]/[0.24] bg-[#c78973]/[0.08] px-4 py-3 text-[12px] font-semibold text-[#8c5947]">
+                                <span>{pendingDeletionLabel}. Undo available for 5 seconds.</span>
+                                <button
+                                    type="button"
+                                    onClick={undoPendingDeletion}
+                                    className="rounded-[9px] border border-[#c78973]/[0.30] bg-white/[0.72] px-3 py-1.5 text-[11px] font-semibold text-[#8c5947] transition hover:bg-white active:scale-[0.97]"
+                                >
+                                    Undo
+                                </button>
+                            </div>
+                        ) : null}
+
                         <div className="relative pl-0 md:pl-[72px]">
                             <div className="space-y-3">
                                 {visibleStages.map((stage, index) => {
@@ -1397,7 +1489,26 @@ export default function Unit19RoadmapWorkspace({
                                                                             return (
                                                                                 <div
                                                                                     key={task.id}
-                                                                                    className="rounded-[12px] border border-[#d8e8f6]/80 bg-white/[0.72] px-3.5 py-3"
+                                                                                    role="button"
+                                                                                    tabIndex={0}
+                                                                                    onClick={(event) => {
+                                                                                        event.stopPropagation();
+                                                                                        setSelectedStageId(stage.id);
+                                                                                    }}
+                                                                                    onDoubleClick={(event) => {
+                                                                                        event.stopPropagation();
+                                                                                        setEditingTaskId(task.id);
+                                                                                    }}
+                                                                                    onKeyDown={(event) => {
+                                                                                        if (isInteractiveField(event.target)) return;
+
+                                                                                        if (event.key === "Enter") {
+                                                                                            event.preventDefault();
+                                                                                            event.stopPropagation();
+                                                                                            setEditingTaskId(task.id);
+                                                                                        }
+                                                                                    }}
+                                                                                    className="rounded-[12px] border border-[#d8e8f6]/80 bg-white/[0.72] px-3.5 py-3 outline-none transition hover:border-[#2f80ed]/[0.24] hover:bg-white/[0.84] focus:border-[#2f80ed]/[0.34] focus:ring-2 focus:ring-[#2f80ed]/[0.10]"
                                                                                 >
                                                                                     {editing ? (
                                                                                         <div className="space-y-2.5">
@@ -1504,7 +1615,7 @@ export default function Unit19RoadmapWorkspace({
                                                                                                 ) : null}
                                                                                                 <button
                                                                                                     type="button"
-                                                                                                    onClick={() => void removeTask(stage.id, task.id)}
+                                                                                                    onClick={() => removeTask(stage.id, task.id)}
                                                                                                     className="rounded-[7px] border border-[#e2c4bb] bg-[#c78973]/[0.07] px-2.5 py-1 text-[11px] text-[#8c5947] transition hover:bg-[#c78973]/[0.15] active:scale-[0.97]"
                                                                                                 >
                                                                                                     ×
