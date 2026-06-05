@@ -1141,7 +1141,7 @@ export default function Unit19RoadmapWorkspace({
                                     onClick={() => switchPanel("income")}
                                     className="relative overflow-hidden rounded-[13px] border border-[#20a76b]/[0.24] bg-[#20a76b]/[0.08] px-4 py-2.5 text-[12px] font-semibold text-[#0f7448] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-[#20a76b]/[0.34] hover:bg-[#20a76b]/[0.13] hover:text-[#0f1c2e] hover:shadow-[0_12px_30px_rgba(32,167,107,0.14)] active:scale-[0.96]"
                                 >
-                                    {projectSlug === "maria-northstar" ? "Budget" : "Income"}
+                                    Budget
                                 </button>
 
                                 <button

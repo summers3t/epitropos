@@ -662,7 +662,7 @@ export default function Unit19CalendarModal({
                         </div>
 
                         <div className="flex flex-wrap items-center justify-end gap-2">
-                            <Unit19ModalSwitcher activePanel="calendar" onSwitchPanel={onSwitchPanel} incomeLabel={propertySlug === "maria-northstar" ? "Budget" : "Income"} />
+                            <Unit19ModalSwitcher activePanel="calendar" onSwitchPanel={onSwitchPanel} incomeLabel="Budget" />
                             <button
                                 type="button"
                                 onClick={() => setDraftItem(blankItem(selectedDate))}

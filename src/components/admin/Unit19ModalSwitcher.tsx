@@ -35,7 +35,7 @@ const panels: Array<{ key: Unit19PanelKey; label: string; className: string; act
     },
 ];
 
-export default function Unit19ModalSwitcher({ activePanel, onSwitchPanel, incomeLabel = "Income" }: Props) {
+export default function Unit19ModalSwitcher({ activePanel, onSwitchPanel, incomeLabel = "Budget" }: Props) {
     if (!onSwitchPanel) return null;
 
     return (

@@ -40,6 +40,40 @@ type UtilityKey =
   | "gas_confirmed"
   | "building_fees_confirmed";
 type NorthStarBudgetKind = "income" | "expense";
+
+type Unit19BudgetKey =
+  | "electricity"
+  | "water"
+  | "gas"
+  | "building_fees"
+  | "property_insurance"
+  | "life_insurance";
+
+type Unit19BudgetEntry = {
+  key: Unit19BudgetKey;
+  label: string;
+  defaultCheckedFrom?: UtilityKey;
+};
+
+type Unit19BudgetState = {
+  marker: "unit19_budget_v1";
+  credit_expected_eur?: number;
+  credit_paid?: boolean;
+  credit_paid_date?: string | null;
+  entries?: Partial<
+    Record<Unit19BudgetKey, { checked?: boolean; amount_eur?: number }>
+  >;
+};
+
+type Unit19CreditConfig = {
+  marker: "unit19_credit_v1";
+  payment_eur: number;
+  start_month: number;
+  end_month: number;
+  life_insurance_eur: number;
+  property_insurance_eur: number;
+  property_insurance_month: number;
+};
 type NorthStarBudgetKey =
   | "electricity"
   | "water"
@@ -92,6 +126,16 @@ const utilityLabels: Record<UtilityKey, string> = {
   gas_confirmed: "Gas",
   building_fees_confirmed: "Building fees",
 };
+
+
+const unit19BudgetEntries: Unit19BudgetEntry[] = [
+  { key: "electricity", label: "Electricity", defaultCheckedFrom: "electricity_confirmed" },
+  { key: "water", label: "Water", defaultCheckedFrom: "water_confirmed" },
+  { key: "gas", label: "Gas", defaultCheckedFrom: "gas_confirmed" },
+  { key: "building_fees", label: "Building fees", defaultCheckedFrom: "building_fees_confirmed" },
+  { key: "property_insurance", label: "Property insurance" },
+  { key: "life_insurance", label: "Life insurance" },
+];
 
 const northStarBudgetEntries: NorthStarBudgetEntry[] = [
   { key: "electricity", label: "Electricity", kind: "expense" },
@@ -174,6 +218,133 @@ function deriveRentStatus(expected: number, paid: number) {
   if (paid <= 0) return "unpaid" as const;
   if (paid < expected) return "partial" as const;
   return "paid" as const;
+}
+
+
+function defaultUnit19BudgetState(): Unit19BudgetState {
+  return { marker: "unit19_budget_v1", credit_paid: false, entries: {} };
+}
+
+function parseUnit19BudgetState(
+  note: string | null | undefined,
+): Unit19BudgetState {
+  if (!note) return defaultUnit19BudgetState();
+
+  try {
+    const parsed = JSON.parse(note) as Partial<Unit19BudgetState>;
+    if (parsed?.marker === "unit19_budget_v1") {
+      return {
+        marker: "unit19_budget_v1",
+        credit_expected_eur: Number(parsed.credit_expected_eur ?? 0),
+        credit_paid: Boolean(parsed.credit_paid),
+        credit_paid_date: parsed.credit_paid_date ?? null,
+        entries: parsed.entries ?? {},
+      };
+    }
+  } catch {
+    return defaultUnit19BudgetState();
+  }
+
+  return defaultUnit19BudgetState();
+}
+
+function serializeUnit19BudgetState(state: Unit19BudgetState) {
+  return JSON.stringify({
+    marker: "unit19_budget_v1",
+    credit_expected_eur: Number(state.credit_expected_eur ?? 0),
+    credit_paid: Boolean(state.credit_paid),
+    credit_paid_date: state.credit_paid_date ?? null,
+    entries: state.entries ?? {},
+  });
+}
+
+function defaultUnit19CreditConfig(): Unit19CreditConfig {
+  return {
+    marker: "unit19_credit_v1",
+    payment_eur: 0,
+    start_month: 1,
+    end_month: 12,
+    life_insurance_eur: 0,
+    property_insurance_eur: 0,
+    property_insurance_month: 1,
+  };
+}
+
+function parseUnit19CreditConfig(
+  note: string | null | undefined,
+): Unit19CreditConfig {
+  if (!note) return defaultUnit19CreditConfig();
+
+  try {
+    const parsed = JSON.parse(note) as Partial<Unit19CreditConfig>;
+    if (parsed?.marker === "unit19_credit_v1") {
+      return {
+        marker: "unit19_credit_v1",
+        payment_eur: Number(parsed.payment_eur ?? 0),
+        start_month: clampMonth(Number(parsed.start_month ?? 1)),
+        end_month: clampMonth(Number(parsed.end_month ?? 12)),
+        life_insurance_eur: Number(parsed.life_insurance_eur ?? 0),
+        property_insurance_eur: Number(parsed.property_insurance_eur ?? 0),
+        property_insurance_month: clampMonth(Number(parsed.property_insurance_month ?? 1)),
+      };
+    }
+  } catch {
+    return defaultUnit19CreditConfig();
+  }
+
+  return defaultUnit19CreditConfig();
+}
+
+function serializeUnit19CreditConfig(config: Unit19CreditConfig) {
+  return JSON.stringify({
+    marker: "unit19_credit_v1",
+    payment_eur: Number(config.payment_eur || 0),
+    start_month: clampMonth(config.start_month),
+    end_month: clampMonth(config.end_month),
+    life_insurance_eur: Number(config.life_insurance_eur || 0),
+    property_insurance_eur: Number(config.property_insurance_eur || 0),
+    property_insurance_month: clampMonth(config.property_insurance_month),
+  });
+}
+
+function getCreditExpectedForMonth(month: number, config: Unit19CreditConfig) {
+  if (config.payment_eur <= 0) return 0;
+  return isMonthInRange(month, config.start_month, config.end_month)
+    ? config.payment_eur
+    : 0;
+}
+
+function getCreditExpectedForState(
+  month: number,
+  config: Unit19CreditConfig,
+  state: Unit19BudgetState,
+) {
+  if (Number(state.credit_expected_eur ?? 0) > 0)
+    return Number(state.credit_expected_eur ?? 0);
+  return getCreditExpectedForMonth(month, config);
+}
+
+function getUnit19BudgetAmount(state: Unit19BudgetState, key: Unit19BudgetKey) {
+  return Number(state.entries?.[key]?.amount_eur ?? 0);
+}
+
+function getUnit19BudgetChecked(
+  state: Unit19BudgetState,
+  key: Unit19BudgetKey,
+) {
+  return Boolean(state.entries?.[key]?.checked);
+}
+
+function getUnit19BudgetTotals(state: Unit19BudgetState) {
+  const checkedEntries = unit19BudgetEntries.filter((entry) =>
+    getUnit19BudgetChecked(state, entry.key),
+  );
+  const expenses = checkedEntries.reduce(
+    (sum, entry) => sum + getUnit19BudgetAmount(state, entry.key),
+    0,
+  );
+
+  return { expenses, checkedCount: checkedEntries.length };
 }
 
 function defaultNorthStarBudgetState(): NorthStarBudgetState {
@@ -382,6 +553,14 @@ export default function Unit19IncomeModal({
   const [monthlyRentEur, setMonthlyRentEur] = useState(450);
   const [rentStartMonth, setRentStartMonth] = useState(5);
   const [rentEndMonth, setRentEndMonth] = useState(9);
+  const [setupMode, setSetupMode] = useState<"rent" | "credit">("rent");
+  const [detailsMode, setDetailsMode] = useState<"rent" | "credit">("rent");
+  const [creditPaymentEur, setCreditPaymentEur] = useState(0);
+  const [creditStartMonth, setCreditStartMonth] = useState(1);
+  const [creditEndMonth, setCreditEndMonth] = useState(12);
+  const [lifeInsuranceEur, setLifeInsuranceEur] = useState(0);
+  const [propertyInsuranceEur, setPropertyInsuranceEur] = useState(0);
+  const [propertyInsuranceMonth, setPropertyInsuranceMonth] = useState(1);
   const [tuitionAmountEur, setTuitionAmountEur] = useState(0);
   const [tuitionStartMonth, setTuitionStartMonth] = useState(9);
   const [tuitionEndMonth, setTuitionEndMonth] = useState(6);
@@ -406,6 +585,27 @@ export default function Unit19IncomeModal({
       payment_mode: tuitionPaymentMode,
     }),
     [tuitionAmountEur, tuitionStartMonth, tuitionEndMonth, tuitionPaymentMode],
+  );
+
+
+  const unit19CreditConfig = useMemo<Unit19CreditConfig>(
+    () => ({
+      marker: "unit19_credit_v1",
+      payment_eur: Number(creditPaymentEur || 0),
+      start_month: creditStartMonth,
+      end_month: creditEndMonth,
+      life_insurance_eur: Number(lifeInsuranceEur || 0),
+      property_insurance_eur: Number(propertyInsuranceEur || 0),
+      property_insurance_month: propertyInsuranceMonth,
+    }),
+    [
+      creditPaymentEur,
+      creditStartMonth,
+      creditEndMonth,
+      lifeInsuranceEur,
+      propertyInsuranceEur,
+      propertyInsuranceMonth,
+    ],
   );
 
   async function loadIncome(targetYear = year) {
@@ -442,6 +642,14 @@ export default function Unit19IncomeModal({
       setTuitionStartMonth(tuition.start_month);
       setTuitionEndMonth(tuition.end_month);
       setTuitionPaymentMode(tuition.payment_mode);
+
+      const credit = parseUnit19CreditConfig(result.taxReserve?.note);
+      setCreditPaymentEur(credit.payment_eur);
+      setCreditStartMonth(credit.start_month);
+      setCreditEndMonth(credit.end_month);
+      setLifeInsuranceEur(credit.life_insurance_eur);
+      setPropertyInsuranceEur(credit.property_insurance_eur);
+      setPropertyInsuranceMonth(credit.property_insurance_month);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to load income data",
@@ -490,6 +698,13 @@ export default function Unit19IncomeModal({
     return map;
   }, [months]);
 
+  const unit19MonthState = useMemo(() => {
+    const map = new Map<string, Unit19BudgetState>();
+    for (const month of months)
+      map.set(month.id, parseUnit19BudgetState(month.note));
+    return map;
+  }, [months]);
+
   const stats = useMemo(() => {
     const expectedRent = months.reduce(
       (sum, month) => sum + month.rent_expected_eur,
@@ -534,13 +749,34 @@ export default function Unit19IncomeModal({
       return sum + getBudgetTotals(state).expenses;
     }, 0);
 
+    const creditExpected = months.reduce((sum, month) => {
+      const state =
+        unit19MonthState.get(month.id) ?? defaultUnit19BudgetState();
+      return (
+        sum + getCreditExpectedForState(month.month, unit19CreditConfig, state)
+      );
+    }, 0);
+    const creditPaid = months.reduce((sum, month) => {
+      const state =
+        unit19MonthState.get(month.id) ?? defaultUnit19BudgetState();
+      return state.credit_paid
+        ? sum + getCreditExpectedForState(month.month, unit19CreditConfig, state)
+        : sum;
+    }, 0);
+    const unit19TrackedExpenses = months.reduce((sum, month) => {
+      const state =
+        unit19MonthState.get(month.id) ?? defaultUnit19BudgetState();
+      return sum + getUnit19BudgetTotals(state).expenses;
+    }, 0);
+
     return {
       expectedRent,
       collectedRent,
       outstanding: Math.max(expectedRent - collectedRent, 0),
       ownerExpenses: ownerCostTotal,
       estimatedTax,
-      netAfterOwnerCosts: collectedRent - ownerCostTotal - estimatedTax,
+      netAfterOwnerCosts:
+        collectedRent - creditExpected - unit19TrackedExpenses - ownerCostTotal - estimatedTax,
       unpaidMonths,
       tuitionExpected,
       tuitionPaid,
@@ -548,8 +784,19 @@ export default function Unit19IncomeModal({
       northStarExpenses,
       northStarNetEstimate:
         northStarIncome - expectedRent - tuitionExpected - northStarExpenses,
+      creditExpected,
+      creditPaid,
+      unit19TrackedExpenses,
     };
-  }, [months, northStarMonthState, ownerExpenses, taxReserve, tuitionConfig]);
+  }, [
+    months,
+    northStarMonthState,
+    ownerExpenses,
+    taxReserve,
+    tuitionConfig,
+    unit19CreditConfig,
+    unit19MonthState,
+  ]);
 
   async function patchMonth(
     month: ManagedPropertyIncomeMonth,
@@ -584,6 +831,14 @@ export default function Unit19IncomeModal({
     nextState: NorthStarBudgetState,
   ) {
     await patchMonth(month, { note: serializeNorthStarBudgetState(nextState) });
+  }
+
+
+  async function patchUnit19Budget(
+    month: ManagedPropertyIncomeMonth,
+    nextState: Unit19BudgetState,
+  ) {
+    await patchMonth(month, { note: serializeUnit19BudgetState(nextState) });
   }
 
   async function applyRentSchedule() {
@@ -681,9 +936,89 @@ export default function Unit19IncomeModal({
     }
   }
 
+  async function applyCreditSetup() {
+    if (!taxReserve) return;
+
+    try {
+      setSaving(true);
+      setError(null);
+
+      const updatedReserve = await updateManagedPropertyTaxReserve(
+        taxReserve.id,
+        { note: serializeUnit19CreditConfig(unit19CreditConfig) },
+      );
+      setTaxReserve(updatedReserve);
+
+      const patches = months
+        .filter(
+          (month) =>
+            isMonthInRange(month.month, creditStartMonth, creditEndMonth) ||
+            month.month === propertyInsuranceMonth,
+        )
+        .map((month) => {
+          const currentState =
+            unit19MonthState.get(month.id) ?? defaultUnit19BudgetState();
+          const expectedCredit = Number(creditPaymentEur || 0);
+          const nextEntries = { ...(currentState.entries ?? {}) };
+
+          if (lifeInsuranceEur > 0) {
+            nextEntries.life_insurance = {
+              ...(nextEntries.life_insurance ?? {}),
+              checked: true,
+              amount_eur: Number(lifeInsuranceEur || 0),
+            };
+          }
+
+          if (
+            propertyInsuranceEur > 0 &&
+            month.month === propertyInsuranceMonth
+          ) {
+            nextEntries.property_insurance = {
+              ...(nextEntries.property_insurance ?? {}),
+              checked: true,
+              amount_eur: Number(propertyInsuranceEur || 0),
+            };
+          }
+
+          return {
+            id: month.id,
+            patch: {
+              note: serializeUnit19BudgetState({
+                ...currentState,
+                credit_expected_eur: expectedCredit,
+                credit_paid:
+                  expectedCredit > 0 ? currentState.credit_paid : false,
+                entries: nextEntries,
+              }),
+            },
+          };
+        });
+
+      if (patches.length > 0) {
+        const updatedMonths = await updateManagedPropertyIncomeMonths(patches);
+        setMonths((current) =>
+          current.map(
+            (month) =>
+              updatedMonths.find((item) => item.id === month.id) ?? month,
+          ),
+        );
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to save credit setup",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function applyPrimarySchedule() {
     await applyRentSchedule();
-    if (isNorthStarWorkspace) await applyTuitionSetup();
+    if (isNorthStarWorkspace) {
+      await applyTuitionSetup();
+    } else {
+      await applyCreditSetup();
+    }
   }
 
   async function markRentPaid(month: ManagedPropertyIncomeMonth) {
@@ -703,6 +1038,18 @@ export default function Unit19IncomeModal({
     await patchNorthStarBudget(month, {
       ...state,
       tuition_paid: !state.tuition_paid,
+    });
+  }
+
+
+  async function markCreditPaid(month: ManagedPropertyIncomeMonth) {
+    const state =
+      unit19MonthState.get(month.id) ?? defaultUnit19BudgetState();
+    const nextPaid = !state.credit_paid;
+    await patchUnit19Budget(month, {
+      ...state,
+      credit_paid: nextPaid,
+      credit_paid_date: nextPaid ? state.credit_paid_date || todayIso() : null,
     });
   }
 
@@ -778,17 +1125,13 @@ export default function Unit19IncomeModal({
 
   if (!open) return null;
 
-  const cockpitLabel = isNorthStarWorkspace
-    ? "Budget cockpit · DB live"
-    : "Income cockpit · DB live";
-  const titleLabel = isNorthStarWorkspace
-    ? `${projectLabel} Budget`
-    : `${projectLabel} Income`;
+  const cockpitLabel = "Budget cockpit · DB live";
+  const titleLabel = `${projectLabel} Budget`;
   const applyLabel = saving
     ? "Saving..."
     : isNorthStarWorkspace
       ? "Apply schedules"
-      : "Apply rent schedule";
+      : "Apply schedules";
 
   return (
     <div className="fixed inset-0 z-[90] overflow-hidden px-3 py-3 sm:px-5">
@@ -824,7 +1167,7 @@ export default function Unit19IncomeModal({
               <Unit19ModalSwitcher
                 activePanel="income"
                 onSwitchPanel={onSwitchPanel}
-                incomeLabel={isNorthStarWorkspace ? "Budget" : "Income"}
+                incomeLabel="Budget"
               />
               <div className="inline-flex items-center gap-1 rounded-[13px] border border-white/[0.76] bg-white/[0.48] p-1">
                 <button
@@ -913,32 +1256,33 @@ export default function Unit19IncomeModal({
             ) : (
               <>
                 <StatCard
-                  label="Expected rent"
-                  value={formatEur(stats.expectedRent)}
-                  detail={`${year} schedule`}
-                />
-                <StatCard
-                  label="Collected"
+                  label="Rent"
                   value={formatEur(stats.collectedRent)}
-                  detail="paid rent"
-                  tone="ok"
+                  detail={`${formatEur(stats.expectedRent)} scheduled`}
+                  tone={stats.expectedRent > stats.collectedRent ? "warn" : "ok"}
                 />
                 <StatCard
-                  label="Outstanding"
-                  value={formatEur(stats.outstanding)}
-                  detail={`${stats.unpaidMonths} unpaid months`}
-                  tone={stats.outstanding > 0 ? "warn" : "ok"}
+                  label="Credit"
+                  value={formatEur(stats.creditPaid)}
+                  detail={`${formatEur(stats.creditExpected)} scheduled`}
+                  tone={stats.creditExpected > stats.creditPaid ? "warn" : "ok"}
                 />
                 <StatCard
-                  label="Owner expenses"
-                  value={formatEur(stats.ownerExpenses)}
-                  detail="not tenant utilities"
+                  label="Owner costs"
+                  value={formatEur(stats.ownerExpenses + stats.unit19TrackedExpenses)}
+                  detail="utilities, insurance, repairs"
                   tone="base"
+                />
+                <StatCard
+                  label="Tax reserve"
+                  value={formatEur(stats.estimatedTax)}
+                  detail="estimated from paid rent"
+                  tone={isTaxDue(taxReserve) ? "warn" : "base"}
                 />
                 <StatCard
                   label="Net estimate"
                   value={formatEur(stats.netAfterOwnerCosts)}
-                  detail="after tax reserve"
+                  detail="rent minus credit and costs"
                   tone={stats.netAfterOwnerCosts >= 0 ? "ok" : "warn"}
                 />
               </>
@@ -948,18 +1292,45 @@ export default function Unit19IncomeModal({
 
         <div className="relative grid min-h-0 flex-1 overflow-hidden lg:grid-cols-[258px_minmax(0,1fr)_330px]">
           <aside className="h-full min-h-0 overflow-y-auto overscroll-contain border-b border-white/[0.65] bg-white/[0.42] p-3.5 lg:border-b-0 lg:border-r">
-            <ScheduleSetupCard
-              title="Rent setup"
-              year={year}
-              amountLabel="Monthly rent"
-              amount={monthlyRentEur}
-              startMonth={rentStartMonth}
-              endMonth={rentEndMonth}
-              onYearChange={(value) => void changeYear(value)}
-              onAmountChange={setMonthlyRentEur}
-              onStartMonthChange={setRentStartMonth}
-              onEndMonthChange={setRentEndMonth}
-            />
+            {isNorthStarWorkspace ? (
+              <ScheduleSetupCard
+                title="Rent setup"
+                year={year}
+                amountLabel="Monthly rent"
+                amount={monthlyRentEur}
+                startMonth={rentStartMonth}
+                endMonth={rentEndMonth}
+                onYearChange={(value) => void changeYear(value)}
+                onAmountChange={setMonthlyRentEur}
+                onStartMonthChange={setRentStartMonth}
+                onEndMonthChange={setRentEndMonth}
+              />
+            ) : (
+              <Unit19SetupPanel
+                mode={setupMode}
+                onModeChange={setSetupMode}
+                year={year}
+                rentAmount={monthlyRentEur}
+                rentStartMonth={rentStartMonth}
+                rentEndMonth={rentEndMonth}
+                creditAmount={creditPaymentEur}
+                creditStartMonth={creditStartMonth}
+                creditEndMonth={creditEndMonth}
+                lifeInsuranceAmount={lifeInsuranceEur}
+                propertyInsuranceAmount={propertyInsuranceEur}
+                propertyInsuranceMonth={propertyInsuranceMonth}
+                onYearChange={(value) => void changeYear(value)}
+                onRentAmountChange={setMonthlyRentEur}
+                onRentStartMonthChange={setRentStartMonth}
+                onRentEndMonthChange={setRentEndMonth}
+                onCreditAmountChange={setCreditPaymentEur}
+                onCreditStartMonthChange={setCreditStartMonth}
+                onCreditEndMonthChange={setCreditEndMonth}
+                onLifeInsuranceAmountChange={setLifeInsuranceEur}
+                onPropertyInsuranceAmountChange={setPropertyInsuranceEur}
+                onPropertyInsuranceMonthChange={setPropertyInsuranceMonth}
+              />
+            )}
 
             {isNorthStarWorkspace ? (
               <div className="mt-2.5">
@@ -1014,6 +1385,14 @@ export default function Unit19IncomeModal({
                     tuitionConfig,
                     northStarState,
                   );
+                  const unit19State =
+                    unit19MonthState.get(month.id) ?? defaultUnit19BudgetState();
+                  const unit19Totals = getUnit19BudgetTotals(unit19State);
+                  const creditExpected = getCreditExpectedForState(
+                    month.month,
+                    unit19CreditConfig,
+                    unit19State,
+                  );
 
                   return (
                     <button
@@ -1059,19 +1438,21 @@ export default function Unit19IncomeModal({
                       <div className="mt-3 grid grid-cols-2 gap-2">
                         <div className="rounded-xl border border-[#ccd9e8] bg-white/[0.52] px-2.5 py-2">
                           <div className="text-[9px] uppercase tracking-[0.12em] text-[#7a90a8]">
-                            {isNorthStarWorkspace ? "Rent" : "Expected"}
+                            {isNorthStarWorkspace ? "Rent" : "Rent"}
                           </div>
                           <div className="mt-1 text-[15px] font-semibold text-[#0b1623]">
                             {formatEur(
                               isNorthStarWorkspace
                                 ? month.rent_paid_eur
-                                : month.rent_expected_eur,
+                                : month.rent_status === "paid"
+                                  ? month.rent_paid_eur
+                                  : month.rent_expected_eur,
                             )}
                           </div>
                         </div>
                         <div className="rounded-xl border border-[#ccd9e8] bg-white/[0.52] px-2.5 py-2">
                           <div className="text-[9px] uppercase tracking-[0.12em] text-[#7a90a8]">
-                            {isNorthStarWorkspace ? "Tuition" : "Paid"}
+                            {isNorthStarWorkspace ? "Tuition" : "Credit"}
                           </div>
                           <div className="mt-1 text-[15px] font-semibold text-[#0b1623]">
                             {formatEur(
@@ -1079,7 +1460,9 @@ export default function Unit19IncomeModal({
                                 ? northStarState.tuition_paid
                                   ? tuitionExpected
                                   : 0
-                                : month.rent_paid_eur,
+                                : unit19State.credit_paid
+                                  ? creditExpected
+                                  : creditExpected,
                             )}
                           </div>
                         </div>
@@ -1110,22 +1493,23 @@ export default function Unit19IncomeModal({
                         ) : (
                           <>
                             <span className="rounded-full border border-[#ccd9e8] bg-white/[0.52] px-2 py-0.5 text-[10px] text-[#607993]">
-                              Utilities {utilityCount}/4
+                              Checks {unit19Totals.checkedCount}/
+                              {unit19BudgetEntries.length}
                             </span>
+                            {unit19Totals.expenses > 0 ? (
+                              <span className="rounded-full border border-[#cfa090]/[0.24] bg-[#cfa090]/[0.08] px-2 py-0.5 text-[10px] text-[#8c5947]">
+                                -{formatEur(unit19Totals.expenses)}
+                              </span>
+                            ) : null}
                             {ownerCostTotal > 0 ? (
                               <span className="rounded-full border border-[#cfa090]/[0.24] bg-[#cfa090]/[0.08] px-2 py-0.5 text-[10px] text-[#8c5947]">
-                                Owner costs {formatEur(ownerCostTotal)}
+                                Owner {formatEur(ownerCostTotal)}
                               </span>
                             ) : null}
                           </>
                         )}
                       </div>
 
-                      {!isNorthStarWorkspace && month.note ? (
-                        <div className="mt-2 line-clamp-2 text-[11px] leading-4 text-[#7a90a8]">
-                          {month.note}
-                        </div>
-                      ) : null}
                     </button>
                   );
                 })}
@@ -1159,8 +1543,20 @@ export default function Unit19IncomeModal({
                 <MonthDetails
                   month={selected}
                   ownerExpenses={expensesByMonthId.get(selected.id) ?? []}
+                  detailsMode={detailsMode}
+                  onDetailsModeChange={setDetailsMode}
+                  budgetState={
+                    unit19MonthState.get(selected.id) ?? defaultUnit19BudgetState()
+                  }
+                  creditExpected={getCreditExpectedForState(
+                    selected.month,
+                    unit19CreditConfig,
+                    unit19MonthState.get(selected.id) ?? defaultUnit19BudgetState(),
+                  )}
                   onTogglePaid={() => void markRentPaid(selected)}
+                  onToggleCreditPaid={() => void markCreditPaid(selected)}
                   onPatch={(patch) => void patchMonth(selected, patch)}
+                  onPatchBudget={(state) => void patchUnit19Budget(selected, state)}
                   onToggleUtility={(key) => void toggleUtility(selected, key)}
                   onAddExpense={() =>
                     setExpenseDraft({
@@ -1259,6 +1655,199 @@ function MonthSelect({
         </option>
       ))}
     </select>
+  );
+}
+
+function Unit19SetupPanel({
+  mode,
+  onModeChange,
+  year,
+  rentAmount,
+  rentStartMonth,
+  rentEndMonth,
+  creditAmount,
+  creditStartMonth,
+  creditEndMonth,
+  lifeInsuranceAmount,
+  propertyInsuranceAmount,
+  propertyInsuranceMonth,
+  onYearChange,
+  onRentAmountChange,
+  onRentStartMonthChange,
+  onRentEndMonthChange,
+  onCreditAmountChange,
+  onCreditStartMonthChange,
+  onCreditEndMonthChange,
+  onLifeInsuranceAmountChange,
+  onPropertyInsuranceAmountChange,
+  onPropertyInsuranceMonthChange,
+}: {
+  mode: "rent" | "credit";
+  onModeChange: (mode: "rent" | "credit") => void;
+  year: number;
+  rentAmount: number;
+  rentStartMonth: number;
+  rentEndMonth: number;
+  creditAmount: number;
+  creditStartMonth: number;
+  creditEndMonth: number;
+  lifeInsuranceAmount: number;
+  propertyInsuranceAmount: number;
+  propertyInsuranceMonth: number;
+  onYearChange: (year: number) => void;
+  onRentAmountChange: (value: number) => void;
+  onRentStartMonthChange: (value: number) => void;
+  onRentEndMonthChange: (value: number) => void;
+  onCreditAmountChange: (value: number) => void;
+  onCreditStartMonthChange: (value: number) => void;
+  onCreditEndMonthChange: (value: number) => void;
+  onLifeInsuranceAmountChange: (value: number) => void;
+  onPropertyInsuranceAmountChange: (value: number) => void;
+  onPropertyInsuranceMonthChange: (value: number) => void;
+}) {
+  return (
+    <div className="rounded-[16px] border border-white/[0.78] bg-white/[0.58] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <div className="text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">
+          {mode === "rent" ? "Rent setup" : "Credit setup"}
+        </div>
+        <select
+          value={mode}
+          onChange={(event) => onModeChange(event.target.value as "rent" | "credit")}
+          className="rounded-xl border border-[#ccd9e8] bg-white/[0.76] px-2 py-1 text-[11px] font-semibold text-[#4e6880] outline-none transition focus:border-[#2f80ed] focus:ring-2 focus:ring-[#2f80ed]/[0.12]"
+        >
+          <option value="rent">Rent setup</option>
+          <option value="credit">Credit setup</option>
+        </select>
+      </div>
+
+      {mode === "rent" ? (
+        <div className="space-y-2">
+          <Field label="Year">
+            <input
+              type="number"
+              value={year}
+              min={MIN_YEAR}
+              onChange={(event) => onYearChange(Number(event.target.value || DEFAULT_YEAR))}
+              className={inputClass}
+            />
+          </Field>
+          <Field label="Monthly rent">
+            <input
+              type="number"
+              value={rentAmount}
+              onChange={(event) => onRentAmountChange(Number(event.target.value || 0))}
+              className={inputClass}
+            />
+          </Field>
+          <div className="grid grid-cols-2 gap-2">
+            <Field label="From">
+              <select
+                value={rentStartMonth}
+                onChange={(event) => onRentStartMonthChange(Number(event.target.value))}
+                className={inputClass}
+              >
+                {monthLabels.map((label, index) => (
+                  <option key={label} value={index + 1}>
+                    {label.slice(0, 3)}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="To">
+              <select
+                value={rentEndMonth}
+                onChange={(event) => onRentEndMonthChange(Number(event.target.value))}
+                className={inputClass}
+              >
+                {monthLabels.map((label, index) => (
+                  <option key={label} value={index + 1}>
+                    {label.slice(0, 3)}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <Field label="Year">
+            <input
+              type="number"
+              value={year}
+              min={MIN_YEAR}
+              onChange={(event) => onYearChange(Number(event.target.value || DEFAULT_YEAR))}
+              className={inputClass}
+            />
+          </Field>
+          <Field label="Monthly credit payment">
+            <input
+              type="number"
+              value={creditAmount}
+              onChange={(event) => onCreditAmountChange(Number(event.target.value || 0))}
+              className={inputClass}
+            />
+          </Field>
+          <div className="grid grid-cols-2 gap-2">
+            <Field label="From">
+              <select
+                value={creditStartMonth}
+                onChange={(event) => onCreditStartMonthChange(Number(event.target.value))}
+                className={inputClass}
+              >
+                {monthLabels.map((label, index) => (
+                  <option key={label} value={index + 1}>
+                    {label.slice(0, 3)}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="To">
+              <select
+                value={creditEndMonth}
+                onChange={(event) => onCreditEndMonthChange(Number(event.target.value))}
+                className={inputClass}
+              >
+                {monthLabels.map((label, index) => (
+                  <option key={label} value={index + 1}>
+                    {label.slice(0, 3)}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+          <Field label="Life insurance / month">
+            <input
+              type="number"
+              value={lifeInsuranceAmount}
+              onChange={(event) => onLifeInsuranceAmountChange(Number(event.target.value || 0))}
+              className={inputClass}
+            />
+          </Field>
+          <Field label="Property insurance / year">
+            <input
+              type="number"
+              value={propertyInsuranceAmount}
+              onChange={(event) => onPropertyInsuranceAmountChange(Number(event.target.value || 0))}
+              className={inputClass}
+            />
+          </Field>
+          <Field label="Property insurance month">
+            <select
+              value={propertyInsuranceMonth}
+              onChange={(event) => onPropertyInsuranceMonthChange(Number(event.target.value))}
+              className={inputClass}
+            >
+              {monthLabels.map((label, index) => (
+                <option key={label} value={index + 1}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -1418,20 +2007,46 @@ function TaxReservePanel({
 function MonthDetails({
   month,
   ownerExpenses,
+  detailsMode,
+  onDetailsModeChange,
+  budgetState,
+  creditExpected,
   onTogglePaid,
+  onToggleCreditPaid,
   onPatch,
+  onPatchBudget,
   onToggleUtility,
   onAddExpense,
   onDeleteExpense,
 }: {
   month: ManagedPropertyIncomeMonth;
   ownerExpenses: ManagedPropertyIncomeOwnerExpense[];
+  detailsMode: "rent" | "credit";
+  onDetailsModeChange: (mode: "rent" | "credit") => void;
+  budgetState: Unit19BudgetState;
+  creditExpected: number;
   onTogglePaid: () => void;
+  onToggleCreditPaid: () => void;
   onPatch: (patch: ManagedPropertyIncomeMonthPatch) => void;
+  onPatchBudget: (state: Unit19BudgetState) => void;
   onToggleUtility: (key: UtilityKey) => void;
   onAddExpense: () => void;
   onDeleteExpense: (id: string) => void;
 }) {
+  function patchEntry(
+    key: Unit19BudgetKey,
+    patch: { checked?: boolean; amount_eur?: number },
+  ) {
+    const currentEntry = budgetState.entries?.[key] ?? {};
+    onPatchBudget({
+      ...budgetState,
+      entries: {
+        ...(budgetState.entries ?? {}),
+        [key]: { ...currentEntry, ...patch },
+      },
+    });
+  }
+
   return (
     <div className="space-y-2.5">
       <div className="rounded-[16px] border border-white/[0.78] bg-white/[0.58] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
@@ -1442,7 +2057,7 @@ function MonthDetails({
           {monthLabels[month.month - 1]}
         </div>
         <div className="mt-1 text-[11px] text-[#7a90a8]">
-          Rent and operational checks
+          Rent, credit and owner budget checks
         </div>
 
         <button
@@ -1458,77 +2073,143 @@ function MonthDetails({
         >
           {month.rent_status === "paid" ? "Rent paid" : "Mark rent paid"}
         </button>
+
+        <button
+          type="button"
+          onClick={onToggleCreditPaid}
+          disabled={creditExpected <= 0}
+          className={[
+            "mt-2 w-full rounded-xl border px-3 py-2 text-[12px] font-semibold transition hover:-translate-y-0.5 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50",
+            budgetState.credit_paid
+              ? "border-[#20a76b]/[0.24] bg-[#20a76b]/[0.08] text-[#0f7448]"
+              : "border-[#cfa090]/[0.24] bg-[#cfa090]/[0.08] text-[#8c5947]",
+          ].join(" ")}
+        >
+          {budgetState.credit_paid
+            ? `Credit paid · ${formatEur(creditExpected)}`
+            : `Mark credit paid · ${formatEur(creditExpected)}`}
+        </button>
+      </div>
+
+      <div className="rounded-[16px] border border-white/[0.78] bg-white/[0.58] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <div className="text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">
+            {detailsMode === "rent" ? "Rent details" : "Credit details"}
+          </div>
+          <select
+            value={detailsMode}
+            onChange={(event) =>
+              onDetailsModeChange(event.target.value as "rent" | "credit")
+            }
+            className="rounded-xl border border-[#ccd9e8] bg-white/[0.76] px-2 py-1 text-[11px] font-semibold text-[#4e6880] outline-none transition focus:border-[#2f80ed] focus:ring-2 focus:ring-[#2f80ed]/[0.12]"
+          >
+            <option value="rent">Rent details</option>
+            <option value="credit">Credit details</option>
+          </select>
+        </div>
+
+        {detailsMode === "rent" ? (
+          <>
+            <div className="grid grid-cols-2 gap-2">
+              <Field label="Expected">
+                <input
+                  type="number"
+                  value={month.rent_expected_eur}
+                  onChange={(event) => {
+                    const expected = Number(event.target.value || 0);
+                    onPatch({
+                      rent_expected_eur: expected,
+                      rent_status: deriveRentStatus(expected, month.rent_paid_eur),
+                    });
+                  }}
+                  className={inputClass}
+                />
+              </Field>
+              <Field label="Paid">
+                <input
+                  type="number"
+                  value={month.rent_paid_eur}
+                  onChange={(event) => {
+                    const paid = Number(event.target.value || 0);
+                    onPatch({
+                      rent_paid_eur: paid,
+                      rent_status: deriveRentStatus(month.rent_expected_eur, paid),
+                    });
+                  }}
+                  className={inputClass}
+                />
+              </Field>
+            </div>
+            <div className="mt-2">
+              <Field label="Paid date">
+                <AdminDatePicker
+                  value={month.rent_paid_date ?? ""}
+                  onChange={(date) => onPatch({ rent_paid_date: date })}
+                />
+              </Field>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-2">
+              <Field label="Expected">
+                <input
+                  type="number"
+                  value={creditExpected}
+                  onChange={(event) =>
+                    onPatchBudget({
+                      ...budgetState,
+                      credit_expected_eur: Number(event.target.value || 0),
+                    })
+                  }
+                  className={inputClass}
+                />
+              </Field>
+              <Field label="Paid">
+                <input
+                  type="number"
+                  value={budgetState.credit_paid ? creditExpected : 0}
+                  readOnly
+                  className={inputClass}
+                />
+              </Field>
+            </div>
+            <div className="mt-2">
+              <Field label="Paid date">
+                <AdminDatePicker
+                  value={budgetState.credit_paid_date ?? ""}
+                  onChange={(date) =>
+                    onPatchBudget({ ...budgetState, credit_paid_date: date })
+                  }
+                />
+              </Field>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="rounded-[16px] border border-white/[0.78] bg-white/[0.58] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
         <div className="mb-2 text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">
-          Rent details
+          Utilities / Insurance
         </div>
-        <div className="grid grid-cols-2 gap-2">
-          <Field label="Expected">
-            <input
-              type="number"
-              value={month.rent_expected_eur}
-              onChange={(event) => {
-                const expected = Number(event.target.value || 0);
-                onPatch({
-                  rent_expected_eur: expected,
-                  rent_status: deriveRentStatus(expected, month.rent_paid_eur),
+        <div className="space-y-1.5">
+          {unit19BudgetEntries.map((entry) => (
+            <Unit19BudgetEntryRow
+              key={entry.key}
+              entry={entry}
+              checked={getUnit19BudgetChecked(budgetState, entry.key)}
+              amount={getUnit19BudgetAmount(budgetState, entry.key)}
+              onToggle={() => {
+                if (entry.defaultCheckedFrom) onToggleUtility(entry.defaultCheckedFrom);
+                patchEntry(entry.key, {
+                  checked: !getUnit19BudgetChecked(budgetState, entry.key),
                 });
               }}
-              className={inputClass}
+              onAmountChange={(amount) =>
+                patchEntry(entry.key, { amount_eur: amount })
+              }
             />
-          </Field>
-          <Field label="Paid">
-            <input
-              type="number"
-              value={month.rent_paid_eur}
-              onChange={(event) => {
-                const paid = Number(event.target.value || 0);
-                onPatch({
-                  rent_paid_eur: paid,
-                  rent_status: deriveRentStatus(month.rent_expected_eur, paid),
-                });
-              }}
-              className={inputClass}
-            />
-          </Field>
-        </div>
-        <div className="mt-2">
-          <Field label="Paid date">
-            <AdminDatePicker
-              value={month.rent_paid_date ?? ""}
-              onChange={(date) => onPatch({ rent_paid_date: date })}
-            />
-          </Field>
-        </div>
-      </div>
-
-      <div className="rounded-[16px] border border-white/[0.78] bg-white/[0.58] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
-        <div className="mb-2 text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">
-          Utilities status
-        </div>
-        <div className="grid grid-cols-2 gap-1.5">
-          {utilityOrder.map((key) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => onToggleUtility(key)}
-              className={[
-                "rounded-xl border px-2 py-2 text-left text-[11px] font-semibold transition hover:-translate-y-0.5 active:scale-[0.98]",
-                month[key]
-                  ? "border-[#20a76b]/[0.24] bg-[#20a76b]/[0.08] text-[#0f7448]"
-                  : "border-[#ccd9e8] bg-white/[0.56] text-[#607993]",
-              ].join(" ")}
-            >
-              {month[key] ? "✓ " : "○ "}
-              {utilityLabels[key]}
-            </button>
           ))}
-        </div>
-        <div className="mt-2 text-[10.5px] leading-4 text-[#7a90a8]">
-          Utilities are tracked as control checks only. They are not counted as
-          owner expenses.
         </div>
       </div>
 
@@ -1575,19 +2256,6 @@ function MonthDetails({
             ))
           )}
         </div>
-      </div>
-
-      <div className="rounded-[16px] border border-white/[0.78] bg-white/[0.58] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
-        <div className="mb-2 text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">
-          Note
-        </div>
-        <textarea
-          value={month.note ?? ""}
-          onChange={(event) => onPatch({ note: event.target.value })}
-          rows={3}
-          className={`${inputClass} resize-none`}
-          placeholder="Month note"
-        />
       </div>
     </div>
   );
@@ -1729,6 +2397,46 @@ function NorthStarMonthDetails({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function Unit19BudgetEntryRow({
+  entry,
+  checked,
+  amount,
+  onToggle,
+  onAmountChange,
+}: {
+  entry: Unit19BudgetEntry;
+  checked: boolean;
+  amount: number;
+  onToggle: () => void;
+  onAmountChange: (amount: number) => void;
+}) {
+  return (
+    <div className="grid grid-cols-[minmax(0,1fr)_88px] gap-1.5">
+      <button
+        type="button"
+        onClick={onToggle}
+        className={[
+          "rounded-xl border px-2 py-2 text-left text-[11px] font-semibold transition hover:-translate-y-0.5 active:scale-[0.98]",
+          checked
+            ? "border-[#20a76b]/[0.24] bg-[#20a76b]/[0.08] text-[#0f7448]"
+            : "border-[#ccd9e8] bg-white/[0.56] text-[#607993]",
+        ].join(" ")}
+      >
+        {checked ? "✓ " : "○ "}
+        {entry.label}
+      </button>
+      <input
+        key={`${entry.key}-${amount}`}
+        type="number"
+        defaultValue={amount || ""}
+        onBlur={(event) => onAmountChange(Number(event.target.value || 0))}
+        className="rounded-xl border border-[#ccd9e8] bg-white/[0.76] px-2 py-2 text-[11px] text-[#0b1623] outline-none transition focus:border-[#2f80ed] focus:ring-2 focus:ring-[#2f80ed]/[0.12]"
+        placeholder="€"
+      />
     </div>
   );
 }
