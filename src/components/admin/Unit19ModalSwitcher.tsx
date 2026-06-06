@@ -12,7 +12,7 @@ type Props = {
 const panels: Array<{ key: Unit19PanelKey; label: string; className: string; activeClassName: string }> = [
     {
         key: "realEstate",
-        label: "Real Estate",
+        label: "Property",
         className: "border-[#0f2a47]/[0.20] bg-[#0f2a47]/[0.07] text-[#0f2a47] hover:border-[#0f2a47]/[0.34] hover:bg-[#0f2a47]/[0.12]",
         activeClassName: "border-[#0f2a47]/[0.38] bg-[#0f2a47]/[0.14] text-[#0f1c2e] shadow-[0_10px_24px_rgba(15,42,71,0.13)]",
     },
@@ -46,7 +46,7 @@ export default function Unit19ModalSwitcher({ activePanel, onSwitchPanel, income
     if (!onSwitchPanel) return null;
 
     return (
-        <div className="flex flex-wrap items-center justify-end gap-1.5 rounded-[15px] border border-white/[0.74] bg-white/[0.44] p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.84)]">
+        <div className="flex flex-nowrap items-center justify-end gap-1.5 rounded-[15px] border border-white/[0.74] bg-white/[0.44] p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.84)]">
             {panels.filter((panel) => showRealEstate || panel.key !== "realEstate").map((panel) => {
                 const active = panel.key === activePanel;
 
@@ -57,7 +57,7 @@ export default function Unit19ModalSwitcher({ activePanel, onSwitchPanel, income
                         onClick={() => onSwitchPanel(panel.key)}
                         disabled={active}
                         className={[
-                            "rounded-[11px] border px-2.5 py-1.5 text-[10.5px] font-semibold transition-all duration-200 active:scale-[0.97] disabled:cursor-default",
+                            "rounded-[11px] border px-2 py-1.5 text-[10px] font-semibold transition-all duration-200 active:scale-[0.97] disabled:cursor-default",
                             active ? panel.activeClassName : panel.className,
                         ].join(" ")}
                     >

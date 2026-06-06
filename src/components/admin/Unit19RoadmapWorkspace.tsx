@@ -306,16 +306,16 @@ type Props = {
 };
 
 const TOP_FILTERS: { mode: FilterMode; label: string }[] = [
-    { mode: "all", label: "Full Journey" },
-    { mode: "current", label: "Current Focus" },
+    { mode: "all", label: "Journey" },
+    { mode: "current", label: "Current" },
     { mode: "upcoming", label: "Upcoming" },
-    { mode: "completed", label: "Completed" },
+    { mode: "completed", label: "Done" },
 ];
 
 const SIDEBAR_FILTERS: { mode: FocusStatus; label: string }[] = [
     { mode: "current", label: "Current" },
     { mode: "upcoming", label: "Upcoming" },
-    { mode: "completed", label: "Completed" },
+    { mode: "completed", label: "Done" },
 ];
 
 function matchesFocusedStatus(stageStatus: RoadmapStageStatus, focusedStatus: FocusStatus) {
@@ -1020,7 +1020,7 @@ export default function Unit19RoadmapWorkspace({
                                 type="button"
                                 onClick={() => void addStage()}
                                 disabled={saving || !managedPropertyId}
-                                className="group flex w-full flex-col items-center justify-center gap-1 rounded-2xl border border-[#20a76b]/[0.26] bg-[#20a76b]/[0.09] px-2 py-2.5 text-[10px] font-semibold text-[#0f7448] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#20a76b]/[0.38] hover:bg-[#20a76b]/[0.14] hover:text-[#0f1c2e] hover:shadow-[0_10px_24px_rgba(32,167,107,0.12)] disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.96]"
+                                className="group flex w-full flex-col items-center justify-center gap-1 rounded-2xl border border-[#20a76b]/[0.26] bg-[#20a76b]/[0.09] px-2 py-2.5 text-[10px] font-semibold whitespace-nowrap text-[#0f7448] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#20a76b]/[0.38] hover:bg-[#20a76b]/[0.14] hover:text-[#0f1c2e] hover:shadow-[0_10px_24px_rgba(32,167,107,0.12)] disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.96]"
                             >
                                 <IconPlus c="h-4 w-4" />
                                 Stage
@@ -1174,7 +1174,7 @@ export default function Unit19RoadmapWorkspace({
                                 </p>
                             </div>
 
-                            <div className="flex flex-wrap items-center gap-2 rounded-[18px] border border-white/[0.78] bg-white/[0.44] p-1.5 shadow-[0_12px_36px_rgba(41,73,112,0.08),inset_0_1px_0_rgba(255,255,255,0.92)] backdrop-blur-2xl xl:flex-nowrap">
+                            <div className="flex max-w-full flex-nowrap items-center gap-1.5 overflow-x-auto rounded-[18px] border border-white/[0.78] bg-white/[0.44] p-1.5 shadow-[0_12px_36px_rgba(41,73,112,0.08),inset_0_1px_0_rgba(255,255,255,0.92)] backdrop-blur-2xl">
                                 {TOP_FILTERS.map(({ mode, label }) => {
                                     const active = filterMode === mode;
 
@@ -1188,7 +1188,7 @@ export default function Unit19RoadmapWorkspace({
                                             }}
                                             aria-pressed={active}
                                             className={[
-                                                "relative overflow-hidden rounded-[13px] border px-4 py-2.5 text-[12px] font-semibold transition-all duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f80ed]/40 active:scale-[0.96]",
+                                                "relative overflow-hidden rounded-[12px] border px-3 py-2 text-[11px] font-semibold whitespace-nowrap transition-all duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f80ed]/40 active:scale-[0.96]",
                                                 active
                                                     ? "border-[#2f80ed]/[0.38] bg-[#2f80ed] text-white shadow-[0_12px_28px_rgba(47,128,237,0.28)]"
                                                     : "border-transparent bg-white/[0.38] text-[#4e6880] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] hover:-translate-y-0.5 hover:border-white/[0.88] hover:bg-white/[0.78] hover:text-[#0f1c2e] hover:shadow-[0_10px_24px_rgba(41,73,112,0.10)]",
@@ -1208,16 +1208,16 @@ export default function Unit19RoadmapWorkspace({
                                     <button
                                         type="button"
                                         onClick={() => switchPanel("realEstate")}
-                                        className="relative overflow-hidden rounded-[13px] border border-[#0f2a47]/[0.22] bg-[#0f2a47]/[0.08] px-4 py-2.5 text-[12px] font-semibold text-[#0f2a47] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-[#0f2a47]/[0.36] hover:bg-[#0f2a47]/[0.13] hover:text-[#0f1c2e] hover:shadow-[0_12px_30px_rgba(15,42,71,0.14)] active:scale-[0.96]"
+                                        className="relative overflow-hidden rounded-[12px] border border-[#0f2a47]/[0.22] bg-[#0f2a47]/[0.08] px-3 py-2 text-[11px] font-semibold whitespace-nowrap text-[#0f2a47] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-[#0f2a47]/[0.36] hover:bg-[#0f2a47]/[0.13] hover:text-[#0f1c2e] hover:shadow-[0_12px_30px_rgba(15,42,71,0.14)] active:scale-[0.96]"
                                     >
-                                        Real Estate
+                                        Property
                                     </button>
                                 ) : null}
 
                                 <button
                                     type="button"
                                     onClick={() => switchPanel("expenses")}
-                                    className="relative overflow-hidden rounded-[13px] border border-[#a68b4a]/[0.28] bg-[#a68b4a]/[0.10] px-4 py-2.5 text-[12px] font-semibold text-[#7a6228] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-[#a68b4a]/[0.42] hover:bg-[#a68b4a]/[0.16] hover:text-[#0f1c2e] hover:shadow-[0_12px_30px_rgba(166,139,74,0.18)] active:scale-[0.96]"
+                                    className="relative overflow-hidden rounded-[12px] border border-[#a68b4a]/[0.28] bg-[#a68b4a]/[0.10] px-3 py-2 text-[11px] font-semibold whitespace-nowrap text-[#7a6228] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-[#a68b4a]/[0.42] hover:bg-[#a68b4a]/[0.16] hover:text-[#0f1c2e] hover:shadow-[0_12px_30px_rgba(166,139,74,0.18)] active:scale-[0.96]"
                                 >
                                     Expenses
                                 </button>
@@ -1225,7 +1225,7 @@ export default function Unit19RoadmapWorkspace({
                                 <button
                                     type="button"
                                     onClick={() => switchPanel("documents")}
-                                    className="relative overflow-hidden rounded-[13px] border border-[#2f80ed]/[0.26] bg-[#2f80ed]/[0.09] px-4 py-2.5 text-[12px] font-semibold text-[#1560bc] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-[#2f80ed]/[0.40] hover:bg-[#2f80ed]/[0.14] hover:text-[#0f1c2e] hover:shadow-[0_12px_30px_rgba(47,128,237,0.16)] active:scale-[0.96]"
+                                    className="relative overflow-hidden rounded-[12px] border border-[#2f80ed]/[0.26] bg-[#2f80ed]/[0.09] px-3 py-2 text-[11px] font-semibold whitespace-nowrap text-[#1560bc] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-[#2f80ed]/[0.40] hover:bg-[#2f80ed]/[0.14] hover:text-[#0f1c2e] hover:shadow-[0_12px_30px_rgba(47,128,237,0.16)] active:scale-[0.96]"
                                 >
                                     Documents
                                 </button>
@@ -1233,7 +1233,7 @@ export default function Unit19RoadmapWorkspace({
                                 <button
                                     type="button"
                                     onClick={() => switchPanel("income")}
-                                    className="relative overflow-hidden rounded-[13px] border border-[#20a76b]/[0.24] bg-[#20a76b]/[0.08] px-4 py-2.5 text-[12px] font-semibold text-[#0f7448] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-[#20a76b]/[0.34] hover:bg-[#20a76b]/[0.13] hover:text-[#0f1c2e] hover:shadow-[0_12px_30px_rgba(32,167,107,0.14)] active:scale-[0.96]"
+                                    className="relative overflow-hidden rounded-[12px] border border-[#20a76b]/[0.24] bg-[#20a76b]/[0.08] px-3 py-2 text-[11px] font-semibold whitespace-nowrap text-[#0f7448] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-[#20a76b]/[0.34] hover:bg-[#20a76b]/[0.13] hover:text-[#0f1c2e] hover:shadow-[0_12px_30px_rgba(32,167,107,0.14)] active:scale-[0.96]"
                                 >
                                     Budget
                                 </button>
@@ -1241,7 +1241,7 @@ export default function Unit19RoadmapWorkspace({
                                 <button
                                     type="button"
                                     onClick={() => switchPanel("calendar")}
-                                    className="relative overflow-hidden rounded-[13px] border border-[#8a65cc]/[0.24] bg-[#8a65cc]/[0.08] px-4 py-2.5 text-[12px] font-semibold text-[#5e38a0] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-[#8a65cc]/[0.34] hover:bg-[#8a65cc]/[0.13] hover:text-[#0f1c2e] hover:shadow-[0_12px_30px_rgba(138,101,204,0.14)] active:scale-[0.96]"
+                                    className="relative overflow-hidden rounded-[12px] border border-[#8a65cc]/[0.24] bg-[#8a65cc]/[0.08] px-3 py-2 text-[11px] font-semibold whitespace-nowrap text-[#5e38a0] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-[#8a65cc]/[0.34] hover:bg-[#8a65cc]/[0.13] hover:text-[#0f1c2e] hover:shadow-[0_12px_30px_rgba(138,101,204,0.14)] active:scale-[0.96]"
                                 >
                                     Calendar
                                 </button>
@@ -1477,7 +1477,7 @@ export default function Unit19RoadmapWorkspace({
 
                                                     {expanded ? (
                                                         <div className="mt-4 space-y-3">
-                                                            <div className="grid grid-cols-3 gap-3 rounded-[13px] border border-[#d8e8f6]/[0.75] bg-[#f0f6fd]/[0.70] px-3.5 py-3">
+                                                            <div className="grid grid-cols-3 gap-3 rounded-[12px] border border-[#d8e8f6]/[0.75] bg-[#f0f6fd]/[0.70] px-3.5 py-3">
                                                                 <div>
                                                                     <div className="text-[9.5px] font-semibold uppercase tracking-[0.13em] text-[#7a90a8]">Active Tasks</div>
                                                                     <div className="mt-1 text-[15px] font-semibold text-[#0b1623]">{activeTasks.length}</div>
