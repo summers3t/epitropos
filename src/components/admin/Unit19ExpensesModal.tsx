@@ -524,7 +524,7 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
                         </div>
 
                         <div className="flex flex-wrap items-center justify-end gap-2">
-                            <Unit19ModalSwitcher activePanel="expenses" onSwitchPanel={onSwitchPanel} incomeLabel="Budget" />
+                            <Unit19ModalSwitcher activePanel="expenses" onSwitchPanel={onSwitchPanel} incomeLabel="Budget" showRealEstate={propertySlug === "unit-19"} />
                             <button
                                 type="button"
                                 onClick={addExpense}

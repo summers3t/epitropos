@@ -1,14 +1,21 @@
 "use client";
 
-export type Unit19PanelKey = "expenses" | "documents" | "income" | "calendar";
+export type Unit19PanelKey = "realEstate" | "expenses" | "documents" | "income" | "calendar";
 
 type Props = {
     activePanel: Unit19PanelKey;
     onSwitchPanel?: (panel: Unit19PanelKey) => void;
     incomeLabel?: string;
+    showRealEstate?: boolean;
 };
 
 const panels: Array<{ key: Unit19PanelKey; label: string; className: string; activeClassName: string }> = [
+    {
+        key: "realEstate",
+        label: "Real Estate",
+        className: "border-[#0f2a47]/[0.20] bg-[#0f2a47]/[0.07] text-[#0f2a47] hover:border-[#0f2a47]/[0.34] hover:bg-[#0f2a47]/[0.12]",
+        activeClassName: "border-[#0f2a47]/[0.38] bg-[#0f2a47]/[0.14] text-[#0f1c2e] shadow-[0_10px_24px_rgba(15,42,71,0.13)]",
+    },
     {
         key: "expenses",
         label: "Expenses",
@@ -35,12 +42,12 @@ const panels: Array<{ key: Unit19PanelKey; label: string; className: string; act
     },
 ];
 
-export default function Unit19ModalSwitcher({ activePanel, onSwitchPanel, incomeLabel = "Budget" }: Props) {
+export default function Unit19ModalSwitcher({ activePanel, onSwitchPanel, incomeLabel = "Budget", showRealEstate = false }: Props) {
     if (!onSwitchPanel) return null;
 
     return (
         <div className="flex flex-wrap items-center justify-end gap-1.5 rounded-[15px] border border-white/[0.74] bg-white/[0.44] p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.84)]">
-            {panels.map((panel) => {
+            {panels.filter((panel) => showRealEstate || panel.key !== "realEstate").map((panel) => {
                 const active = panel.key === activePanel;
 
                 return (

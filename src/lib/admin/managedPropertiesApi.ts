@@ -1168,3 +1168,330 @@ export async function deleteManagedPropertyCalendarItem(id: string) {
 
     if (error) throwIfError(error, "Failed to delete managed property calendar item");
 }
+
+export type ManagedPropertyRealEstateProfile = {
+    id: string;
+    managed_property_id: string;
+    owner_afm: string | null;
+    tax_portal_username: string | null;
+    tax_portal_password_ref: string | null;
+    atak: string | null;
+    pea_number: string | null;
+    rental_contract_reference: string | null;
+    address_en: string | null;
+    address_local: string | null;
+    acquisition_date: string | null;
+    purchase_price_eur: number | null;
+    credit_amount_eur: number | null;
+    self_participation_eur: number | null;
+    acquisition_notes: string | null;
+    created_at: string;
+    updated_at: string;
+};
+
+export type ManagedPropertyRealEstateProfilePatch = Partial<
+    Pick<
+        ManagedPropertyRealEstateProfile,
+        | "owner_afm"
+        | "tax_portal_username"
+        | "tax_portal_password_ref"
+        | "atak"
+        | "pea_number"
+        | "rental_contract_reference"
+        | "address_en"
+        | "address_local"
+        | "acquisition_date"
+        | "purchase_price_eur"
+        | "credit_amount_eur"
+        | "self_participation_eur"
+        | "acquisition_notes"
+    >
+>;
+
+export type ManagedPropertyRealEstateCostCategory = "price" | "tax" | "broker" | "legal" | "notary" | "registry" | "cadastre" | "financing" | "other";
+
+export type ManagedPropertyRealEstateCost = {
+    id: string;
+    managed_property_id: string;
+    stable_key: string;
+    label: string;
+    local_label: string | null;
+    category: ManagedPropertyRealEstateCostCategory;
+    amount_eur: number;
+    rate_percent: number | null;
+    vat_rate_percent: number | null;
+    vat_included: boolean;
+    expense_id: string | null;
+    note: string | null;
+    sort_order: number;
+    created_at: string;
+    updated_at: string;
+};
+
+export type ManagedPropertyRealEstateCostInsert = Omit<ManagedPropertyRealEstateCost, "id" | "created_at" | "updated_at">;
+
+export type ManagedPropertyRealEstateCostPatch = Partial<
+    Pick<
+        ManagedPropertyRealEstateCost,
+        | "stable_key"
+        | "label"
+        | "local_label"
+        | "category"
+        | "amount_eur"
+        | "rate_percent"
+        | "vat_rate_percent"
+        | "vat_included"
+        | "expense_id"
+        | "note"
+        | "sort_order"
+    >
+>;
+
+export type ManagedPropertyServiceType = "electricity" | "water" | "gas" | "internet_tv" | "building_fees" | "other";
+
+export type ManagedPropertyServiceAccount = {
+    id: string;
+    managed_property_id: string;
+    service_type: ManagedPropertyServiceType;
+    provider_name: string | null;
+    start_date: string | null;
+    account_holder: string | null;
+    account_number: string | null;
+    meter_number: string | null;
+    contract_number: string | null;
+    customer_code: string | null;
+    payment_code: string | null;
+    delivery_point: string | null;
+    plan_name: string | null;
+    monthly_fee_eur: number | null;
+    manager_name: string | null;
+    manager_phone: string | null;
+    manager_email: string | null;
+    manager_bank_account: string | null;
+    phone: string | null;
+    website: string | null;
+    note: string | null;
+    sort_order: number;
+    created_at: string;
+    updated_at: string;
+};
+
+export type ManagedPropertyServiceAccountInsert = Omit<ManagedPropertyServiceAccount, "id" | "created_at" | "updated_at">;
+export type ManagedPropertyServiceAccountPatch = Partial<Omit<ManagedPropertyServiceAccountInsert, "managed_property_id" | "service_type">> & {
+    service_type?: ManagedPropertyServiceType;
+};
+
+export type ManagedPropertyRealEstateContactType = "tenant" | "previous_owner" | "property_manager" | "other";
+
+export type ManagedPropertyRealEstateContact = {
+    id: string;
+    managed_property_id: string;
+    contact_type: ManagedPropertyRealEstateContactType;
+    full_name: string;
+    afm: string | null;
+    phone: string | null;
+    email: string | null;
+    note: string | null;
+    sort_order: number;
+    created_at: string;
+    updated_at: string;
+};
+
+export type ManagedPropertyRealEstateContactInsert = Omit<ManagedPropertyRealEstateContact, "id" | "created_at" | "updated_at">;
+export type ManagedPropertyRealEstateContactPatch = Partial<Omit<ManagedPropertyRealEstateContactInsert, "managed_property_id">>;
+
+export type ManagedPropertyRealEstateBundle = {
+    profile: ManagedPropertyRealEstateProfile | null;
+    costs: ManagedPropertyRealEstateCost[];
+    serviceAccounts: ManagedPropertyServiceAccount[];
+    contacts: ManagedPropertyRealEstateContact[];
+};
+
+export async function getManagedPropertyRealEstate(managedPropertyId: string) {
+    const supabase = createClient();
+
+    const [profileResult, costsResult, servicesResult, contactsResult] = await Promise.all([
+        supabase
+            .from("managed_property_real_estate_profiles")
+            .select("*")
+            .eq("managed_property_id", managedPropertyId)
+            .maybeSingle(),
+        supabase
+            .from("managed_property_real_estate_costs")
+            .select("*")
+            .eq("managed_property_id", managedPropertyId)
+            .order("sort_order", { ascending: true })
+            .order("created_at", { ascending: true }),
+        supabase
+            .from("managed_property_service_accounts")
+            .select("*")
+            .eq("managed_property_id", managedPropertyId)
+            .order("sort_order", { ascending: true })
+            .order("created_at", { ascending: true }),
+        supabase
+            .from("managed_property_real_estate_contacts")
+            .select("*")
+            .eq("managed_property_id", managedPropertyId)
+            .order("contact_type", { ascending: true })
+            .order("sort_order", { ascending: true })
+            .order("created_at", { ascending: true }),
+    ]);
+
+    if (profileResult.error) throwIfError(profileResult.error, "Failed to load real estate profile");
+    if (costsResult.error) throwIfError(costsResult.error, "Failed to load real estate costs");
+    if (servicesResult.error) throwIfError(servicesResult.error, "Failed to load service accounts");
+    if (contactsResult.error) throwIfError(contactsResult.error, "Failed to load real estate contacts");
+
+    return {
+        profile: (profileResult.data ?? null) as ManagedPropertyRealEstateProfile | null,
+        costs: (costsResult.data ?? []) as ManagedPropertyRealEstateCost[],
+        serviceAccounts: (servicesResult.data ?? []) as ManagedPropertyServiceAccount[],
+        contacts: (contactsResult.data ?? []) as ManagedPropertyRealEstateContact[],
+    } satisfies ManagedPropertyRealEstateBundle;
+}
+
+export async function upsertManagedPropertyRealEstateProfile(
+    managedPropertyId: string,
+    patch: ManagedPropertyRealEstateProfilePatch,
+) {
+    const supabase = createClient();
+
+    const { data, error } = await supabase
+        .from("managed_property_real_estate_profiles")
+        .upsert({ managed_property_id: managedPropertyId, ...patch }, { onConflict: "managed_property_id" })
+        .select("*")
+        .single();
+
+    if (error) throwIfError(error, "Failed to save real estate profile");
+
+    return data as ManagedPropertyRealEstateProfile;
+}
+
+export async function createManagedPropertyRealEstateCost(payload: ManagedPropertyRealEstateCostInsert) {
+    const supabase = createClient();
+
+    const { data, error } = await supabase
+        .from("managed_property_real_estate_costs")
+        .insert(payload)
+        .select("*")
+        .single();
+
+    if (error) throwIfError(error, "Failed to create real estate cost");
+
+    return data as ManagedPropertyRealEstateCost;
+}
+
+export async function updateManagedPropertyRealEstateCost(
+    id: string,
+    patch: ManagedPropertyRealEstateCostPatch,
+) {
+    const supabase = createClient();
+
+    const { data, error } = await supabase
+        .from("managed_property_real_estate_costs")
+        .update(patch)
+        .eq("id", id)
+        .select("*")
+        .single();
+
+    if (error) throwIfError(error, "Failed to update real estate cost");
+
+    return data as ManagedPropertyRealEstateCost;
+}
+
+export async function deleteManagedPropertyRealEstateCost(id: string) {
+    const supabase = createClient();
+
+    const { error } = await supabase
+        .from("managed_property_real_estate_costs")
+        .delete()
+        .eq("id", id);
+
+    if (error) throwIfError(error, "Failed to delete real estate cost");
+}
+
+export async function createManagedPropertyServiceAccount(payload: ManagedPropertyServiceAccountInsert) {
+    const supabase = createClient();
+
+    const { data, error } = await supabase
+        .from("managed_property_service_accounts")
+        .insert(payload)
+        .select("*")
+        .single();
+
+    if (error) throwIfError(error, "Failed to create service account");
+
+    return data as ManagedPropertyServiceAccount;
+}
+
+export async function updateManagedPropertyServiceAccount(
+    id: string,
+    patch: ManagedPropertyServiceAccountPatch,
+) {
+    const supabase = createClient();
+
+    const { data, error } = await supabase
+        .from("managed_property_service_accounts")
+        .update(patch)
+        .eq("id", id)
+        .select("*")
+        .single();
+
+    if (error) throwIfError(error, "Failed to update service account");
+
+    return data as ManagedPropertyServiceAccount;
+}
+
+export async function deleteManagedPropertyServiceAccount(id: string) {
+    const supabase = createClient();
+
+    const { error } = await supabase
+        .from("managed_property_service_accounts")
+        .delete()
+        .eq("id", id);
+
+    if (error) throwIfError(error, "Failed to delete service account");
+}
+
+export async function createManagedPropertyRealEstateContact(payload: ManagedPropertyRealEstateContactInsert) {
+    const supabase = createClient();
+
+    const { data, error } = await supabase
+        .from("managed_property_real_estate_contacts")
+        .insert(payload)
+        .select("*")
+        .single();
+
+    if (error) throwIfError(error, "Failed to create real estate contact");
+
+    return data as ManagedPropertyRealEstateContact;
+}
+
+export async function updateManagedPropertyRealEstateContact(
+    id: string,
+    patch: ManagedPropertyRealEstateContactPatch,
+) {
+    const supabase = createClient();
+
+    const { data, error } = await supabase
+        .from("managed_property_real_estate_contacts")
+        .update(patch)
+        .eq("id", id)
+        .select("*")
+        .single();
+
+    if (error) throwIfError(error, "Failed to update real estate contact");
+
+    return data as ManagedPropertyRealEstateContact;
+}
+
+export async function deleteManagedPropertyRealEstateContact(id: string) {
+    const supabase = createClient();
+
+    const { error } = await supabase
+        .from("managed_property_real_estate_contacts")
+        .delete()
+        .eq("id", id);
+
+    if (error) throwIfError(error, "Failed to delete real estate contact");
+}

@@ -586,7 +586,7 @@ export default function Unit19DocumentsModal({ open, onClose, onSwitchPanel, pro
                         </div>
 
                         <div className="flex flex-wrap items-center justify-end gap-2">
-                            <Unit19ModalSwitcher activePanel="documents" onSwitchPanel={onSwitchPanel} incomeLabel="Budget" />
+                            <Unit19ModalSwitcher activePanel="documents" onSwitchPanel={onSwitchPanel} incomeLabel="Budget" showRealEstate={propertySlug === "unit-19"} />
                             <button
                                 type="button"
                                 onClick={() => setEditingDocument(createBlankDocument(categories, nextOrder))}

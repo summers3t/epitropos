@@ -1168,6 +1168,7 @@ export default function Unit19IncomeModal({
                 activePanel="income"
                 onSwitchPanel={onSwitchPanel}
                 incomeLabel="Budget"
+                showRealEstate={propertySlug === "unit-19"}
               />
               <div className="inline-flex items-center gap-1 rounded-[13px] border border-white/[0.76] bg-white/[0.48] p-1">
                 <button

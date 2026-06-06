@@ -24,6 +24,7 @@ import {
     type ManagedPropertyRoadmapTask,
     type ManagedPropertyRoadmapTaskStatus as RoadmapTaskStatus,
 } from "@/lib/admin/managedPropertiesApi";
+import Unit19RealEstateModal from "@/components/admin/Unit19RealEstateModal";
 import Unit19ExpensesModal from "@/components/admin/Unit19ExpensesModal";
 import Unit19DocumentsModal from "@/components/admin/Unit19DocumentsModal";
 import Unit19IncomeModal from "@/components/admin/Unit19IncomeModal";
@@ -351,6 +352,7 @@ export default function Unit19RoadmapWorkspace({
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [realEstateOpen, setRealEstateOpen] = useState(false);
     const [expensesOpen, setExpensesOpen] = useState(false);
     const [documentsOpen, setDocumentsOpen] = useState(false);
     const [incomeOpen, setIncomeOpen] = useState(false);
@@ -359,11 +361,14 @@ export default function Unit19RoadmapWorkspace({
     const [pendingDeletionLabel, setPendingDeletionLabel] = useState<string | null>(null);
 
     const switchPanel = useCallback((panel: Unit19PanelKey) => {
+        setRealEstateOpen(panel === "realEstate");
         setExpensesOpen(panel === "expenses");
         setDocumentsOpen(panel === "documents");
         setIncomeOpen(panel === "income");
         setCalendarOpen(panel === "calendar");
     }, []);
+
+    const showRealEstatePanel = projectSlug === "unit-19";
 
     const queuePendingDeletion = useCallback((record: Omit<PendingDeletionRecord, "timeoutId">) => {
         const existing = pendingDeletionRef.current;
@@ -1199,6 +1204,16 @@ export default function Unit19RoadmapWorkspace({
 
                                 <span className="mx-1 hidden h-7 w-px bg-[#ccd9e8]/80 sm:block" />
 
+                                {showRealEstatePanel ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => switchPanel("realEstate")}
+                                        className="relative overflow-hidden rounded-[13px] border border-[#0f2a47]/[0.22] bg-[#0f2a47]/[0.08] px-4 py-2.5 text-[12px] font-semibold text-[#0f2a47] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-[#0f2a47]/[0.36] hover:bg-[#0f2a47]/[0.13] hover:text-[#0f1c2e] hover:shadow-[0_12px_30px_rgba(15,42,71,0.14)] active:scale-[0.96]"
+                                    >
+                                        Real Estate
+                                    </button>
+                                ) : null}
+
                                 <button
                                     type="button"
                                     onClick={() => switchPanel("expenses")}
@@ -1818,6 +1833,14 @@ export default function Unit19RoadmapWorkspace({
                             </div>
                         </div>
                     </section>
+
+                    <Unit19RealEstateModal
+                        propertySlug={projectSlug}
+                        projectLabel={projectLabel}
+                        open={realEstateOpen}
+                        onClose={() => setRealEstateOpen(false)}
+                        onSwitchPanel={switchPanel}
+                    />
 
                     <Unit19ExpensesModal
                         propertySlug={projectSlug}
