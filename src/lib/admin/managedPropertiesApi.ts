@@ -1301,6 +1301,7 @@ export type ManagedPropertyRealEstateContact = {
     afm: string | null;
     phone: string | null;
     email: string | null;
+    iban: string | null;
     note: string | null;
     sort_order: number;
     created_at: string;

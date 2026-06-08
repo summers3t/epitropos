@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import AdminDatePicker from "@/components/admin/AdminDatePicker";
 import Unit19ModalSwitcher, { type Unit19PanelKey } from "@/components/admin/Unit19ModalSwitcher";
@@ -123,6 +124,7 @@ type ContactDraft = {
     afm: string;
     phone: string;
     email: string;
+    iban: string;
     note: string;
 };
 
@@ -247,6 +249,7 @@ function contactToDraft(contact: ManagedPropertyRealEstateContact): ContactDraft
         afm: contact.afm ?? "",
         phone: contact.phone ?? "",
         email: contact.email ?? "",
+        iban: contact.iban ?? "",
         note: contact.note ?? "",
     };
 }
@@ -262,14 +265,6 @@ type Unit19CreditConfig = {
     life_insurance_eur: number;
     property_insurance_eur: number;
     property_insurance_month: number;
-};
-
-type Unit19BudgetState = {
-    marker?: string;
-    credit_expected_eur?: number;
-    credit_paid?: boolean;
-    credit_paid_date?: string | null;
-    entries?: Partial<Record<"electricity" | "water" | "gas" | "building_fees" | "property_insurance" | "life_insurance", { checked?: boolean; amount_eur?: number }>>;
 };
 
 type BudgetSummary = {
@@ -315,12 +310,6 @@ function parseUnit19CreditConfig(note: string | null | undefined): Unit19CreditC
         property_insurance_eur: 0,
         property_insurance_month: 1,
     };
-}
-
-function parseUnit19BudgetState(note: string | null | undefined): Unit19BudgetState {
-    const parsed = parseJsonObject(note);
-    if (parsed?.marker === "unit19_budget_v1") return parsed as Unit19BudgetState;
-    return { marker: "unit19_budget_v1", credit_paid: false, entries: {} };
 }
 
 function IconBuilding() {
@@ -379,7 +368,6 @@ function SectionCard({ title, subtitle, children, action }: { title: string; sub
 
 export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, propertySlug = PROPERTY_SLUG, projectLabel = "Unit 19" }: Props) {
     const [managedProperty, setManagedProperty] = useState<ManagedProperty | null>(null);
-    const [profile, setProfile] = useState<ManagedPropertyRealEstateProfile | null>(null);
     const [profileDraft, setProfileDraft] = useState<ProfileDraft>(() => profileToDraft(null, null));
     const [costs, setCosts] = useState<ManagedPropertyRealEstateCost[]>([]);
     const [services, setServices] = useState<ManagedPropertyServiceAccount[]>([]);
@@ -389,6 +377,7 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
     const [serviceDrafts, setServiceDrafts] = useState<Record<string, ServiceDraft>>({});
     const [contactDrafts, setContactDrafts] = useState<Record<string, ContactDraft>>({});
     const [showSecretRef, setShowSecretRef] = useState(false);
+    const [showMapLinkEditor, setShowMapLinkEditor] = useState(false);
     const [activeSection, setActiveSection] = useState<PropertySectionKey>("overview");
     const [addressLanguage, setAddressLanguage] = useState<AddressLanguage>("en");
     const [expandedServiceIds, setExpandedServiceIds] = useState<Set<string>>(() => new Set());
@@ -411,7 +400,7 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
         return new Map(expenses.map((expense) => [expense.id, expense]));
     }, [expenses]);
 
-    const effectiveCostAmount = (cost: ManagedPropertyRealEstateCost) => {
+    const effectiveCostAmount = useCallback((cost: ManagedPropertyRealEstateCost) => {
         if (cost.include_in_total === false) return 0;
 
         if (cost.expense_id) {
@@ -419,13 +408,13 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
             if (expense && expense.status !== "excluded") return Number(expense.amount_eur ?? 0);
         }
         return Number(cost.amount_eur ?? 0);
-    };
+    }, [expenseById]);
 
     const transactionCosts = useMemo(() => {
         return costs
             .filter((cost) => !["price", "financing"].includes(cost.category))
             .reduce((sum, cost) => sum + effectiveCostAmount(cost), 0);
-    }, [costs, expenseById]);
+    }, [costs, effectiveCostAmount]);
 
     const purchasePrice = Number(profileDraft.purchase_price_eur || costs.find((cost) => cost.stable_key === "purchase_price")?.amount_eur || 0);
     const sizeSqm = Number(profileDraft.size_sqm || 0);
@@ -452,7 +441,6 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
             ]);
 
             setManagedProperty(property);
-            setProfile(bundle.profile);
             setProfileDraft(profileToDraft(bundle.profile, property));
             setCosts(bundle.costs);
             setServices(bundle.serviceAccounts);
@@ -524,7 +512,6 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
                 setCostDrafts((current) => ({ ...current, [updatedPurchaseCost.id]: costToDraft(updatedPurchaseCost) }));
             }
 
-            setProfile(saved);
             setProfileDraft(profileToDraft(saved, managedProperty));
         } catch (currentError) {
             setError(currentError instanceof Error ? currentError.message : "Failed to save profile");
@@ -761,6 +748,7 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
                 afm: blankToNull(draft.afm),
                 phone: blankToNull(draft.phone),
                 email: blankToNull(draft.email),
+                iban: blankToNull(draft.iban),
                 note: blankToNull(draft.note),
             });
             setContacts((current) => current.map((item) => (item.id === saved.id ? saved : item)));
@@ -786,6 +774,7 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
                 afm: null,
                 phone: null,
                 email: null,
+                iban: null,
                 note: null,
                 sort_order: Math.max(0, ...contacts.map((item) => item.sort_order)) + 10,
             });
@@ -931,34 +920,48 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
                         className="group block w-full overflow-hidden rounded-[18px] border border-white/[0.78] bg-white/[0.48] text-left shadow-[0_16px_42px_rgba(41,73,112,0.07)] transition duration-200 hover:-translate-y-0.5 hover:scale-[1.006] hover:border-[#2f80ed]/[0.28] hover:bg-white/[0.68] hover:shadow-[0_22px_54px_rgba(41,73,112,0.12)]"
                     >
                         {profileDraft.property_image_url ? (
-                            <div className="relative">
-                                <img src={profileDraft.property_image_url} alt="Property visual" className="h-56 w-full object-cover transition duration-300 group-hover:scale-[1.025]" />
+                            <div className="relative h-56 overflow-hidden">
+                                <Image
+                                    src={profileDraft.property_image_url}
+                                    alt="Property visual"
+                                    fill
+                                    unoptimized
+                                    sizes="(max-width: 1280px) 100vw, 540px"
+                                    className="object-cover transition duration-300 group-hover:scale-[1.025]"
+                                />
                                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#06101d]/[0.62] to-transparent px-4 py-3 text-[11px] font-semibold text-white">Click, browse or drag a new property image</div>
                             </div>
                         ) : (
                             <div className="flex h-56 flex-col items-center justify-center gap-2 bg-[linear-gradient(135deg,rgba(47,128,237,0.10),rgba(166,139,74,0.14))] text-center">
-                                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#607993]">Property image URL not set</div>
+                                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#607993]">No property image yet</div>
                                 <div className="text-[11px] text-[#7a90a8]">Click to browse or drag & drop an image here</div>
                             </div>
                         )}
                     </button>
                     <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={(event) => handleImageFile(event.target.files?.[0] ?? null)} />
-                    <InputField label="Property image URL / embedded image" value={profileDraft.property_image_url} onChange={(value) => setProfileDraft((draft) => ({ ...draft, property_image_url: value }))} />
-                    <InputField label="Google Maps link" value={profileDraft.google_maps_url} onChange={(value) => setProfileDraft((draft) => ({ ...draft, google_maps_url: value }))} />
-                    {profileDraft.google_maps_url ? (
-                        <a href={profileDraft.google_maps_url} target="_blank" rel="noreferrer" className="inline-flex rounded-[12px] border border-[#2f80ed]/[0.22] bg-[#2f80ed]/[0.08] px-3 py-2 text-[11px] font-semibold text-[#1560bc] transition hover:bg-[#2f80ed]/[0.14] hover:shadow-[0_10px_26px_rgba(47,128,237,0.10)]">
-                            Open location in Google Maps
-                        </a>
+                    <div className="flex flex-wrap gap-2">
+                        {profileDraft.google_maps_url ? (
+                            <a href={profileDraft.google_maps_url} target="_blank" rel="noreferrer" className="inline-flex rounded-[12px] border border-[#2f80ed]/[0.22] bg-[#2f80ed]/[0.08] px-3 py-2 text-[11px] font-semibold text-[#1560bc] transition hover:bg-[#2f80ed]/[0.14] hover:shadow-[0_10px_26px_rgba(47,128,237,0.10)] active:scale-[0.98]">
+                                Open location in Google Maps
+                            </a>
+                        ) : null}
+                        <button type="button" onClick={() => setShowMapLinkEditor((value) => !value)} className="rounded-[12px] border border-[#ccd9e8] bg-white/[0.64] px-3 py-2 text-[11px] font-semibold text-[#607993] transition hover:bg-white hover:text-[#0b1623] active:scale-[0.98]">
+                            {profileDraft.google_maps_url ? "Edit location link" : "Add Google Maps link"}
+                        </button>
+                    </div>
+                    {showMapLinkEditor ? (
+                        <InputField label="Google Maps link" value={profileDraft.google_maps_url} onChange={(value) => setProfileDraft((draft) => ({ ...draft, google_maps_url: value }))} />
                     ) : null}
                 </div>
 
                 <div className="space-y-3">
-                    <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                    <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
                         {[
                             { label: "Price / sqm", value: sizeSqm > 0 ? formatEur(pricePerSqm) : "—", helper: sizeSqm > 0 ? `${sizeSqm} sqm` : "enter sqm" },
                             { label: "Monthly rent", value: formatEur(budgetSummary.monthlyRentEstimate), helper: "from Budget schedule" },
                             { label: "Credit / month", value: formatEur(budgetSummary.creditPaymentEur), helper: "from Budget credit" },
-                            { label: "Insurance", value: formatEur(budgetSummary.lifeInsuranceEur + budgetSummary.propertyInsuranceEur), helper: "life + property" },
+                            { label: "Insurance", value: `${formatEur(budgetSummary.lifeInsuranceEur)}/mo`, helper: `${formatEur(budgetSummary.propertyInsuranceEur)} property/year` },
+                            { label: "Self participation", value: formatEur(selfParticipation), helper: "cash equity" },
                         ].map((item) => (
                             <div key={item.label} className="rounded-[14px] border border-white/[0.74] bg-white/[0.54] px-3 py-2.5 transition duration-200 hover:-translate-y-0.5 hover:scale-[1.018] hover:bg-white/[0.78] hover:shadow-[0_14px_32px_rgba(41,73,112,0.10)]">
                                 <div className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7a90a8]">{item.label}</div>
@@ -1059,7 +1062,7 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
                                     <button type="button" onClick={() => void removeCost(cost)} disabled={saving} className="rounded-[9px] border border-[#cfa090]/[0.24] bg-[#cfa090]/[0.08] px-2.5 py-1.5 text-[10.5px] font-semibold text-[#8c5947] transition hover:bg-[#cfa090]/[0.14]">Delete</button>
                                 </div>
                             </div>
-                            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
                                 <InputField label="Label" value={draft.label} onChange={(value) => setCostDrafts((current) => ({ ...current, [cost.id]: { ...draft, label: value } }))} />
                                 <label className="block"><span className="mb-1 block text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7a90a8]">Amount EUR</span><input type="number" value={calculatedAmount} onChange={(event) => setCostDrafts((current) => ({ ...current, [cost.id]: { ...draft, amount_eur: toNumber(event.target.value), rate_percent: 0 } }))} className="h-9 w-full rounded-[11px] border border-[#ccd9e8] bg-white/[0.72] px-3 text-[12px] font-medium text-[#0b1623] outline-none transition focus:border-[#2f80ed]/50 focus:bg-white" /></label>
                                 <label className="block"><span className="mb-1 block text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7a90a8]">Category</span><select value={draft.category} onChange={(event) => setCostDrafts((current) => ({ ...current, [cost.id]: { ...draft, category: event.target.value as ManagedPropertyRealEstateCostCategory } }))} className="h-9 w-full rounded-[11px] border border-[#ccd9e8] bg-white/[0.72] px-3 text-[12px] font-medium text-[#0b1623] outline-none">{costCategoryOrder.map((key) => <option key={key} value={key}>{costCategoryLabels[key]}</option>)}</select></label>
@@ -1106,7 +1109,7 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
                                         <button type="button" onClick={() => void saveService(service)} disabled={saving} className="rounded-[9px] border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-2.5 py-1.5 text-[10.5px] font-semibold text-[#1560bc] transition hover:bg-[#2f80ed]/[0.14]">Save</button>
                                         <button type="button" onClick={() => void removeService(service)} disabled={saving} className="rounded-[9px] border border-[#cfa090]/[0.24] bg-[#cfa090]/[0.08] px-2.5 py-1.5 text-[10.5px] font-semibold text-[#8c5947] transition hover:bg-[#cfa090]/[0.14]">Delete</button>
                                     </div>
-                                    <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                                    <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
                                         <label className="block"><span className="mb-1 block text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7a90a8]">Type</span><select value={draft.service_type} onChange={(event) => setServiceDrafts((current) => ({ ...current, [service.id]: { ...draft, service_type: event.target.value as ManagedPropertyServiceType } }))} className="h-9 w-full rounded-[11px] border border-[#ccd9e8] bg-white/[0.72] px-3 text-[12px] font-medium text-[#0b1623] outline-none">{Object.entries(serviceLabels).map(([key, item]) => <option key={key} value={key}>{item.label}</option>)}</select></label>
                                         <InputField label="Provider" value={draft.provider_name} onChange={(value) => setServiceDrafts((current) => ({ ...current, [service.id]: { ...draft, provider_name: value } }))} />
                                         <div><span className="mb-1 block text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7a90a8]">Start date</span><AdminDatePicker value={draft.start_date} onChange={(value) => setServiceDrafts((current) => ({ ...current, [service.id]: { ...draft, start_date: value } }))} /></div>
@@ -1147,7 +1150,7 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
                                         <div className="text-[12px] font-semibold text-[#0b1623]">{draft.full_name || "Unnamed contact"}</div>
                                         <span className="rounded-full border border-[#2f80ed]/[0.20] bg-[#2f80ed]/[0.08] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-[#1560bc]">{contactLabels[draft.contact_type]}</span>
                                     </div>
-                                    <div className="mt-0.5 text-[10px] text-[#7a90a8]">{draft.afm || "no AFM"} · {draft.phone || "no phone"} · {draft.email || "no email"}</div>
+                                    <div className="mt-0.5 text-[10px] text-[#7a90a8]">{draft.afm || "no AFM"} · {draft.phone || "no phone"} · {draft.email || "no email"} · {draft.iban || "no IBAN"}</div>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <span className="text-[10px] font-semibold text-[#7a90a8]">{expanded ? "Collapse" : "Open"}</span>
@@ -1163,6 +1166,7 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
                                         <InputField label="AFM" value={draft.afm} onChange={(value) => setContactDrafts((current) => ({ ...current, [contact.id]: { ...draft, afm: value } }))} />
                                         <InputField label="Phone" value={draft.phone} onChange={(value) => setContactDrafts((current) => ({ ...current, [contact.id]: { ...draft, phone: value } }))} />
                                         <InputField label="Email" value={draft.email} onChange={(value) => setContactDrafts((current) => ({ ...current, [contact.id]: { ...draft, email: value } }))} />
+                                        <InputField label="IBAN" value={draft.iban} onChange={(value) => setContactDrafts((current) => ({ ...current, [contact.id]: { ...draft, iban: value } }))} />
                                         <div className="sm:col-span-2"><TextAreaField label="Note" value={draft.note} onChange={(value) => setContactDrafts((current) => ({ ...current, [contact.id]: { ...draft, note: value } }))} /></div>
                                     </div>
                                 </div>
