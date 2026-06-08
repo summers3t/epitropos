@@ -1229,6 +1229,7 @@ export type ManagedPropertyRealEstateCost = {
     rate_percent: number | null;
     vat_rate_percent: number | null;
     vat_included: boolean;
+    include_in_total: boolean;
     expense_id: string | null;
     note: string | null;
     sort_order: number;
@@ -1249,6 +1250,7 @@ export type ManagedPropertyRealEstateCostPatch = Partial<
         | "rate_percent"
         | "vat_rate_percent"
         | "vat_included"
+        | "include_in_total"
         | "expense_id"
         | "note"
         | "sort_order"

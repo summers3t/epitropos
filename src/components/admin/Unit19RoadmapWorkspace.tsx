@@ -34,6 +34,13 @@ import type { Unit19PanelKey } from "@/components/admin/Unit19ModalSwitcher";
 type FilterMode = "all" | "current" | "upcoming" | "completed";
 type FocusStatus = Exclude<FilterMode, "all">;
 
+type PendingDeletionRecord = {
+    label: string;
+    commit: () => Promise<void>;
+    undo: () => void;
+    timeoutId: number;
+};
+
 const BACKGROUND_IMAGE = "/images/unit19-roadmap-bg.jpg";
 const FOOTER_IMAGE = "/images/unit19-roadmap-footer.jpg";
 const PROPERTY_SLUG = "unit-19";

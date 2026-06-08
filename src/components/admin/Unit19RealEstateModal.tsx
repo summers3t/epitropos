@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import AdminDatePicker from "@/components/admin/AdminDatePicker";
 import Unit19ModalSwitcher, { type Unit19PanelKey } from "@/components/admin/Unit19ModalSwitcher";
@@ -91,6 +91,7 @@ type CostDraft = {
     rate_percent: number;
     vat_rate_percent: number;
     vat_included: boolean;
+    include_in_total: boolean;
     note: string;
 };
 
@@ -210,6 +211,7 @@ function costToDraft(cost: ManagedPropertyRealEstateCost): CostDraft {
         rate_percent: Number(cost.rate_percent ?? 0),
         vat_rate_percent: Number(cost.vat_rate_percent ?? 0),
         vat_included: Boolean(cost.vat_included),
+        include_in_total: cost.include_in_total ?? true,
         note: cost.note ?? "",
     };
 }
@@ -389,6 +391,9 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
     const [showSecretRef, setShowSecretRef] = useState(false);
     const [activeSection, setActiveSection] = useState<PropertySectionKey>("overview");
     const [addressLanguage, setAddressLanguage] = useState<AddressLanguage>("en");
+    const [expandedServiceIds, setExpandedServiceIds] = useState<Set<string>>(() => new Set());
+    const [expandedContactIds, setExpandedContactIds] = useState<Set<string>>(() => new Set());
+    const imageInputRef = useRef<HTMLInputElement | null>(null);
     const [budgetSummary, setBudgetSummary] = useState<BudgetSummary>({
         yearlyRentScheduled: 0,
         monthlyRentEstimate: 0,
@@ -407,6 +412,8 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
     }, [expenses]);
 
     const effectiveCostAmount = (cost: ManagedPropertyRealEstateCost) => {
+        if (cost.include_in_total === false) return 0;
+
         if (cost.expense_id) {
             const expense = expenseById.get(cost.expense_id);
             if (expense && expense.status !== "excluded") return Number(expense.amount_eur ?? 0);
@@ -534,13 +541,14 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
         setError(null);
 
         try {
+            const amountEur = calculatedCostAmount(draft);
             let expenseId = cost.expense_id;
             if (expenseId) {
                 const updatedExpense = await updateManagedPropertyExpense(expenseId, {
                     title: draft.label,
                     note: draft.note,
-                    amount_eur: draft.amount_eur,
-                    amount_bgn: Number((draft.amount_eur * EUR_TO_BGN).toFixed(2)),
+                    amount_eur: amountEur,
+                    amount_bgn: Number((amountEur * EUR_TO_BGN).toFixed(2)),
                 });
                 setExpenses((current) => current.map((expense) => (expense.id === updatedExpense.id ? updatedExpense : expense)));
             } else if (!cost.stable_key.startsWith("purchase_price") && !cost.stable_key.includes("credit") && !cost.stable_key.includes("self_participation")) {
@@ -550,8 +558,8 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
                     category: "greek_closing",
                     issuer: null,
                     note: draft.note,
-                    amount_eur: draft.amount_eur,
-                    amount_bgn: Number((draft.amount_eur * EUR_TO_BGN).toFixed(2)),
+                    amount_eur: amountEur,
+                    amount_bgn: Number((amountEur * EUR_TO_BGN).toFixed(2)),
                     fx_rate: EUR_TO_BGN,
                     expense_date: null,
                     status: "planned",
@@ -564,11 +572,13 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
 
             const saved = await updateManagedPropertyRealEstateCost(cost.id, {
                 ...draft,
+                amount_eur: amountEur,
                 local_label: blankToNull(draft.local_label),
                 note: blankToNull(draft.note),
                 expense_id: expenseId,
                 rate_percent: draft.rate_percent || null,
                 vat_rate_percent: draft.vat_rate_percent || null,
+                include_in_total: draft.include_in_total,
             });
 
             setCosts((current) => current.map((item) => (item.id === saved.id ? saved : item)));
@@ -613,6 +623,7 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
                 rate_percent: null,
                 vat_rate_percent: null,
                 vat_included: true,
+                include_in_total: true,
                 expense_id: expense.id,
                 note: "Created from Real Estate cockpit.",
                 sort_order: sortOrder,
@@ -712,6 +723,7 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
             });
             setServices((current) => [...current, service]);
             setServiceDrafts((current) => ({ ...current, [service.id]: serviceToDraft(service) }));
+            setExpandedServiceIds((current) => new Set([...current, service.id]));
         } catch (currentError) {
             setError(currentError instanceof Error ? currentError.message : "Failed to add service account");
         } finally {
@@ -779,6 +791,7 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
             });
             setContacts((current) => [...current, contact]);
             setContactDrafts((current) => ({ ...current, [contact.id]: contactToDraft(contact) }));
+            setExpandedContactIds((current) => new Set([...current, contact.id]));
         } catch (currentError) {
             setError(currentError instanceof Error ? currentError.message : "Failed to add contact");
         } finally {
@@ -802,6 +815,84 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
         }
     }
 
+    function toggleService(serviceId: string) {
+        setExpandedServiceIds((current) => {
+            const next = new Set(current);
+            if (next.has(serviceId)) next.delete(serviceId);
+            else next.add(serviceId);
+            return next;
+        });
+    }
+
+    function toggleContact(contactId: string) {
+        setExpandedContactIds((current) => {
+            const next = new Set(current);
+            if (next.has(contactId)) next.delete(contactId);
+            else next.add(contactId);
+            return next;
+        });
+    }
+
+    function handleImageFile(file: File | null) {
+        if (!file) return;
+        if (!file.type.startsWith("image/")) {
+            setError("Please choose an image file.");
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            const value = typeof reader.result === "string" ? reader.result : "";
+            if (value) setProfileDraft((draft) => ({ ...draft, property_image_url: value }));
+        };
+        reader.onerror = () => setError("Failed to read image file.");
+        reader.readAsDataURL(file);
+    }
+
+    function calculatedCostAmount(draft: CostDraft) {
+        const rate = Number(draft.rate_percent ?? 0);
+        if (rate > 0) {
+            let calculated = (purchasePrice * rate) / 100;
+            const vatRate = Number(draft.vat_rate_percent ?? 0);
+            if (vatRate > 0 && !draft.vat_included) calculated *= 1 + vatRate / 100;
+            return Number(calculated.toFixed(2));
+        }
+        return Number(draft.amount_eur ?? 0);
+    }
+
+    async function addCostFromExpense(expense: ManagedPropertyExpense) {
+        if (!managedProperty) return;
+
+        setSaving(true);
+        setError(null);
+
+        try {
+            const sortOrder = Math.max(0, ...costs.map((cost) => cost.sort_order)) + 10;
+            const cost = await createManagedPropertyRealEstateCost({
+                managed_property_id: managedProperty.id,
+                stable_key: `expense-${expense.id}`,
+                label: expense.title,
+                local_label: null,
+                category: expense.category === "greek_closing" ? "other" : "other",
+                amount_eur: Number(expense.amount_eur ?? 0),
+                rate_percent: null,
+                vat_rate_percent: null,
+                vat_included: true,
+                include_in_total: expense.category === "greek_closing",
+                expense_id: expense.id,
+                note: expense.note ?? `Linked from Expenses · ${expense.category}`,
+                sort_order: sortOrder,
+            });
+
+            setCosts((current) => [...current, cost]);
+            setCostDrafts((current) => ({ ...current, [cost.id]: costToDraft(cost) }));
+        } catch (currentError) {
+            setError(currentError instanceof Error ? currentError.message : "Failed to link expense");
+        } finally {
+            setSaving(false);
+        }
+    }
+
     const sections: Array<{ key: PropertySectionKey; label: string; helper: string }> = [
         { key: "overview", label: "Overview", helper: "Identity, price, rent and finance" },
         { key: "services", label: "Utilities and services", helper: `${servicesReady}/${Math.max(services.length, 1)} active records` },
@@ -811,34 +902,51 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
 
     const addressValue = addressLanguage === "en" ? profileDraft.address_en : profileDraft.address_local;
     const nonPriceCosts = costs.filter((cost) => cost.stable_key !== "purchase_price" && cost.category !== "price");
+    const linkedExpenseIds = new Set(costs.map((cost) => cost.expense_id).filter(Boolean));
+    const eligibleAcquisitionExpenses = expenses
+        .filter((expense) => ["greek_closing", "greek_setup"].includes(expense.category))
+        .filter((expense) => !linkedExpenseIds.has(expense.id))
+        .filter((expense) => expense.status !== "excluded");
 
     const renderOverview = () => (
         <SectionCard
             title="Overview"
-            subtitle="Core asset identity, acquisition parameters and budget-linked operating numbers."
+            subtitle="Focused asset identity with live Budget links for rent, credit and insurance."
             action={
                 <button type="button" onClick={() => void saveProfile()} disabled={saving} className="rounded-[10px] border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-3 py-1.5 text-[11px] font-semibold text-[#1560bc] transition hover:bg-[#2f80ed]/[0.14] disabled:opacity-50">
                     Save overview
                 </button>
             }
         >
-            <div className="grid gap-4 xl:grid-cols-[0.95fr_1.25fr]">
+            <div className="grid gap-4 xl:grid-cols-[0.92fr_1.28fr]">
                 <div className="space-y-3">
-                    <div className="overflow-hidden rounded-[18px] border border-white/[0.78] bg-white/[0.48] shadow-[0_16px_42px_rgba(41,73,112,0.07)]">
+                    <button
+                        type="button"
+                        onClick={() => imageInputRef.current?.click()}
+                        onDragOver={(event) => event.preventDefault()}
+                        onDrop={(event) => {
+                            event.preventDefault();
+                            handleImageFile(event.dataTransfer.files?.[0] ?? null);
+                        }}
+                        className="group block w-full overflow-hidden rounded-[18px] border border-white/[0.78] bg-white/[0.48] text-left shadow-[0_16px_42px_rgba(41,73,112,0.07)] transition duration-200 hover:-translate-y-0.5 hover:scale-[1.006] hover:border-[#2f80ed]/[0.28] hover:bg-white/[0.68] hover:shadow-[0_22px_54px_rgba(41,73,112,0.12)]"
+                    >
                         {profileDraft.property_image_url ? (
-                            <img src={profileDraft.property_image_url} alt="Property visual" className="h-56 w-full object-cover" />
+                            <div className="relative">
+                                <img src={profileDraft.property_image_url} alt="Property visual" className="h-56 w-full object-cover transition duration-300 group-hover:scale-[1.025]" />
+                                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#06101d]/[0.62] to-transparent px-4 py-3 text-[11px] font-semibold text-white">Click, browse or drag a new property image</div>
+                            </div>
                         ) : (
-                            <div className="flex h-56 items-center justify-center bg-[linear-gradient(135deg,rgba(47,128,237,0.10),rgba(166,139,74,0.14))] text-[11px] font-semibold uppercase tracking-[0.16em] text-[#7a90a8]">
-                                Property image URL not set
+                            <div className="flex h-56 flex-col items-center justify-center gap-2 bg-[linear-gradient(135deg,rgba(47,128,237,0.10),rgba(166,139,74,0.14))] text-center">
+                                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#607993]">Property image URL not set</div>
+                                <div className="text-[11px] text-[#7a90a8]">Click to browse or drag & drop an image here</div>
                             </div>
                         )}
-                    </div>
-                    <div className="grid gap-2 sm:grid-cols-2">
-                        <InputField label="Property photo URL" value={profileDraft.property_image_url} onChange={(value) => setProfileDraft((draft) => ({ ...draft, property_image_url: value }))} />
-                        <InputField label="Google Maps link" value={profileDraft.google_maps_url} onChange={(value) => setProfileDraft((draft) => ({ ...draft, google_maps_url: value }))} />
-                    </div>
+                    </button>
+                    <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={(event) => handleImageFile(event.target.files?.[0] ?? null)} />
+                    <InputField label="Property image URL / embedded image" value={profileDraft.property_image_url} onChange={(value) => setProfileDraft((draft) => ({ ...draft, property_image_url: value }))} />
+                    <InputField label="Google Maps link" value={profileDraft.google_maps_url} onChange={(value) => setProfileDraft((draft) => ({ ...draft, google_maps_url: value }))} />
                     {profileDraft.google_maps_url ? (
-                        <a href={profileDraft.google_maps_url} target="_blank" rel="noreferrer" className="inline-flex rounded-[12px] border border-[#2f80ed]/[0.22] bg-[#2f80ed]/[0.08] px-3 py-2 text-[11px] font-semibold text-[#1560bc] transition hover:bg-[#2f80ed]/[0.14]">
+                        <a href={profileDraft.google_maps_url} target="_blank" rel="noreferrer" className="inline-flex rounded-[12px] border border-[#2f80ed]/[0.22] bg-[#2f80ed]/[0.08] px-3 py-2 text-[11px] font-semibold text-[#1560bc] transition hover:bg-[#2f80ed]/[0.14] hover:shadow-[0_10px_26px_rgba(47,128,237,0.10)]">
                             Open location in Google Maps
                         </a>
                     ) : null}
@@ -846,29 +954,25 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
 
                 <div className="space-y-3">
                     <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                        <div className="rounded-[14px] border border-white/[0.74] bg-white/[0.54] px-3 py-2.5">
-                            <div className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7a90a8]">Price / sqm</div>
-                            <div className="mt-1 text-[18px] font-semibold text-[#0b1623]">{formatEur(pricePerSqm)}</div>
-                        </div>
-                        <div className="rounded-[14px] border border-white/[0.74] bg-white/[0.54] px-3 py-2.5">
-                            <div className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7a90a8]">Monthly rent</div>
-                            <div className="mt-1 text-[18px] font-semibold text-[#0b1623]">{formatEur(budgetSummary.monthlyRentEstimate)}</div>
-                        </div>
-                        <div className="rounded-[14px] border border-white/[0.74] bg-white/[0.54] px-3 py-2.5">
-                            <div className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7a90a8]">Credit / month</div>
-                            <div className="mt-1 text-[18px] font-semibold text-[#0b1623]">{formatEur(budgetSummary.creditPaymentEur)}</div>
-                        </div>
-                        <div className="rounded-[14px] border border-white/[0.74] bg-white/[0.54] px-3 py-2.5">
-                            <div className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7a90a8]">Insurance</div>
-                            <div className="mt-1 text-[18px] font-semibold text-[#0b1623]">{formatEur(budgetSummary.lifeInsuranceEur + budgetSummary.propertyInsuranceEur)}</div>
-                        </div>
+                        {[
+                            { label: "Price / sqm", value: sizeSqm > 0 ? formatEur(pricePerSqm) : "—", helper: sizeSqm > 0 ? `${sizeSqm} sqm` : "enter sqm" },
+                            { label: "Monthly rent", value: formatEur(budgetSummary.monthlyRentEstimate), helper: "from Budget schedule" },
+                            { label: "Credit / month", value: formatEur(budgetSummary.creditPaymentEur), helper: "from Budget credit" },
+                            { label: "Insurance", value: formatEur(budgetSummary.lifeInsuranceEur + budgetSummary.propertyInsuranceEur), helper: "life + property" },
+                        ].map((item) => (
+                            <div key={item.label} className="rounded-[14px] border border-white/[0.74] bg-white/[0.54] px-3 py-2.5 transition duration-200 hover:-translate-y-0.5 hover:scale-[1.018] hover:bg-white/[0.78] hover:shadow-[0_14px_32px_rgba(41,73,112,0.10)]">
+                                <div className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7a90a8]">{item.label}</div>
+                                <div className="mt-1 text-[18px] font-semibold text-[#0b1623]">{item.value}</div>
+                                <div className="mt-0.5 text-[10px] text-[#7a90a8]">{item.helper}</div>
+                            </div>
+                        ))}
                     </div>
 
                     <div className="grid gap-2 sm:grid-cols-2">
                         <label className="block sm:col-span-2">
                             <span className="mb-1 block text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7a90a8]">Address</span>
                             <div className="flex gap-2">
-                                <select value={addressLanguage} onChange={(event) => setAddressLanguage(event.target.value as AddressLanguage)} className="h-9 rounded-[11px] border border-[#ccd9e8] bg-white/[0.72] px-3 text-[12px] font-semibold text-[#0b1623] outline-none">
+                                <select value={addressLanguage} onChange={(event) => setAddressLanguage(event.target.value as AddressLanguage)} className="h-9 rounded-[11px] border border-[#ccd9e8] bg-white/[0.72] px-3 text-[12px] font-semibold text-[#0b1623] outline-none transition hover:bg-white focus:border-[#2f80ed]/50">
                                     <option value="en">English</option>
                                     <option value="local">Greek</option>
                                 </select>
@@ -878,13 +982,13 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
                                         const value = event.target.value;
                                         setProfileDraft((draft) => addressLanguage === "en" ? { ...draft, address_en: value } : { ...draft, address_local: value });
                                     }}
-                                    className="h-9 min-w-0 flex-1 rounded-[11px] border border-[#ccd9e8] bg-white/[0.72] px-3 text-[12px] font-medium text-[#0b1623] outline-none transition focus:border-[#2f80ed]/50 focus:bg-white"
+                                    className="h-9 min-w-0 flex-1 rounded-[11px] border border-[#ccd9e8] bg-white/[0.72] px-3 text-[12px] font-medium text-[#0b1623] outline-none transition hover:bg-white focus:border-[#2f80ed]/50 focus:bg-white"
                                 />
                             </div>
                         </label>
                         <div>
                             <span className="mb-1 block text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7a90a8]">Acquisition date</span>
-                            <AdminDatePicker value={profileDraft.acquisition_date} onChange={(value) => setProfileDraft((draft) => ({ ...draft, acquisition_date: value }))} placeholder="Select date" />
+                            <AdminDatePicker value={profileDraft.acquisition_date} onChange={(value) => setProfileDraft((draft) => ({ ...draft, acquisition_date: value }))} />
                         </div>
                         <InputField label="Purchase price" value={profileDraft.purchase_price_eur} type="number" onChange={(value) => setProfileDraft((draft) => ({ ...draft, purchase_price_eur: toNumber(value) }))} />
                         <InputField label="Size sqm" value={profileDraft.size_sqm} type="number" onChange={(value) => setProfileDraft((draft) => ({ ...draft, size_sqm: toNumber(value) }))} />
@@ -900,7 +1004,7 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
                             <div className="flex-1">
                                 <InputField label="Password vault ref" value={profileDraft.tax_portal_password_ref} type={showSecretRef ? "text" : "password"} onChange={(value) => setProfileDraft((draft) => ({ ...draft, tax_portal_password_ref: value }))} placeholder="Vault item / hint, not real password" />
                             </div>
-                            <button type="button" onClick={() => setShowSecretRef((value) => !value)} className="h-9 rounded-[11px] border border-[#ccd9e8] bg-white/[0.70] px-2.5 text-[11px] font-semibold text-[#607993] transition hover:bg-white">
+                            <button type="button" onClick={() => setShowSecretRef((value) => !value)} className="h-9 rounded-[11px] border border-[#ccd9e8] bg-white/[0.70] px-2.5 text-[11px] font-semibold text-[#607993] transition hover:bg-white hover:text-[#0b1623] active:scale-[0.97]">
                                 {showSecretRef ? "Hide" : "Show"}
                             </button>
                         </div>
@@ -914,35 +1018,56 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
     );
 
     const renderCosts = () => (
-        <SectionCard title="Acquisition costs" subtitle="Purchase price is controlled from Overview. Linked rows update Expenses where an expense link exists." action={<button type="button" onClick={() => void addCost()} disabled={saving} className="rounded-[10px] border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-3 py-1.5 text-[11px] font-semibold text-[#1560bc]">+ Fee</button>}>
+        <SectionCard title="Acquisition costs" subtitle="Purchase price is controlled from Overview. Expense-linked rows can be included or excluded from the property acquisition total." action={<button type="button" onClick={() => void addCost()} disabled={saving} className="rounded-[10px] border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-3 py-1.5 text-[11px] font-semibold text-[#1560bc] transition hover:bg-[#2f80ed]/[0.14]">+ Fee</button>}>
             <div className="mb-3 grid gap-2 sm:grid-cols-3">
-                <div className="rounded-[14px] border border-white/[0.74] bg-white/[0.54] px-3 py-2.5"><div className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7a90a8]">Purchase price</div><div className="mt-1 text-[18px] font-semibold text-[#0b1623]">{formatEur(purchasePrice)}</div><div className="mt-0.5 text-[10px] text-[#7a90a8]">from Overview</div></div>
-                <div className="rounded-[14px] border border-white/[0.74] bg-white/[0.54] px-3 py-2.5"><div className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7a90a8]">Transaction costs</div><div className="mt-1 text-[18px] font-semibold text-[#0b1623]">{formatEur(transactionCosts)}</div><div className="mt-0.5 text-[10px] text-[#7a90a8]">excluding price</div></div>
-                <div className="rounded-[14px] border border-white/[0.74] bg-white/[0.54] px-3 py-2.5"><div className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7a90a8]">Total acquisition</div><div className="mt-1 text-[18px] font-semibold text-[#0b1623]">{formatEur(totalAcquisition)}</div><div className="mt-0.5 text-[10px] text-[#7a90a8]">price + transaction costs</div></div>
+                <div className="rounded-[14px] border border-white/[0.74] bg-white/[0.54] px-3 py-2.5 transition duration-200 hover:-translate-y-0.5 hover:scale-[1.018] hover:bg-white/[0.78] hover:shadow-[0_14px_32px_rgba(41,73,112,0.10)]"><div className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7a90a8]">Purchase price</div><div className="mt-1 text-[18px] font-semibold text-[#0b1623]">{formatEur(purchasePrice)}</div><div className="mt-0.5 text-[10px] text-[#7a90a8]">from Overview</div></div>
+                <div className="rounded-[14px] border border-white/[0.74] bg-white/[0.54] px-3 py-2.5 transition duration-200 hover:-translate-y-0.5 hover:scale-[1.018] hover:bg-white/[0.78] hover:shadow-[0_14px_32px_rgba(41,73,112,0.10)]"><div className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7a90a8]">Included costs</div><div className="mt-1 text-[18px] font-semibold text-[#0b1623]">{formatEur(transactionCosts)}</div><div className="mt-0.5 text-[10px] text-[#7a90a8]">excluded rows ignored</div></div>
+                <div className="rounded-[14px] border border-white/[0.74] bg-white/[0.54] px-3 py-2.5 transition duration-200 hover:-translate-y-0.5 hover:scale-[1.018] hover:bg-white/[0.78] hover:shadow-[0_14px_32px_rgba(41,73,112,0.10)]"><div className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7a90a8]">Total acquisition</div><div className="mt-1 text-[18px] font-semibold text-[#0b1623]">{formatEur(totalAcquisition)}</div><div className="mt-0.5 text-[10px] text-[#7a90a8]">price + included costs</div></div>
             </div>
+
+            {eligibleAcquisitionExpenses.length > 0 ? (
+                <div className="mb-3 rounded-[16px] border border-[#a68b4a]/[0.20] bg-[#a68b4a]/[0.06] p-3">
+                    <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#7a6228]">Available from Expenses</div>
+                    <div className="grid gap-2 xl:grid-cols-2">
+                        {eligibleAcquisitionExpenses.map((expense) => (
+                            <div key={expense.id} className="flex items-center justify-between gap-2 rounded-[13px] border border-white/[0.72] bg-white/[0.50] px-3 py-2 transition hover:scale-[1.01] hover:bg-white/[0.74]">
+                                <div>
+                                    <div className="text-[11px] font-semibold text-[#0b1623]">{expense.title}</div>
+                                    <div className="text-[9.5px] text-[#7a90a8]">{expense.category} · {expense.status} · {formatEur(expense.amount_eur)}</div>
+                                </div>
+                                <button type="button" onClick={() => void addCostFromExpense(expense)} disabled={saving} className="rounded-[9px] border border-[#2f80ed]/[0.22] bg-[#2f80ed]/[0.08] px-2.5 py-1.5 text-[10.5px] font-semibold text-[#1560bc] transition hover:bg-[#2f80ed]/[0.14]">Link</button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            ) : null}
+
             <div className="space-y-2">
                 {nonPriceCosts.map((cost) => {
                     const draft = costDrafts[cost.id] ?? costToDraft(cost);
                     const linkedExpense = cost.expense_id ? expenseById.get(cost.expense_id) : null;
+                    const calculatedAmount = calculatedCostAmount(draft);
                     return (
-                        <div key={cost.id} className="rounded-[15px] border border-[#d8e8f6]/80 bg-white/[0.55] p-3 transition hover:bg-white/[0.68]">
+                        <div key={cost.id} className="rounded-[15px] border border-[#d8e8f6]/80 bg-white/[0.55] p-3 transition duration-200 hover:-translate-y-0.5 hover:scale-[1.006] hover:border-[#2f80ed]/[0.18] hover:bg-white/[0.72] hover:shadow-[0_16px_36px_rgba(41,73,112,0.10)]">
                             <div className="mb-2 flex items-center justify-between gap-2">
                                 <div>
-                                    <div className="text-[11px] font-semibold text-[#0b1623]">{cost.label}</div>
-                                    <div className="text-[9.5px] text-[#7a90a8]">{linkedExpense ? `Linked to Expenses · ${linkedExpense.status}` : "Local real estate row"}</div>
+                                    <div className="text-[11px] font-semibold text-[#0b1623]">{draft.label || cost.label}</div>
+                                    <div className="text-[9.5px] text-[#7a90a8]">{linkedExpense ? `Linked to Expenses · ${linkedExpense.category} · ${linkedExpense.status}` : "Local real estate row"} · {draft.include_in_total ? "included" : "excluded"}</div>
                                 </div>
                                 <div className="flex gap-1.5">
-                                    <button type="button" onClick={() => void saveCost(cost)} disabled={saving} className="rounded-[9px] border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-2.5 py-1.5 text-[10.5px] font-semibold text-[#1560bc]">Save</button>
-                                    <button type="button" onClick={() => void removeCost(cost)} disabled={saving} className="rounded-[9px] border border-[#cfa090]/[0.24] bg-[#cfa090]/[0.08] px-2.5 py-1.5 text-[10.5px] font-semibold text-[#8c5947]">Delete</button>
+                                    <button type="button" onClick={() => void saveCost(cost)} disabled={saving} className="rounded-[9px] border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-2.5 py-1.5 text-[10.5px] font-semibold text-[#1560bc] transition hover:bg-[#2f80ed]/[0.14]">Save</button>
+                                    <button type="button" onClick={() => void removeCost(cost)} disabled={saving} className="rounded-[9px] border border-[#cfa090]/[0.24] bg-[#cfa090]/[0.08] px-2.5 py-1.5 text-[10.5px] font-semibold text-[#8c5947] transition hover:bg-[#cfa090]/[0.14]">Delete</button>
                                 </div>
                             </div>
                             <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
                                 <InputField label="Label" value={draft.label} onChange={(value) => setCostDrafts((current) => ({ ...current, [cost.id]: { ...draft, label: value } }))} />
-                                <InputField label="Amount EUR" value={draft.amount_eur} type="number" onChange={(value) => setCostDrafts((current) => ({ ...current, [cost.id]: { ...draft, amount_eur: toNumber(value) } }))} />
+                                <label className="block"><span className="mb-1 block text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7a90a8]">Amount EUR</span><input type="number" value={calculatedAmount} onChange={(event) => setCostDrafts((current) => ({ ...current, [cost.id]: { ...draft, amount_eur: toNumber(event.target.value), rate_percent: 0 } }))} className="h-9 w-full rounded-[11px] border border-[#ccd9e8] bg-white/[0.72] px-3 text-[12px] font-medium text-[#0b1623] outline-none transition focus:border-[#2f80ed]/50 focus:bg-white" /></label>
                                 <label className="block"><span className="mb-1 block text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7a90a8]">Category</span><select value={draft.category} onChange={(event) => setCostDrafts((current) => ({ ...current, [cost.id]: { ...draft, category: event.target.value as ManagedPropertyRealEstateCostCategory } }))} className="h-9 w-full rounded-[11px] border border-[#ccd9e8] bg-white/[0.72] px-3 text-[12px] font-medium text-[#0b1623] outline-none">{costCategoryOrder.map((key) => <option key={key} value={key}>{costCategoryLabels[key]}</option>)}</select></label>
                                 <InputField label="Rate %" value={draft.rate_percent} type="number" onChange={(value) => setCostDrafts((current) => ({ ...current, [cost.id]: { ...draft, rate_percent: toNumber(value) } }))} />
                                 <InputField label="VAT %" value={draft.vat_rate_percent} type="number" onChange={(value) => setCostDrafts((current) => ({ ...current, [cost.id]: { ...draft, vat_rate_percent: toNumber(value) } }))} />
-                                <div className="sm:col-span-2 xl:col-span-3"><TextAreaField label="Note" value={draft.note} onChange={(value) => setCostDrafts((current) => ({ ...current, [cost.id]: { ...draft, note: value } }))} /></div>
+                                <label className="flex h-9 items-center gap-2 rounded-[11px] border border-[#ccd9e8] bg-white/[0.58] px-3 text-[11px] font-semibold text-[#0b1623]"><input type="checkbox" checked={draft.vat_included} onChange={(event) => setCostDrafts((current) => ({ ...current, [cost.id]: { ...draft, vat_included: event.target.checked } }))} /> VAT already included</label>
+                                <label className="flex h-9 items-center gap-2 rounded-[11px] border border-[#ccd9e8] bg-white/[0.58] px-3 text-[11px] font-semibold text-[#0b1623]"><input type="checkbox" checked={draft.include_in_total} onChange={(event) => setCostDrafts((current) => ({ ...current, [cost.id]: { ...draft, include_in_total: event.target.checked } }))} /> Include in acquisition total</label>
+                                <div className="sm:col-span-2 xl:col-span-4"><TextAreaField label="Note" value={draft.note} onChange={(value) => setCostDrafts((current) => ({ ...current, [cost.id]: { ...draft, note: value } }))} /></div>
                             </div>
                         </div>
                     );
@@ -952,35 +1077,55 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
     );
 
     const renderServices = () => (
-        <SectionCard title="Utilities and services" subtitle="Electricity, water, gas, internet and building fees." action={<button type="button" onClick={() => void addService()} disabled={saving} className="rounded-[10px] border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-3 py-1.5 text-[11px] font-semibold text-[#1560bc]">+ Service</button>}>
+        <SectionCard title="Utilities and services" subtitle="Electricity, water, gas, internet and building fees. Cards are collapsed by default for faster scanning." action={<button type="button" onClick={() => void addService()} disabled={saving} className="rounded-[10px] border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-3 py-1.5 text-[11px] font-semibold text-[#1560bc] transition hover:bg-[#2f80ed]/[0.14]">+ Service</button>}>
             <div className="space-y-2">
                 {services.map((service) => {
                     const draft = serviceDrafts[service.id] ?? serviceToDraft(service);
                     const labels = serviceLabels[draft.service_type] ?? serviceLabels.other;
+                    const expanded = expandedServiceIds.has(service.id);
+                    const ready = Boolean(draft.provider_name || draft.account_number || draft.meter_number || draft.customer_code || draft.monthly_fee_eur);
                     return (
-                        <div key={service.id} className="rounded-[15px] border border-[#d8e8f6]/80 bg-white/[0.55] p-3 transition hover:bg-white/[0.68]">
-                            <div className="mb-2 flex items-center justify-between gap-2">
-                                <div><div className="text-[11px] font-semibold text-[#0b1623]">{labels.label} · {labels.local}</div><div className="text-[9.5px] text-[#7a90a8]">{labels.helper}</div></div>
-                                <div className="flex gap-1.5"><button type="button" onClick={() => void saveService(service)} disabled={saving} className="rounded-[9px] border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-2.5 py-1.5 text-[10.5px] font-semibold text-[#1560bc]">Save</button><button type="button" onClick={() => void removeService(service)} disabled={saving} className="rounded-[9px] border border-[#cfa090]/[0.24] bg-[#cfa090]/[0.08] px-2.5 py-1.5 text-[10.5px] font-semibold text-[#8c5947]">Delete</button></div>
-                            </div>
-                            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                                <label className="block"><span className="mb-1 block text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7a90a8]">Type</span><select value={draft.service_type} onChange={(event) => setServiceDrafts((current) => ({ ...current, [service.id]: { ...draft, service_type: event.target.value as ManagedPropertyServiceType } }))} className="h-9 w-full rounded-[11px] border border-[#ccd9e8] bg-white/[0.72] px-3 text-[12px] font-medium text-[#0b1623] outline-none">{Object.entries(serviceLabels).map(([key, item]) => <option key={key} value={key}>{item.label}</option>)}</select></label>
-                                <InputField label="Provider" value={draft.provider_name} onChange={(value) => setServiceDrafts((current) => ({ ...current, [service.id]: { ...draft, provider_name: value } }))} />
-                                <div><span className="mb-1 block text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7a90a8]">Start date</span><AdminDatePicker value={draft.start_date} onChange={(value) => setServiceDrafts((current) => ({ ...current, [service.id]: { ...draft, start_date: value } }))} placeholder="Select date" /></div>
-                                <InputField label="Account holder" value={draft.account_holder} onChange={(value) => setServiceDrafts((current) => ({ ...current, [service.id]: { ...draft, account_holder: value } }))} />
-                                <InputField label="Account / supply no." value={draft.account_number} onChange={(value) => setServiceDrafts((current) => ({ ...current, [service.id]: { ...draft, account_number: value } }))} />
-                                <InputField label="Meter no." value={draft.meter_number} onChange={(value) => setServiceDrafts((current) => ({ ...current, [service.id]: { ...draft, meter_number: value } }))} />
-                                <InputField label="Contract no." value={draft.contract_number} onChange={(value) => setServiceDrafts((current) => ({ ...current, [service.id]: { ...draft, contract_number: value } }))} />
-                                <InputField label="Customer code" value={draft.customer_code} onChange={(value) => setServiceDrafts((current) => ({ ...current, [service.id]: { ...draft, customer_code: value } }))} />
-                                <InputField label="Payment code" value={draft.payment_code} onChange={(value) => setServiceDrafts((current) => ({ ...current, [service.id]: { ...draft, payment_code: value } }))} />
-                                <InputField label="Delivery point / HKASP" value={draft.delivery_point} onChange={(value) => setServiceDrafts((current) => ({ ...current, [service.id]: { ...draft, delivery_point: value } }))} />
-                                <InputField label="Plan" value={draft.plan_name} onChange={(value) => setServiceDrafts((current) => ({ ...current, [service.id]: { ...draft, plan_name: value } }))} />
-                                <InputField label="Monthly fee EUR" value={draft.monthly_fee_eur} type="number" onChange={(value) => setServiceDrafts((current) => ({ ...current, [service.id]: { ...draft, monthly_fee_eur: toNumber(value) } }))} />
-                                <InputField label="Phone" value={draft.phone} onChange={(value) => setServiceDrafts((current) => ({ ...current, [service.id]: { ...draft, phone: value } }))} />
-                                <InputField label="Website" value={draft.website} onChange={(value) => setServiceDrafts((current) => ({ ...current, [service.id]: { ...draft, website: value } }))} />
-                                {draft.service_type === "building_fees" ? <><InputField label="Manager" value={draft.manager_name} onChange={(value) => setServiceDrafts((current) => ({ ...current, [service.id]: { ...draft, manager_name: value } }))} /><InputField label="Manager phone" value={draft.manager_phone} onChange={(value) => setServiceDrafts((current) => ({ ...current, [service.id]: { ...draft, manager_phone: value } }))} /><InputField label="Manager email" value={draft.manager_email} onChange={(value) => setServiceDrafts((current) => ({ ...current, [service.id]: { ...draft, manager_email: value } }))} /><InputField label="Bank account" value={draft.manager_bank_account} onChange={(value) => setServiceDrafts((current) => ({ ...current, [service.id]: { ...draft, manager_bank_account: value } }))} /></> : null}
-                                <div className="sm:col-span-2 xl:col-span-4"><TextAreaField label="Note" value={draft.note} onChange={(value) => setServiceDrafts((current) => ({ ...current, [service.id]: { ...draft, note: value } }))} /></div>
-                            </div>
+                        <div key={service.id} className="overflow-hidden rounded-[16px] border border-[#d8e8f6]/80 bg-white/[0.55] transition duration-200 hover:-translate-y-0.5 hover:scale-[1.004] hover:border-[#2f80ed]/[0.18] hover:bg-white/[0.72] hover:shadow-[0_16px_36px_rgba(41,73,112,0.10)]">
+                            <button type="button" onClick={() => toggleService(service.id)} className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left">
+                                <div className="min-w-0">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <div className="text-[12px] font-semibold text-[#0b1623]">{labels.label} · {labels.local}</div>
+                                        <span className={["rounded-full border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em]", ready ? "border-[#20a76b]/[0.24] bg-[#20a76b]/[0.08] text-[#0f7448]" : "border-[#cfa090]/[0.24] bg-[#cfa090]/[0.08] text-[#8c5947]"].join(" ")}>{ready ? "tracked" : "empty"}</span>
+                                    </div>
+                                    <div className="mt-0.5 text-[10px] text-[#7a90a8]">{draft.provider_name || "No provider"} · {draft.account_number || draft.customer_code || "no account"} · {formatEur(draft.monthly_fee_eur)} / month</div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-semibold text-[#7a90a8]">{expanded ? "Collapse" : "Open"}</span>
+                                    <span className={["flex h-8 w-8 items-center justify-center rounded-full border border-[#ccd9e8] bg-white/[0.72] text-[#607993] transition", expanded ? "rotate-180" : ""].join(" ")}>⌄</span>
+                                </div>
+                            </button>
+
+                            {expanded ? (
+                                <div className="border-t border-white/[0.70] px-3 pb-3 pt-2">
+                                    <div className="mb-2 flex justify-end gap-1.5">
+                                        <button type="button" onClick={() => void saveService(service)} disabled={saving} className="rounded-[9px] border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-2.5 py-1.5 text-[10.5px] font-semibold text-[#1560bc] transition hover:bg-[#2f80ed]/[0.14]">Save</button>
+                                        <button type="button" onClick={() => void removeService(service)} disabled={saving} className="rounded-[9px] border border-[#cfa090]/[0.24] bg-[#cfa090]/[0.08] px-2.5 py-1.5 text-[10.5px] font-semibold text-[#8c5947] transition hover:bg-[#cfa090]/[0.14]">Delete</button>
+                                    </div>
+                                    <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                                        <label className="block"><span className="mb-1 block text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7a90a8]">Type</span><select value={draft.service_type} onChange={(event) => setServiceDrafts((current) => ({ ...current, [service.id]: { ...draft, service_type: event.target.value as ManagedPropertyServiceType } }))} className="h-9 w-full rounded-[11px] border border-[#ccd9e8] bg-white/[0.72] px-3 text-[12px] font-medium text-[#0b1623] outline-none">{Object.entries(serviceLabels).map(([key, item]) => <option key={key} value={key}>{item.label}</option>)}</select></label>
+                                        <InputField label="Provider" value={draft.provider_name} onChange={(value) => setServiceDrafts((current) => ({ ...current, [service.id]: { ...draft, provider_name: value } }))} />
+                                        <div><span className="mb-1 block text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7a90a8]">Start date</span><AdminDatePicker value={draft.start_date} onChange={(value) => setServiceDrafts((current) => ({ ...current, [service.id]: { ...draft, start_date: value } }))} /></div>
+                                        <InputField label="Account holder" value={draft.account_holder} onChange={(value) => setServiceDrafts((current) => ({ ...current, [service.id]: { ...draft, account_holder: value } }))} />
+                                        <InputField label="Account / supply no." value={draft.account_number} onChange={(value) => setServiceDrafts((current) => ({ ...current, [service.id]: { ...draft, account_number: value } }))} />
+                                        <InputField label="Meter no." value={draft.meter_number} onChange={(value) => setServiceDrafts((current) => ({ ...current, [service.id]: { ...draft, meter_number: value } }))} />
+                                        <InputField label="Contract no." value={draft.contract_number} onChange={(value) => setServiceDrafts((current) => ({ ...current, [service.id]: { ...draft, contract_number: value } }))} />
+                                        <InputField label="Customer code" value={draft.customer_code} onChange={(value) => setServiceDrafts((current) => ({ ...current, [service.id]: { ...draft, customer_code: value } }))} />
+                                        <InputField label="Payment code" value={draft.payment_code} onChange={(value) => setServiceDrafts((current) => ({ ...current, [service.id]: { ...draft, payment_code: value } }))} />
+                                        <InputField label="Delivery point / HKASP" value={draft.delivery_point} onChange={(value) => setServiceDrafts((current) => ({ ...current, [service.id]: { ...draft, delivery_point: value } }))} />
+                                        <InputField label="Plan" value={draft.plan_name} onChange={(value) => setServiceDrafts((current) => ({ ...current, [service.id]: { ...draft, plan_name: value } }))} />
+                                        <InputField label="Monthly fee EUR" value={draft.monthly_fee_eur} type="number" onChange={(value) => setServiceDrafts((current) => ({ ...current, [service.id]: { ...draft, monthly_fee_eur: toNumber(value) } }))} />
+                                        <InputField label="Phone" value={draft.phone} onChange={(value) => setServiceDrafts((current) => ({ ...current, [service.id]: { ...draft, phone: value } }))} />
+                                        <InputField label="Website" value={draft.website} onChange={(value) => setServiceDrafts((current) => ({ ...current, [service.id]: { ...draft, website: value } }))} />
+                                        {draft.service_type === "building_fees" ? <><InputField label="Manager" value={draft.manager_name} onChange={(value) => setServiceDrafts((current) => ({ ...current, [service.id]: { ...draft, manager_name: value } }))} /><InputField label="Manager phone" value={draft.manager_phone} onChange={(value) => setServiceDrafts((current) => ({ ...current, [service.id]: { ...draft, manager_phone: value } }))} /><InputField label="Manager email" value={draft.manager_email} onChange={(value) => setServiceDrafts((current) => ({ ...current, [service.id]: { ...draft, manager_email: value } }))} /><InputField label="Bank account" value={draft.manager_bank_account} onChange={(value) => setServiceDrafts((current) => ({ ...current, [service.id]: { ...draft, manager_bank_account: value } }))} /></> : null}
+                                        <div className="sm:col-span-2 xl:col-span-4"><TextAreaField label="Note" value={draft.note} onChange={(value) => setServiceDrafts((current) => ({ ...current, [service.id]: { ...draft, note: value } }))} /></div>
+                                    </div>
+                                </div>
+                            ) : null}
                         </div>
                     );
                 })}
@@ -989,23 +1134,39 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
     );
 
     const renderPeople = () => (
-        <SectionCard title="People" subtitle="Tenants, previous owners and operational contacts." action={<div className="flex gap-1.5"><button type="button" onClick={() => void addContact("tenant")} disabled={saving} className="rounded-[10px] border border-[#20a76b]/[0.24] bg-[#20a76b]/[0.08] px-3 py-1.5 text-[11px] font-semibold text-[#0f7448]">+ Tenant</button><button type="button" onClick={() => void addContact("previous_owner")} disabled={saving} className="rounded-[10px] border border-[#a68b4a]/[0.24] bg-[#a68b4a]/[0.08] px-3 py-1.5 text-[11px] font-semibold text-[#7a6228]">+ Owner</button></div>}>
-            <div className="grid gap-2 xl:grid-cols-2">
+        <SectionCard title="People" subtitle="Tenants, previous owners, property managers and operational contacts." action={<div className="flex flex-wrap gap-1.5"><button type="button" onClick={() => void addContact("tenant")} disabled={saving} className="rounded-[10px] border border-[#20a76b]/[0.24] bg-[#20a76b]/[0.08] px-3 py-1.5 text-[11px] font-semibold text-[#0f7448] transition hover:bg-[#20a76b]/[0.14]">+ Tenant</button><button type="button" onClick={() => void addContact("property_manager")} disabled={saving} className="rounded-[10px] border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-3 py-1.5 text-[11px] font-semibold text-[#1560bc] transition hover:bg-[#2f80ed]/[0.14]">+ Manager</button><button type="button" onClick={() => void addContact("previous_owner")} disabled={saving} className="rounded-[10px] border border-[#a68b4a]/[0.24] bg-[#a68b4a]/[0.08] px-3 py-1.5 text-[11px] font-semibold text-[#7a6228] transition hover:bg-[#a68b4a]/[0.14]">+ Owner</button></div>}>
+            <div className="space-y-2">
                 {contacts.map((contact) => {
                     const draft = contactDrafts[contact.id] ?? contactToDraft(contact);
+                    const expanded = expandedContactIds.has(contact.id);
                     return (
-                        <div key={contact.id} className="rounded-[15px] border border-[#d8e8f6]/80 bg-white/[0.55] p-3 transition hover:bg-white/[0.68]">
-                            <div className="mb-2 flex items-center justify-between gap-2">
-                                <select value={draft.contact_type} onChange={(event) => setContactDrafts((current) => ({ ...current, [contact.id]: { ...draft, contact_type: event.target.value as ManagedPropertyRealEstateContactType } }))} className="rounded-[10px] border border-[#ccd9e8] bg-white/[0.72] px-2.5 py-1.5 text-[11px] font-semibold text-[#0b1623]">{Object.entries(contactLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select>
-                                <div className="flex gap-1.5"><button type="button" onClick={() => void saveContact(contact)} disabled={saving} className="rounded-[9px] border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-2.5 py-1.5 text-[10.5px] font-semibold text-[#1560bc]">Save</button><button type="button" onClick={() => void removeContact(contact)} disabled={saving} className="rounded-[9px] border border-[#cfa090]/[0.24] bg-[#cfa090]/[0.08] px-2.5 py-1.5 text-[10.5px] font-semibold text-[#8c5947]">Delete</button></div>
-                            </div>
-                            <div className="grid gap-2 sm:grid-cols-2">
-                                <InputField label="Name" value={draft.full_name} onChange={(value) => setContactDrafts((current) => ({ ...current, [contact.id]: { ...draft, full_name: value } }))} />
-                                <InputField label="AFM" value={draft.afm} onChange={(value) => setContactDrafts((current) => ({ ...current, [contact.id]: { ...draft, afm: value } }))} />
-                                <InputField label="Phone" value={draft.phone} onChange={(value) => setContactDrafts((current) => ({ ...current, [contact.id]: { ...draft, phone: value } }))} />
-                                <InputField label="Email" value={draft.email} onChange={(value) => setContactDrafts((current) => ({ ...current, [contact.id]: { ...draft, email: value } }))} />
-                                <div className="sm:col-span-2"><TextAreaField label="Note" value={draft.note} onChange={(value) => setContactDrafts((current) => ({ ...current, [contact.id]: { ...draft, note: value } }))} /></div>
-                            </div>
+                        <div key={contact.id} className="overflow-hidden rounded-[16px] border border-[#d8e8f6]/80 bg-white/[0.55] transition duration-200 hover:-translate-y-0.5 hover:scale-[1.004] hover:border-[#2f80ed]/[0.18] hover:bg-white/[0.72] hover:shadow-[0_16px_36px_rgba(41,73,112,0.10)]">
+                            <button type="button" onClick={() => toggleContact(contact.id)} className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left">
+                                <div className="min-w-0">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <div className="text-[12px] font-semibold text-[#0b1623]">{draft.full_name || "Unnamed contact"}</div>
+                                        <span className="rounded-full border border-[#2f80ed]/[0.20] bg-[#2f80ed]/[0.08] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-[#1560bc]">{contactLabels[draft.contact_type]}</span>
+                                    </div>
+                                    <div className="mt-0.5 text-[10px] text-[#7a90a8]">{draft.afm || "no AFM"} · {draft.phone || "no phone"} · {draft.email || "no email"}</div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-semibold text-[#7a90a8]">{expanded ? "Collapse" : "Open"}</span>
+                                    <span className={["flex h-8 w-8 items-center justify-center rounded-full border border-[#ccd9e8] bg-white/[0.72] text-[#607993] transition", expanded ? "rotate-180" : ""].join(" ")}>⌄</span>
+                                </div>
+                            </button>
+                            {expanded ? (
+                                <div className="border-t border-white/[0.70] px-3 pb-3 pt-2">
+                                    <div className="mb-2 flex justify-end gap-1.5"><button type="button" onClick={() => void saveContact(contact)} disabled={saving} className="rounded-[9px] border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-2.5 py-1.5 text-[10.5px] font-semibold text-[#1560bc] transition hover:bg-[#2f80ed]/[0.14]">Save</button><button type="button" onClick={() => void removeContact(contact)} disabled={saving} className="rounded-[9px] border border-[#cfa090]/[0.24] bg-[#cfa090]/[0.08] px-2.5 py-1.5 text-[10.5px] font-semibold text-[#8c5947] transition hover:bg-[#cfa090]/[0.14]">Delete</button></div>
+                                    <div className="grid gap-2 sm:grid-cols-2">
+                                        <label className="block"><span className="mb-1 block text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7a90a8]">Type</span><select value={draft.contact_type} onChange={(event) => setContactDrafts((current) => ({ ...current, [contact.id]: { ...draft, contact_type: event.target.value as ManagedPropertyRealEstateContactType } }))} className="h-9 w-full rounded-[11px] border border-[#ccd9e8] bg-white/[0.72] px-3 text-[12px] font-medium text-[#0b1623] outline-none">{Object.entries(contactLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
+                                        <InputField label="Name" value={draft.full_name} onChange={(value) => setContactDrafts((current) => ({ ...current, [contact.id]: { ...draft, full_name: value } }))} />
+                                        <InputField label="AFM" value={draft.afm} onChange={(value) => setContactDrafts((current) => ({ ...current, [contact.id]: { ...draft, afm: value } }))} />
+                                        <InputField label="Phone" value={draft.phone} onChange={(value) => setContactDrafts((current) => ({ ...current, [contact.id]: { ...draft, phone: value } }))} />
+                                        <InputField label="Email" value={draft.email} onChange={(value) => setContactDrafts((current) => ({ ...current, [contact.id]: { ...draft, email: value } }))} />
+                                        <div className="sm:col-span-2"><TextAreaField label="Note" value={draft.note} onChange={(value) => setContactDrafts((current) => ({ ...current, [contact.id]: { ...draft, note: value } }))} /></div>
+                                    </div>
+                                </div>
+                            ) : null}
                         </div>
                     );
                 })}
@@ -1047,7 +1208,7 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
                         { label: "Transaction costs", value: formatEur(transactionCosts), helper: "linked with Expenses where possible" },
                         { label: "Finance", value: formatEur(creditAmount), helper: `monthly ${formatEur(budgetSummary.creditPaymentEur)}` },
                         { label: "Services", value: `${servicesReady}/${Math.max(services.length, 1)}`, helper: `${formatEur(serviceMonthly)} monthly tracked` },
-                    ].map((card) => (<div key={card.label} className="rounded-[16px] border border-white/[0.80] bg-white/[0.62] px-3.5 py-2.5 shadow-[0_10px_28px_rgba(41,73,112,0.07)]"><div className="text-[9px] font-semibold uppercase tracking-[0.13em] text-[#7a90a8]">{card.label}</div><div className="mt-1 text-[20px] font-semibold leading-none text-[#0b1623]">{card.value}</div><div className="mt-1 text-[10px] text-[#7a90a8]">{card.helper}</div></div>))}
+                    ].map((card) => (<div key={card.label} className="rounded-[16px] border border-white/[0.80] bg-white/[0.62] px-3.5 py-2.5 shadow-[0_10px_28px_rgba(41,73,112,0.07)] transition duration-200 hover:-translate-y-0.5 hover:scale-[1.015] hover:border-[#2f80ed]/[0.24] hover:bg-white/[0.82] hover:shadow-[0_18px_44px_rgba(41,73,112,0.13)]"><div className="text-[9px] font-semibold uppercase tracking-[0.13em] text-[#7a90a8]">{card.label}</div><div className="mt-1 text-[20px] font-semibold leading-none text-[#0b1623]">{card.value}</div><div className="mt-1 text-[10px] text-[#7a90a8]">{card.helper}</div></div>))}
                 </div>
                 <div className="relative min-h-0 flex-1 px-5 py-4 sm:px-6">
                     {loading ? <div className="rounded-[20px] border border-white/[0.76] bg-white/[0.58] p-6 text-[13px] font-semibold text-[#607993]">Loading real estate data...</div> : (
@@ -1058,7 +1219,7 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
                                     {sections.map((section) => {
                                         const active = activeSection === section.key;
                                         return (
-                                            <button key={section.key} type="button" onClick={() => setActiveSection(section.key)} className={["w-full rounded-[16px] border px-3 py-3 text-left transition active:scale-[0.99]", active ? "border-[#2f80ed]/[0.36] bg-[#2f80ed]/[0.12] shadow-[0_12px_26px_rgba(47,128,237,0.10)]" : "border-white/[0.68] bg-white/[0.48] hover:bg-white/[0.72]"].join(" ")}>
+                                            <button key={section.key} type="button" onClick={() => setActiveSection(section.key)} className={["w-full rounded-[16px] border px-3 py-3 text-left transition active:scale-[0.99]", active ? "border-[#2f80ed]/[0.36] bg-[#2f80ed]/[0.12] shadow-[0_12px_26px_rgba(47,128,237,0.10)]" : "border-white/[0.68] bg-white/[0.48] hover:scale-[1.012] hover:border-[#2f80ed]/[0.22] hover:bg-white/[0.78] hover:shadow-[0_12px_26px_rgba(47,128,237,0.08)]"].join(" ")}>
                                                 <div className={["text-[12px] font-semibold", active ? "text-[#1560bc]" : "text-[#0b1623]"].join(" ")}>{section.label}</div>
                                                 <div className="mt-1 text-[10px] leading-snug text-[#7a90a8]">{section.helper}</div>
                                             </button>
