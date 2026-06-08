@@ -1178,6 +1178,10 @@ export type ManagedPropertyRealEstateProfile = {
     atak: string | null;
     pea_number: string | null;
     rental_contract_reference: string | null;
+    kaek: string | null;
+    google_maps_url: string | null;
+    property_image_url: string | null;
+    size_sqm: number | null;
     address_en: string | null;
     address_local: string | null;
     acquisition_date: string | null;
@@ -1198,6 +1202,10 @@ export type ManagedPropertyRealEstateProfilePatch = Partial<
         | "atak"
         | "pea_number"
         | "rental_contract_reference"
+        | "kaek"
+        | "google_maps_url"
+        | "property_image_url"
+        | "size_sqm"
         | "address_en"
         | "address_local"
         | "acquisition_date"
