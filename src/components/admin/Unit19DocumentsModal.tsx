@@ -654,7 +654,7 @@ export default function Unit19DocumentsModal({ open, onClose, onSwitchPanel, pro
                         </div>
 
                         <div className="mt-2.5 rounded-[16px] border border-white/[0.78] bg-white/[0.58] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
-                            <div className="mb-2 text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">Filters</div>
+                            <div className="mb-2 flex items-center justify-between gap-2"><div className="text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">Filters</div><button type="button" onClick={() => { setCategoryFilter("all"); setStatusFilter("all"); setQuery(""); }} className="rounded-lg border border-[#ccd9e8] bg-white/[0.62] px-2 py-1 text-[10px] font-semibold text-[#607993] transition hover:bg-white hover:text-[#0b1623]">Clear</button></div>
                             <div className="space-y-1.5">
                                 <select
                                     value={categoryFilter}

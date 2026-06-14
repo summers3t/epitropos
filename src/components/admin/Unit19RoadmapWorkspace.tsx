@@ -66,6 +66,13 @@ function toIsoDate(value: Date) {
     return copy.toISOString().slice(0, 10);
 }
 
+function formatDisplayDate(value: string | null | undefined) {
+    if (!value) return "";
+    const [year, month, day] = value.split("-");
+    if (!year || !month || !day) return value;
+    return `${day.padStart(2, "0")}.${month.padStart(2, "0")}.${year}`;
+}
+
 function formatStageNumber(value: number) {
     return String(Math.max(1, value)).padStart(2, "0");
 }
@@ -351,6 +358,7 @@ export default function Unit19RoadmapWorkspace({
     const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
     const [rearrangeMode, setRearrangeMode] = useState(false);
     const [draggedStageId, setDraggedStageId] = useState<string | null>(null);
+    const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
     const [schedulingTaskId, setSchedulingTaskId] = useState<string | null>(null);
     const [scheduleDate, setScheduleDate] = useState(() => toIsoDate(new Date()));
     const [scheduleTime, setScheduleTime] = useState("");
@@ -366,6 +374,7 @@ export default function Unit19RoadmapWorkspace({
     const [calendarOpen, setCalendarOpen] = useState(false);
     const pendingDeletionRef = useRef<PendingDeletionRecord | null>(null);
     const [pendingDeletionLabel, setPendingDeletionLabel] = useState<string | null>(null);
+    const rearrangingTasks = rearrangeMode && expandedStageIds.size > 0;
 
     const switchPanel = useCallback((panel: Unit19PanelKey) => {
         setRealEstateOpen(panel === "realEstate");
@@ -592,6 +601,24 @@ export default function Unit19RoadmapWorkspace({
         );
     }
 
+    async function persistTaskOrder(stageId: string, taskList: Unit19RoadmapTask[]) {
+        await Promise.all(
+            taskList.map((task, index) =>
+                updateManagedPropertyTask(task.id, { sort_order: (index + 1) * 1000 }),
+            ),
+        );
+        setStages((current) =>
+            current.map((stage) =>
+                stage.id === stageId
+                    ? {
+                        ...stage,
+                        tasks: taskList.map((task, index) => ({ ...task, sort_order: (index + 1) * 1000 })),
+                    }
+                    : stage,
+            ),
+        );
+    }
+
     async function addStage() {
         if (!managedPropertyId) return;
 
@@ -750,9 +777,12 @@ export default function Unit19RoadmapWorkspace({
             const next = !current;
 
             if (next) {
-                setFilterMode("all");
-                setFocusedStageStatus(null);
+                if (expandedStageIds.size === 0) {
+                    setFilterMode("all");
+                    setFocusedStageStatus(null);
+                }
                 setEditingStageId(null);
+                setEditingTaskId(null);
             }
 
             return next;
@@ -841,6 +871,36 @@ export default function Unit19RoadmapWorkspace({
             next.add(id);
             return next;
         });
+    }
+
+    async function reorderTask(stageId: string, draggedId: string, targetId: string) {
+        if (draggedId === targetId) return;
+
+        const stage = stages.find((item) => item.id === stageId);
+        if (!stage) return;
+
+        const tasks = [...stage.tasks].sort((a, b) => a.sort_order - b.sort_order || a.title.localeCompare(b.title));
+        const draggedIndex = tasks.findIndex((task) => task.id === draggedId);
+        const targetIndex = tasks.findIndex((task) => task.id === targetId);
+        if (draggedIndex < 0 || targetIndex < 0) return;
+
+        const nextTasks = [...tasks];
+        const [draggedTask] = nextTasks.splice(draggedIndex, 1);
+        nextTasks.splice(targetIndex, 0, draggedTask);
+
+        setStages((current) =>
+            current.map((item) => (item.id === stageId ? { ...item, tasks: nextTasks } : item)),
+        );
+        setSaving(true);
+        setError(null);
+        try {
+            await persistTaskOrder(stageId, nextTasks);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to reorder roadmap tasks");
+            await loadRoadmap();
+        } finally {
+            setSaving(false);
+        }
     }
 
     async function addTask(stageId: string) {
@@ -1269,20 +1329,26 @@ export default function Unit19RoadmapWorkspace({
 
                         {rearrangeMode ? (
                             <div className="mb-4 rounded-[14px] border border-[#8a65cc]/[0.22] bg-[#8a65cc]/[0.08] px-4 py-3 text-[12px] font-semibold text-[#5e38a0]">
-                                Rearrange mode is active. Drag stages to reorder. Stage numbers will be updated automatically.
+                                {rearrangingTasks ? "Rearrange mode is active. Drag tasks inside the expanded stage to reorder." : "Rearrange mode is active. Drag stages to reorder. Stage numbers will be updated automatically."}
                             </div>
                         ) : null}
 
                         {pendingDeletionLabel ? (
-                            <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-[14px] border border-[#c78973]/[0.24] bg-[#c78973]/[0.08] px-4 py-3 text-[12px] font-semibold text-[#8c5947]">
-                                <span>{pendingDeletionLabel}. Undo available for 5 seconds.</span>
-                                <button
-                                    type="button"
-                                    onClick={undoPendingDeletion}
-                                    className="rounded-[9px] border border-[#c78973]/[0.30] bg-white/[0.72] px-3 py-1.5 text-[11px] font-semibold text-[#8c5947] transition hover:bg-white active:scale-[0.97]"
-                                >
-                                    Undo
-                                </button>
+                            <div className="fixed bottom-5 right-5 z-[120] w-[min(360px,calc(100vw-32px))] overflow-hidden rounded-[18px] border border-[#c78973]/[0.28] bg-white/[0.90] px-4 py-3 text-[12px] font-semibold text-[#8c5947] shadow-[0_24px_70px_rgba(6,16,29,0.22)] backdrop-blur-xl">
+                                <div className="flex items-center justify-between gap-3">
+                                    <span className="min-w-0">{pendingDeletionLabel}. Undo available.</span>
+                                    <button
+                                        type="button"
+                                        onClick={undoPendingDeletion}
+                                        className="shrink-0 rounded-[9px] border border-[#c78973]/[0.30] bg-white/[0.72] px-3 py-1.5 text-[11px] font-semibold text-[#8c5947] transition hover:bg-white active:scale-[0.97]"
+                                    >
+                                        Undo
+                                    </button>
+                                </div>
+                                <div className="mt-2 h-1 overflow-hidden rounded-full bg-[#c78973]/[0.14]">
+                                    <div className="h-full origin-left rounded-full bg-[#c78973]" style={{ animation: "roadmap-delete-countdown 5s linear forwards" }} />
+                                </div>
+                                <style jsx>{`@keyframes roadmap-delete-countdown { from { transform: scaleX(1); } to { transform: scaleX(0); } }`}</style>
                             </div>
                         ) : null}
 
@@ -1299,20 +1365,20 @@ export default function Unit19RoadmapWorkspace({
                                         <article
                                             id={`roadmap-stage-${stage.id}`}
                                             key={stage.id}
-                                            draggable={rearrangeMode}
+                                            draggable={rearrangeMode && !rearrangingTasks}
                                             onDragStart={(event) => {
-                                                if (!rearrangeMode || isInteractiveField(event.target)) return;
+                                                if (!rearrangeMode || rearrangingTasks || isInteractiveField(event.target)) return;
                                                 setDraggedStageId(stage.id);
                                                 event.dataTransfer.effectAllowed = "move";
                                                 event.dataTransfer.setData("text/plain", stage.id);
                                             }}
                                             onDragOver={(event) => {
-                                                if (!rearrangeMode) return;
+                                                if (!rearrangeMode || rearrangingTasks) return;
                                                 event.preventDefault();
                                                 event.dataTransfer.dropEffect = "move";
                                             }}
                                             onDrop={(event) => {
-                                                if (!rearrangeMode) return;
+                                                if (!rearrangeMode || rearrangingTasks) return;
                                                 event.preventDefault();
                                                 const draggedId = draggedStageId ?? event.dataTransfer.getData("text/plain");
                                                 setDraggedStageId(null);
@@ -1530,7 +1596,30 @@ export default function Unit19RoadmapWorkspace({
                                                                                             setEditingTaskId(task.id);
                                                                                         }
                                                                                     }}
-                                                                                    className="rounded-[12px] border border-[#d8e8f6]/80 bg-white/[0.72] px-3.5 py-3 outline-none transition hover:border-[#2f80ed]/[0.24] hover:bg-white/[0.84] focus:border-[#2f80ed]/[0.34] focus:ring-2 focus:ring-[#2f80ed]/[0.10]"
+                                                                                    draggable={rearrangingTasks}
+                                                                                    onDragStart={(event) => {
+                                                                                        if (!rearrangingTasks || isInteractiveField(event.target)) return;
+                                                                                        event.stopPropagation();
+                                                                                        setDraggedTaskId(task.id);
+                                                                                        event.dataTransfer.effectAllowed = "move";
+                                                                                    }}
+                                                                                    onDragOver={(event) => {
+                                                                                        if (!rearrangingTasks) return;
+                                                                                        event.preventDefault();
+                                                                                        event.stopPropagation();
+                                                                                    }}
+                                                                                    onDrop={(event) => {
+                                                                                        if (!rearrangingTasks || !draggedTaskId) return;
+                                                                                        event.preventDefault();
+                                                                                        event.stopPropagation();
+                                                                                        void reorderTask(stage.id, draggedTaskId, task.id);
+                                                                                        setDraggedTaskId(null);
+                                                                                    }}
+                                                                                    onDragEnd={() => setDraggedTaskId(null)}
+                                                                                    className={[
+                                                                                        "rounded-[12px] border border-[#d8e8f6]/80 bg-white/[0.72] px-3.5 py-3 outline-none transition hover:border-[#2f80ed]/[0.24] hover:bg-white/[0.84] focus:border-[#2f80ed]/[0.34] focus:ring-2 focus:ring-[#2f80ed]/[0.10]",
+                                                                                        rearrangingTasks ? "cursor-grab active:cursor-grabbing" : "",
+                                                                                    ].join(" ")}
                                                                                 >
                                                                                     {editing ? (
                                                                                         <div className="space-y-2.5">
@@ -1603,7 +1692,7 @@ export default function Unit19RoadmapWorkspace({
                                                                                                         onClick={() => openCalendarForTask(task)}
                                                                                                         className="mt-1 inline-flex rounded-full border border-[#8a65cc]/[0.22] bg-[#8a65cc]/[0.08] px-2 py-0.5 text-[9.5px] font-semibold text-[#5e38a0] transition hover:bg-[#8a65cc]/[0.14]"
                                                                                                     >
-                                                                                                        Scheduled: {task.due_date}
+                                                                                                        Scheduled: {formatDisplayDate(task.due_date)}
                                                                                                     </button>
                                                                                                 ) : null}
                                                                                             </div>

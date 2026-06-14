@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Unit19ModalSwitcher, { type Unit19PanelKey } from "@/components/admin/Unit19ModalSwitcher";
 import {
     createManagedPropertyExpense,
@@ -174,6 +174,7 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
     const [drafts, setDrafts] = useState<Record<string, ExpenseDraft>>({});
     const [loading, setLoading] = useState(false);
     const [savingId, setSavingId] = useState<string | null>(null);
+    const newRowRef = useRef<HTMLDivElement | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
@@ -386,6 +387,25 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
         setDrafts((current) => ({ ...current, [expense.id]: toDraft(expense) }));
     }
 
+    async function cancelExpenseEdit(expense: ManagedPropertyExpense) {
+        const isNew = expense.title === "New expense" && Number(expense.amount_eur ?? 0) === 0;
+        if (isNew) {
+            try {
+                setSavingId(expense.id);
+                await deleteManagedPropertyExpense(expense.id);
+                setExpenses((current) => current.filter((item) => item.id !== expense.id));
+                setEditingId(null);
+            } catch (err) {
+                setError(err instanceof Error ? err.message : "Failed to cancel new expense");
+            } finally {
+                setSavingId(null);
+            }
+            return;
+        }
+        setDrafts((current) => ({ ...current, [expense.id]: toDraft(expense) }));
+        setEditingId(null);
+    }
+
     function patchDraft(id: string, patch: Partial<ExpenseDraft>) {
         setDrafts((current) => ({
             ...current,
@@ -472,6 +492,7 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
 
             setExpenses((current) => [...current, created]);
             startEdit(created);
+            window.setTimeout(() => newRowRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 80);
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to create expense");
         } finally {
@@ -610,7 +631,7 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
                         </div>
 
                         <div className="mt-2.5 rounded-[16px] border border-white/[0.78] bg-white/[0.58] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
-                            <div className="mb-2 text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">Filters</div>
+                            <div className="mb-2 flex items-center justify-between gap-2"><div className="text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">Filters</div><button type="button" onClick={() => { setCategoryFilter("all"); setStatusFilter("active"); setQuery(""); }} className="rounded-lg border border-[#ccd9e8] bg-white/[0.62] px-2 py-1 text-[10px] font-semibold text-[#607993] transition hover:bg-white hover:text-[#0b1623]">Clear</button></div>
                             <div className="space-y-1.5">
                                 <select
                                     value={categoryFilter}
@@ -674,6 +695,7 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
                                         return (
                                             <div
                                                 key={expense.id}
+                                                ref={editing && expense.title === "New expense" ? newRowRef : null}
                                                 className={[
                                                     "grid grid-cols-[minmax(250px,1.75fr)_135px_95px_95px_145px] gap-0 px-3.5 py-2 transition hover:bg-white/[0.55]",
                                                     expense.status === "excluded" ? "opacity-55" : "",
@@ -793,14 +815,7 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
                                                         <button
                                                             type="button"
                                                             disabled={Boolean(savingId)}
-                                                            onClick={() => {
-                                                                setEditingId(null);
-                                                                setDrafts((current) => {
-                                                                    const next = { ...current };
-                                                                    delete next[expense.id];
-                                                                    return next;
-                                                                });
-                                                            }}
+                                                            onClick={() => void cancelExpenseEdit(expense)}
                                                             className="rounded-lg border border-[#ccd9e8] bg-white/[0.45] px-2 py-1 text-[10.5px] font-semibold text-[#7a90a8] transition hover:bg-white/[0.82] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
                                                         >
                                                             Cancel

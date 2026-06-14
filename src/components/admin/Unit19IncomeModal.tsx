@@ -70,6 +70,8 @@ type Unit19CreditConfig = {
   payment_eur: number;
   start_month: number;
   end_month: number;
+  start_date?: string | null;
+  end_date?: string | null;
   life_insurance_eur: number;
   property_insurance_eur: number;
   property_insurance_month: number;
@@ -200,6 +202,31 @@ function todayIso() {
   return value.toISOString().slice(0, 10);
 }
 
+function isoDateForDay(year: number, month: number, day: number) {
+  const lastDay = new Date(year, month, 0).getDate();
+  const normalizedDay = Math.min(Math.max(1, day), lastDay);
+  return `${year}-${String(month).padStart(2, "0")}-${String(normalizedDay).padStart(2, "0")}`;
+}
+
+function monthInDateRange(year: number, month: number, startDate?: string | null, endDate?: string | null) {
+  if (!startDate && !endDate) return true;
+  const monthStart = new Date(year, month - 1, 1).getTime();
+  const monthEnd = new Date(year, month, 0).getTime();
+  const start = startDate ? parseDate(startDate)?.getTime() : null;
+  const end = endDate ? parseDate(endDate)?.getTime() : null;
+  return (start === null || monthEnd >= start) && (end === null || monthStart <= end);
+}
+
+function indexedAmount(baseAmount: number, year: number, month: number, startDate: string, percent: number) {
+  if (!startDate || percent <= 0 || baseAmount <= 0) return baseAmount;
+  const start = parseDate(startDate);
+  if (!start) return baseAmount;
+  const current = new Date(year, month - 1, 1);
+  if (current < new Date(start.getFullYear(), start.getMonth(), 1)) return baseAmount;
+  const years = Math.max(0, current.getFullYear() - start.getFullYear() - (current.getMonth() < start.getMonth() ? 1 : 0));
+  return Number((baseAmount * Math.pow(1 + percent / 100, years)).toFixed(2));
+}
+
 function parseDate(value: string | null | undefined) {
   if (!value) return null;
   const [year, month, day] = value.split("-").map(Number);
@@ -264,6 +291,8 @@ function defaultUnit19CreditConfig(): Unit19CreditConfig {
     payment_eur: 0,
     start_month: 1,
     end_month: 12,
+    start_date: null,
+    end_date: null,
     life_insurance_eur: 0,
     property_insurance_eur: 0,
     property_insurance_month: 1,
@@ -283,6 +312,8 @@ function parseUnit19CreditConfig(
         payment_eur: Number(parsed.payment_eur ?? 0),
         start_month: clampMonth(Number(parsed.start_month ?? 1)),
         end_month: clampMonth(Number(parsed.end_month ?? 12)),
+        start_date: typeof parsed.start_date === "string" ? parsed.start_date : null,
+        end_date: typeof parsed.end_date === "string" ? parsed.end_date : null,
         life_insurance_eur: Number(parsed.life_insurance_eur ?? 0),
         property_insurance_eur: Number(parsed.property_insurance_eur ?? 0),
         property_insurance_month: clampMonth(Number(parsed.property_insurance_month ?? 1)),
@@ -301,27 +332,31 @@ function serializeUnit19CreditConfig(config: Unit19CreditConfig) {
     payment_eur: Number(config.payment_eur || 0),
     start_month: clampMonth(config.start_month),
     end_month: clampMonth(config.end_month),
+    start_date: config.start_date ?? null,
+    end_date: config.end_date ?? null,
     life_insurance_eur: Number(config.life_insurance_eur || 0),
     property_insurance_eur: Number(config.property_insurance_eur || 0),
     property_insurance_month: clampMonth(config.property_insurance_month),
   });
 }
 
-function getCreditExpectedForMonth(month: number, config: Unit19CreditConfig) {
+function getCreditExpectedForMonth(month: number, year: number, config: Unit19CreditConfig) {
   if (config.payment_eur <= 0) return 0;
-  return isMonthInRange(month, config.start_month, config.end_month)
-    ? config.payment_eur
-    : 0;
+  if (config.start_date || config.end_date) {
+    return monthInDateRange(year, month, config.start_date, config.end_date) ? config.payment_eur : 0;
+  }
+  return isMonthInRange(month, config.start_month, config.end_month) ? config.payment_eur : 0;
 }
 
 function getCreditExpectedForState(
   month: number,
+  year: number,
   config: Unit19CreditConfig,
   state: Unit19BudgetState,
 ) {
   if (Number(state.credit_expected_eur ?? 0) > 0)
     return Number(state.credit_expected_eur ?? 0);
-  return getCreditExpectedForMonth(month, config);
+  return getCreditExpectedForMonth(month, year, config);
 }
 
 function getUnit19BudgetAmount(state: Unit19BudgetState, key: Unit19BudgetKey) {
@@ -558,6 +593,13 @@ export default function Unit19IncomeModal({
   const [creditPaymentEur, setCreditPaymentEur] = useState(0);
   const [creditStartMonth, setCreditStartMonth] = useState(1);
   const [creditEndMonth, setCreditEndMonth] = useState(12);
+  const [creditStartDate, setCreditStartDate] = useState(`${DEFAULT_YEAR}-01-10`);
+  const [creditEndDate, setCreditEndDate] = useState(`${DEFAULT_YEAR + 20}-12-10`);
+  const [rentPaidDay, setRentPaidDay] = useState(15);
+  const [creditPaidDay, setCreditPaidDay] = useState(10);
+  const [rentIndexPercent, setRentIndexPercent] = useState(0);
+  const [rentIndexStartDate, setRentIndexStartDate] = useState(`${DEFAULT_YEAR}-09-15`);
+  const [rentIndexEndDate, setRentIndexEndDate] = useState("");
   const [lifeInsuranceEur, setLifeInsuranceEur] = useState(0);
   const [propertyInsuranceEur, setPropertyInsuranceEur] = useState(0);
   const [propertyInsuranceMonth, setPropertyInsuranceMonth] = useState(1);
@@ -594,6 +636,8 @@ export default function Unit19IncomeModal({
       payment_eur: Number(creditPaymentEur || 0),
       start_month: creditStartMonth,
       end_month: creditEndMonth,
+      start_date: creditStartDate || null,
+      end_date: creditEndDate || null,
       life_insurance_eur: Number(lifeInsuranceEur || 0),
       property_insurance_eur: Number(propertyInsuranceEur || 0),
       property_insurance_month: propertyInsuranceMonth,
@@ -602,6 +646,8 @@ export default function Unit19IncomeModal({
       creditPaymentEur,
       creditStartMonth,
       creditEndMonth,
+      creditStartDate,
+      creditEndDate,
       lifeInsuranceEur,
       propertyInsuranceEur,
       propertyInsuranceMonth,
@@ -647,6 +693,8 @@ export default function Unit19IncomeModal({
       setCreditPaymentEur(credit.payment_eur);
       setCreditStartMonth(credit.start_month);
       setCreditEndMonth(credit.end_month);
+      setCreditStartDate(credit.start_date ?? `${targetYear}-01-10`);
+      setCreditEndDate(credit.end_date ?? `${targetYear + 20}-12-10`);
       setLifeInsuranceEur(credit.life_insurance_eur);
       setPropertyInsuranceEur(credit.property_insurance_eur);
       setPropertyInsuranceMonth(credit.property_insurance_month);
@@ -753,14 +801,14 @@ export default function Unit19IncomeModal({
       const state =
         unit19MonthState.get(month.id) ?? defaultUnit19BudgetState();
       return (
-        sum + getCreditExpectedForState(month.month, unit19CreditConfig, state)
+        sum + getCreditExpectedForState(month.month, month.year, unit19CreditConfig, state)
       );
     }, 0);
     const creditPaid = months.reduce((sum, month) => {
       const state =
         unit19MonthState.get(month.id) ?? defaultUnit19BudgetState();
       return state.credit_paid
-        ? sum + getCreditExpectedForState(month.month, unit19CreditConfig, state)
+        ? sum + getCreditExpectedForState(month.month, month.year, unit19CreditConfig, state)
         : sum;
     }, 0);
     const unit19TrackedExpenses = months.reduce((sum, month) => {
@@ -851,7 +899,10 @@ export default function Unit19IncomeModal({
           isMonthInRange(month.month, rentStartMonth, rentEndMonth),
         )
         .map((month) => {
-          const expected = Number(monthlyRentEur || 0);
+          const baseExpected = Number(monthlyRentEur || 0);
+          const expected = rentIndexPercent > 0 && rentIndexStartDate
+            ? indexedAmount(baseExpected, month.year, month.month, rentIndexStartDate, rentIndexPercent)
+            : baseExpected;
           const paid = expected > 0 ? month.rent_paid_eur : 0;
           return {
             id: month.id,
@@ -952,13 +1003,13 @@ export default function Unit19IncomeModal({
       const patches = months
         .filter(
           (month) =>
-            isMonthInRange(month.month, creditStartMonth, creditEndMonth) ||
+            getCreditExpectedForMonth(month.month, month.year, unit19CreditConfig) > 0 ||
             month.month === propertyInsuranceMonth,
         )
         .map((month) => {
           const currentState =
             unit19MonthState.get(month.id) ?? defaultUnit19BudgetState();
-          const expectedCredit = Number(creditPaymentEur || 0);
+          const expectedCredit = getCreditExpectedForMonth(month.month, month.year, unit19CreditConfig);
           const nextEntries = { ...(currentState.entries ?? {}) };
 
           if (lifeInsuranceEur > 0) {
@@ -1007,6 +1058,51 @@ export default function Unit19IncomeModal({
       setError(
         err instanceof Error ? err.message : "Failed to save credit setup",
       );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function applyRentPaidDayToScheduledMonths() {
+    const patches = months
+      .filter((month) => month.rent_expected_eur > 0)
+      .map((month) => ({ id: month.id, patch: { rent_paid_date: isoDateForDay(month.year, month.month, rentPaidDay) } }));
+    if (patches.length === 0) return;
+    try {
+      setSaving(true);
+      const updated = await updateManagedPropertyIncomeMonths(patches);
+      setMonths((current) => current.map((month) => updated.find((item) => item.id === month.id) ?? month));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to apply rent paid dates");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function applyCreditPaidDayToScheduledMonths() {
+    const patches = months
+      .map((month) => {
+        const state = unit19MonthState.get(month.id) ?? defaultUnit19BudgetState();
+        const creditExpected = getCreditExpectedForState(month.month, month.year, unit19CreditConfig, state);
+        if (creditExpected <= 0) return null;
+        return {
+          id: month.id,
+          patch: {
+            note: serializeUnit19BudgetState({
+              ...state,
+              credit_paid_date: isoDateForDay(month.year, month.month, creditPaidDay),
+            }),
+          },
+        };
+      })
+      .filter(Boolean) as Array<{ id: string; patch: ManagedPropertyIncomeMonthPatch }>;
+    if (patches.length === 0) return;
+    try {
+      setSaving(true);
+      const updated = await updateManagedPropertyIncomeMonths(patches);
+      setMonths((current) => current.map((month) => updated.find((item) => item.id === month.id) ?? month));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to apply credit paid dates");
     } finally {
       setSaving(false);
     }
@@ -1317,6 +1413,11 @@ export default function Unit19IncomeModal({
                 creditAmount={creditPaymentEur}
                 creditStartMonth={creditStartMonth}
                 creditEndMonth={creditEndMonth}
+                creditStartDate={creditStartDate}
+                creditEndDate={creditEndDate}
+                rentIndexPercent={rentIndexPercent}
+                rentIndexStartDate={rentIndexStartDate}
+                rentIndexEndDate={rentIndexEndDate}
                 lifeInsuranceAmount={lifeInsuranceEur}
                 propertyInsuranceAmount={propertyInsuranceEur}
                 propertyInsuranceMonth={propertyInsuranceMonth}
@@ -1327,6 +1428,11 @@ export default function Unit19IncomeModal({
                 onCreditAmountChange={setCreditPaymentEur}
                 onCreditStartMonthChange={setCreditStartMonth}
                 onCreditEndMonthChange={setCreditEndMonth}
+                onCreditStartDateChange={setCreditStartDate}
+                onCreditEndDateChange={setCreditEndDate}
+                onRentIndexPercentChange={setRentIndexPercent}
+                onRentIndexStartDateChange={setRentIndexStartDate}
+                onRentIndexEndDateChange={setRentIndexEndDate}
                 onLifeInsuranceAmountChange={setLifeInsuranceEur}
                 onPropertyInsuranceAmountChange={setPropertyInsuranceEur}
                 onPropertyInsuranceMonthChange={setPropertyInsuranceMonth}
@@ -1369,6 +1475,8 @@ export default function Unit19IncomeModal({
                 {months.map((month) => {
                   const monthSelected = selectedMonth === month.month;
                   const expected = month.rent_expected_eur > 0;
+                  const now = new Date();
+                  const currentCalendarMonth = month.year === now.getFullYear() && month.month === now.getMonth() + 1;
                   const monthExpenses = expensesByMonthId.get(month.id) ?? [];
                   const ownerCostTotal = monthExpenses.reduce(
                     (sum, expense) => sum + expense.amount_eur,
@@ -1391,6 +1499,7 @@ export default function Unit19IncomeModal({
                   const unit19Totals = getUnit19BudgetTotals(unit19State);
                   const creditExpected = getCreditExpectedForState(
                     month.month,
+                    month.year,
                     unit19CreditConfig,
                     unit19State,
                   );
@@ -1404,7 +1513,9 @@ export default function Unit19IncomeModal({
                         "min-h-[170px] rounded-[18px] border p-3 text-left shadow-[0_10px_28px_rgba(41,73,112,0.06)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.74] active:scale-[0.99]",
                         monthSelected
                           ? "border-[#2f80ed]/[0.34] bg-[#2f80ed]/[0.07]"
-                          : "border-white/[0.78] bg-white/[0.58]",
+                          : currentCalendarMonth
+                            ? "border-[#a68b4a]/[0.34] bg-[#a68b4a]/[0.07]"
+                            : "border-white/[0.78] bg-white/[0.58]",
                       ].join(" ")}
                     >
                       <div className="flex items-start justify-between gap-3">
@@ -1437,7 +1548,7 @@ export default function Unit19IncomeModal({
                       </div>
 
                       <div className="mt-3 grid grid-cols-2 gap-2">
-                        <div className="rounded-xl border border-[#ccd9e8] bg-white/[0.52] px-2.5 py-2">
+                        <div className={["rounded-xl border px-2.5 py-2 transition", month.rent_status === "paid" ? "border-[#20a76b]/[0.22] bg-[#20a76b]/[0.07]" : expected ? "border-[#d96969]/[0.22] bg-[#d96969]/[0.06]" : "border-[#ccd9e8] bg-white/[0.52]"].join(" ")}>
                           <div className="text-[9px] uppercase tracking-[0.12em] text-[#7a90a8]">
                             {isNorthStarWorkspace ? "Rent" : "Rent"}
                           </div>
@@ -1451,7 +1562,7 @@ export default function Unit19IncomeModal({
                             )}
                           </div>
                         </div>
-                        <div className="rounded-xl border border-[#ccd9e8] bg-white/[0.52] px-2.5 py-2">
+                        <div className={["rounded-xl border px-2.5 py-2 transition", isNorthStarWorkspace ? (northStarState.tuition_paid ? "border-[#20a76b]/[0.22] bg-[#20a76b]/[0.07]" : tuitionExpected > 0 ? "border-[#d96969]/[0.22] bg-[#d96969]/[0.06]" : "border-[#ccd9e8] bg-white/[0.52]") : (unit19State.credit_paid ? "border-[#20a76b]/[0.22] bg-[#20a76b]/[0.07]" : creditExpected > 0 ? "border-[#d96969]/[0.22] bg-[#d96969]/[0.06]" : "border-[#ccd9e8] bg-white/[0.52]")].join(" ")}>
                           <div className="text-[9px] uppercase tracking-[0.12em] text-[#7a90a8]">
                             {isNorthStarWorkspace ? "Tuition" : "Credit"}
                           </div>
@@ -1551,6 +1662,7 @@ export default function Unit19IncomeModal({
                   }
                   creditExpected={getCreditExpectedForState(
                     selected.month,
+                    selected.year,
                     unit19CreditConfig,
                     unit19MonthState.get(selected.id) ?? defaultUnit19BudgetState(),
                   )}
@@ -1558,6 +1670,12 @@ export default function Unit19IncomeModal({
                   onToggleCreditPaid={() => void markCreditPaid(selected)}
                   onPatch={(patch) => void patchMonth(selected, patch)}
                   onPatchBudget={(state) => void patchUnit19Budget(selected, state)}
+                  rentPaidDay={rentPaidDay}
+                  creditPaidDay={creditPaidDay}
+                  onRentPaidDayChange={setRentPaidDay}
+                  onCreditPaidDayChange={setCreditPaidDay}
+                  onApplyRentPaidDay={() => void applyRentPaidDayToScheduledMonths()}
+                  onApplyCreditPaidDay={() => void applyCreditPaidDayToScheduledMonths()}
                   onToggleUtility={(key) => void toggleUtility(selected, key)}
                   onAddExpense={() =>
                     setExpenseDraft({
@@ -1669,6 +1787,11 @@ function Unit19SetupPanel({
   creditAmount,
   creditStartMonth,
   creditEndMonth,
+  creditStartDate,
+  creditEndDate,
+  rentIndexPercent,
+  rentIndexStartDate,
+  rentIndexEndDate,
   lifeInsuranceAmount,
   propertyInsuranceAmount,
   propertyInsuranceMonth,
@@ -1679,6 +1802,11 @@ function Unit19SetupPanel({
   onCreditAmountChange,
   onCreditStartMonthChange,
   onCreditEndMonthChange,
+  onCreditStartDateChange,
+  onCreditEndDateChange,
+  onRentIndexPercentChange,
+  onRentIndexStartDateChange,
+  onRentIndexEndDateChange,
   onLifeInsuranceAmountChange,
   onPropertyInsuranceAmountChange,
   onPropertyInsuranceMonthChange,
@@ -1692,6 +1820,11 @@ function Unit19SetupPanel({
   creditAmount: number;
   creditStartMonth: number;
   creditEndMonth: number;
+  creditStartDate: string;
+  creditEndDate: string;
+  rentIndexPercent: number;
+  rentIndexStartDate: string;
+  rentIndexEndDate: string;
   lifeInsuranceAmount: number;
   propertyInsuranceAmount: number;
   propertyInsuranceMonth: number;
@@ -1702,6 +1835,11 @@ function Unit19SetupPanel({
   onCreditAmountChange: (value: number) => void;
   onCreditStartMonthChange: (value: number) => void;
   onCreditEndMonthChange: (value: number) => void;
+  onCreditStartDateChange: (value: string) => void;
+  onCreditEndDateChange: (value: string) => void;
+  onRentIndexPercentChange: (value: number) => void;
+  onRentIndexStartDateChange: (value: string) => void;
+  onRentIndexEndDateChange: (value: string) => void;
   onLifeInsuranceAmountChange: (value: number) => void;
   onPropertyInsuranceAmountChange: (value: number) => void;
   onPropertyInsuranceMonthChange: (value: number) => void;
@@ -1769,6 +1907,14 @@ function Unit19SetupPanel({
               </select>
             </Field>
           </div>
+          <div className="rounded-xl border border-[#2f80ed]/[0.14] bg-[#2f80ed]/[0.04] p-2">
+            <div className="mb-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#2060cc]">Indexation</div>
+            <div className="grid grid-cols-3 gap-2">
+              <Field label="% / year"><input type="number" value={rentIndexPercent} onChange={(event) => onRentIndexPercentChange(Number(event.target.value || 0))} className={inputClass} /></Field>
+              <Field label="From"><AdminDatePicker value={rentIndexStartDate} onChange={onRentIndexStartDateChange} /></Field>
+              <Field label="To"><AdminDatePicker value={rentIndexEndDate} onChange={onRentIndexEndDateChange} /></Field>
+            </div>
+          </div>
         </div>
       ) : (
         <div className="space-y-2">
@@ -1790,31 +1936,11 @@ function Unit19SetupPanel({
             />
           </Field>
           <div className="grid grid-cols-2 gap-2">
-            <Field label="From">
-              <select
-                value={creditStartMonth}
-                onChange={(event) => onCreditStartMonthChange(Number(event.target.value))}
-                className={inputClass}
-              >
-                {monthLabels.map((label, index) => (
-                  <option key={label} value={index + 1}>
-                    {label.slice(0, 3)}
-                  </option>
-                ))}
-              </select>
+            <Field label="From date">
+              <AdminDatePicker value={creditStartDate} onChange={(date) => { onCreditStartDateChange(date); const parsed = parseDate(date); if (parsed) onCreditStartMonthChange(parsed.getMonth() + 1); }} />
             </Field>
-            <Field label="To">
-              <select
-                value={creditEndMonth}
-                onChange={(event) => onCreditEndMonthChange(Number(event.target.value))}
-                className={inputClass}
-              >
-                {monthLabels.map((label, index) => (
-                  <option key={label} value={index + 1}>
-                    {label.slice(0, 3)}
-                  </option>
-                ))}
-              </select>
+            <Field label="To date">
+              <AdminDatePicker value={creditEndDate} onChange={(date) => { onCreditEndDateChange(date); const parsed = parseDate(date); if (parsed) onCreditEndMonthChange(parsed.getMonth() + 1); }} />
             </Field>
           </div>
           <Field label="Life insurance / month">
@@ -2016,6 +2142,12 @@ function MonthDetails({
   onToggleCreditPaid,
   onPatch,
   onPatchBudget,
+  rentPaidDay,
+  creditPaidDay,
+  onRentPaidDayChange,
+  onCreditPaidDayChange,
+  onApplyRentPaidDay,
+  onApplyCreditPaidDay,
   onToggleUtility,
   onAddExpense,
   onDeleteExpense,
@@ -2030,6 +2162,12 @@ function MonthDetails({
   onToggleCreditPaid: () => void;
   onPatch: (patch: ManagedPropertyIncomeMonthPatch) => void;
   onPatchBudget: (state: Unit19BudgetState) => void;
+  rentPaidDay: number;
+  creditPaidDay: number;
+  onRentPaidDayChange: (value: number) => void;
+  onCreditPaidDayChange: (value: number) => void;
+  onApplyRentPaidDay: () => void;
+  onApplyCreditPaidDay: () => void;
   onToggleUtility: (key: UtilityKey) => void;
   onAddExpense: () => void;
   onDeleteExpense: (id: string) => void;
@@ -2090,6 +2228,13 @@ function MonthDetails({
             ? `Credit paid · ${formatEur(creditExpected)}`
             : `Mark credit paid · ${formatEur(creditExpected)}`}
         </button>
+
+        <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl border border-[#ccd9e8] bg-white/[0.44] p-2">
+          <Field label="Rent day"><input type="number" min={1} max={31} value={rentPaidDay} onChange={(event) => onRentPaidDayChange(Number(event.target.value || 15))} className={inputClass} /></Field>
+          <Field label="Credit day"><input type="number" min={1} max={31} value={creditPaidDay} onChange={(event) => onCreditPaidDayChange(Number(event.target.value || 10))} className={inputClass} /></Field>
+          <button type="button" onClick={onApplyRentPaidDay} className="rounded-xl border border-[#2f80ed]/[0.22] bg-[#2f80ed]/[0.07] px-2 py-2 text-[10.5px] font-semibold text-[#1560bc] transition hover:bg-[#2f80ed]/[0.12]">Apply rent dates</button>
+          <button type="button" onClick={onApplyCreditPaidDay} className="rounded-xl border border-[#8a65cc]/[0.22] bg-[#8a65cc]/[0.07] px-2 py-2 text-[10.5px] font-semibold text-[#5e38a0] transition hover:bg-[#8a65cc]/[0.12]">Apply credit dates</button>
+        </div>
       </div>
 
       <div className="rounded-[16px] border border-white/[0.78] bg-white/[0.58] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">

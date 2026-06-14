@@ -369,6 +369,7 @@ function SectionCard({ title, subtitle, children, action }: { title: string; sub
 export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, propertySlug = PROPERTY_SLUG, projectLabel = "Unit 19" }: Props) {
     const [managedProperty, setManagedProperty] = useState<ManagedProperty | null>(null);
     const [profileDraft, setProfileDraft] = useState<ProfileDraft>(() => profileToDraft(null, null));
+    const [profileSavedDraft, setProfileSavedDraft] = useState<ProfileDraft>(() => profileToDraft(null, null));
     const [costs, setCosts] = useState<ManagedPropertyRealEstateCost[]>([]);
     const [services, setServices] = useState<ManagedPropertyServiceAccount[]>([]);
     const [contacts, setContacts] = useState<ManagedPropertyRealEstateContact[]>([]);
@@ -381,7 +382,12 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
     const [activeSection, setActiveSection] = useState<PropertySectionKey>("overview");
     const [addressLanguage, setAddressLanguage] = useState<AddressLanguage>("en");
     const [expandedServiceIds, setExpandedServiceIds] = useState<Set<string>>(() => new Set());
+    const [expandedCostIds, setExpandedCostIds] = useState<Set<string>>(() => new Set());
     const [expandedContactIds, setExpandedContactIds] = useState<Set<string>>(() => new Set());
+    const [draggedCostId, setDraggedCostId] = useState<string | null>(null);
+    const [draggedServiceId, setDraggedServiceId] = useState<string | null>(null);
+    const [draggedContactId, setDraggedContactId] = useState<string | null>(null);
+    const newItemRef = useRef<HTMLDivElement | null>(null);
     const imageInputRef = useRef<HTMLInputElement | null>(null);
     const [budgetSummary, setBudgetSummary] = useState<BudgetSummary>({
         yearlyRentScheduled: 0,
@@ -424,6 +430,7 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
     const totalAcquisition = purchasePrice + transactionCosts;
     const serviceMonthly = services.reduce((sum, service) => sum + Number(service.monthly_fee_eur ?? 0), 0);
     const servicesReady = services.filter((service) => service.provider_name || service.account_number || service.meter_number || service.customer_code).length;
+    const profileIsDirty = useMemo(() => JSON.stringify(profileDraft) !== JSON.stringify(profileSavedDraft), [profileDraft, profileSavedDraft]);
 
     async function loadData() {
         if (!open) return;
@@ -441,7 +448,9 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
             ]);
 
             setManagedProperty(property);
-            setProfileDraft(profileToDraft(bundle.profile, property));
+            const loadedProfileDraft = profileToDraft(bundle.profile, property);
+            setProfileDraft(loadedProfileDraft);
+            setProfileSavedDraft(loadedProfileDraft);
             setCosts(bundle.costs);
             setServices(bundle.serviceAccounts);
             setContacts(bundle.contacts);
@@ -512,7 +521,9 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
                 setCostDrafts((current) => ({ ...current, [updatedPurchaseCost.id]: costToDraft(updatedPurchaseCost) }));
             }
 
-            setProfileDraft(profileToDraft(saved, managedProperty));
+            const savedDraft = profileToDraft(saved, managedProperty);
+            setProfileDraft(savedDraft);
+            setProfileSavedDraft(savedDraft);
         } catch (currentError) {
             setError(currentError instanceof Error ? currentError.message : "Failed to save profile");
         } finally {
@@ -618,6 +629,10 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
             setExpenses((current) => [...current, expense]);
             setCosts((current) => [...current, cost]);
             setCostDrafts((current) => ({ ...current, [cost.id]: costToDraft(cost) }));
+            setExpandedCostIds((current) => new Set([...current, cost.id]));
+            scrollNewItemIntoView();
+            setExpandedCostIds((current) => new Set([...current, cost.id]));
+            scrollNewItemIntoView();
         } catch (currentError) {
             setError(currentError instanceof Error ? currentError.message : "Failed to add cost");
         } finally {
@@ -625,8 +640,8 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
         }
     }
 
-    async function removeCost(cost: ManagedPropertyRealEstateCost) {
-        if (!window.confirm(`Delete ${cost.label}? The linked expense row is not deleted.`)) return;
+    async function removeCost(cost: ManagedPropertyRealEstateCost, options?: { skipConfirm?: boolean }) {
+        if (!options?.skipConfirm && !window.confirm(`Delete ${cost.label}? The linked expense row is not deleted.`)) return;
 
         setSaving(true);
         setError(null);
@@ -711,6 +726,7 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
             setServices((current) => [...current, service]);
             setServiceDrafts((current) => ({ ...current, [service.id]: serviceToDraft(service) }));
             setExpandedServiceIds((current) => new Set([...current, service.id]));
+            scrollNewItemIntoView();
         } catch (currentError) {
             setError(currentError instanceof Error ? currentError.message : "Failed to add service account");
         } finally {
@@ -718,8 +734,8 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
         }
     }
 
-    async function removeService(service: ManagedPropertyServiceAccount) {
-        if (!window.confirm(`Delete ${service.provider_name || serviceLabels[service.service_type].label}?`)) return;
+    async function removeService(service: ManagedPropertyServiceAccount, options?: { skipConfirm?: boolean }) {
+        if (!options?.skipConfirm && !window.confirm(`Delete ${service.provider_name || serviceLabels[service.service_type].label}?`)) return;
 
         setSaving(true);
         setError(null);
@@ -781,6 +797,7 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
             setContacts((current) => [...current, contact]);
             setContactDrafts((current) => ({ ...current, [contact.id]: contactToDraft(contact) }));
             setExpandedContactIds((current) => new Set([...current, contact.id]));
+            scrollNewItemIntoView();
         } catch (currentError) {
             setError(currentError instanceof Error ? currentError.message : "Failed to add contact");
         } finally {
@@ -788,8 +805,8 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
         }
     }
 
-    async function removeContact(contact: ManagedPropertyRealEstateContact) {
-        if (!window.confirm(`Delete ${contact.full_name || "contact"}?`)) return;
+    async function removeContact(contact: ManagedPropertyRealEstateContact, options?: { skipConfirm?: boolean }) {
+        if (!options?.skipConfirm && !window.confirm(`Delete ${contact.full_name || "contact"}?`)) return;
 
         setSaving(true);
         setError(null);
@@ -849,6 +866,97 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
         return Number(draft.amount_eur ?? 0);
     }
 
+    function scrollNewItemIntoView() {
+        window.setTimeout(() => newItemRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 80);
+    }
+
+    function toggleCost(costId: string) {
+        setExpandedCostIds((current) => {
+            const next = new Set(current);
+            if (next.has(costId)) next.delete(costId);
+            else next.add(costId);
+            return next;
+        });
+    }
+
+    async function persistCostOrder(nextCosts: ManagedPropertyRealEstateCost[]) {
+        const ordered = nextCosts.map((cost, index) => ({ ...cost, sort_order: (index + 1) * 10 }));
+        setCosts(ordered);
+        await Promise.all(ordered.map((cost) => updateManagedPropertyRealEstateCost(cost.id, { sort_order: cost.sort_order })));
+    }
+
+    async function persistServiceOrder(nextServices: ManagedPropertyServiceAccount[]) {
+        const ordered = nextServices.map((service, index) => ({ ...service, sort_order: (index + 1) * 10 }));
+        setServices(ordered);
+        await Promise.all(ordered.map((service) => updateManagedPropertyServiceAccount(service.id, { sort_order: service.sort_order })));
+    }
+
+    async function persistContactOrder(nextContacts: ManagedPropertyRealEstateContact[]) {
+        const ordered = nextContacts.map((contact, index) => ({ ...contact, sort_order: (index + 1) * 10 }));
+        setContacts(ordered);
+        await Promise.all(ordered.map((contact) => updateManagedPropertyRealEstateContact(contact.id, { sort_order: contact.sort_order })));
+    }
+
+    async function reorderCost(draggedId: string, targetId: string) {
+        if (draggedId === targetId) return;
+        const ordered = [...costs].sort((a, b) => a.sort_order - b.sort_order);
+        const from = ordered.findIndex((item) => item.id === draggedId);
+        const to = ordered.findIndex((item) => item.id === targetId);
+        if (from < 0 || to < 0) return;
+        const next = [...ordered];
+        const [item] = next.splice(from, 1);
+        next.splice(to, 0, item);
+        await persistCostOrder(next);
+    }
+
+    async function reorderService(draggedId: string, targetId: string) {
+        if (draggedId === targetId) return;
+        const ordered = [...services].sort((a, b) => a.sort_order - b.sort_order);
+        const from = ordered.findIndex((item) => item.id === draggedId);
+        const to = ordered.findIndex((item) => item.id === targetId);
+        if (from < 0 || to < 0) return;
+        const next = [...ordered];
+        const [item] = next.splice(from, 1);
+        next.splice(to, 0, item);
+        await persistServiceOrder(next);
+    }
+
+    async function reorderContact(draggedId: string, targetId: string) {
+        if (draggedId === targetId) return;
+        const ordered = [...contacts].sort((a, b) => a.sort_order - b.sort_order);
+        const from = ordered.findIndex((item) => item.id === draggedId);
+        const to = ordered.findIndex((item) => item.id === targetId);
+        if (from < 0 || to < 0) return;
+        const next = [...ordered];
+        const [item] = next.splice(from, 1);
+        next.splice(to, 0, item);
+        await persistContactOrder(next);
+    }
+
+    function cancelCost(cost: ManagedPropertyRealEstateCost) {
+        if (cost.stable_key.startsWith("custom-") && Number(cost.amount_eur ?? 0) === 0) {
+            void removeCost(cost, { skipConfirm: true });
+            return;
+        }
+        setCostDrafts((current) => ({ ...current, [cost.id]: costToDraft(cost) }));
+    }
+
+    function cancelService(service: ManagedPropertyServiceAccount) {
+        if (service.service_type === "other" && service.provider_name === "New service") {
+            void removeService(service, { skipConfirm: true });
+            return;
+        }
+        setServiceDrafts((current) => ({ ...current, [service.id]: serviceToDraft(service) }));
+    }
+
+    function cancelContact(contact: ManagedPropertyRealEstateContact) {
+        if (contact.full_name === "New contact") {
+            void removeContact(contact, { skipConfirm: true });
+            return;
+        }
+        setContactDrafts((current) => ({ ...current, [contact.id]: contactToDraft(contact) }));
+    }
+
     async function addCostFromExpense(expense: ManagedPropertyExpense) {
         if (!managedProperty) return;
 
@@ -902,7 +1010,7 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
             title="Overview"
             subtitle="Focused asset identity with live Budget links for rent, credit and insurance."
             action={
-                <button type="button" onClick={() => void saveProfile()} disabled={saving} className="rounded-[10px] border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-3 py-1.5 text-[11px] font-semibold text-[#1560bc] transition hover:bg-[#2f80ed]/[0.14] disabled:opacity-50">
+                <button type="button" onClick={() => void saveProfile()} disabled={saving || !profileIsDirty} className="rounded-[10px] border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-3 py-1.5 text-[11px] font-semibold text-[#1560bc] transition hover:bg-[#2f80ed]/[0.14] disabled:opacity-50">
                     Save overview
                 </button>
             }
@@ -1051,16 +1159,20 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
                     const linkedExpense = cost.expense_id ? expenseById.get(cost.expense_id) : null;
                     const calculatedAmount = calculatedCostAmount(draft);
                     return (
-                        <div key={cost.id} className="rounded-[15px] border border-[#d8e8f6]/80 bg-white/[0.55] p-3 transition duration-200 hover:-translate-y-0.5 hover:scale-[1.006] hover:border-[#2f80ed]/[0.18] hover:bg-white/[0.72] hover:shadow-[0_16px_36px_rgba(41,73,112,0.10)]">
-                            <div className="mb-2 flex items-center justify-between gap-2">
-                                <div>
-                                    <div className="text-[11px] font-semibold text-[#0b1623]">{draft.label || cost.label}</div>
-                                    <div className="text-[9.5px] text-[#7a90a8]">{linkedExpense ? `Linked to Expenses · ${linkedExpense.category} · ${linkedExpense.status}` : "Local real estate row"} · {draft.include_in_total ? "included" : "excluded"}</div>
+                        <div key={cost.id} ref={expandedCostIds.has(cost.id) ? newItemRef : null} draggable onDragStart={(event) => { setDraggedCostId(cost.id); event.dataTransfer.effectAllowed = "move"; }} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); if (draggedCostId) void reorderCost(draggedCostId, cost.id); setDraggedCostId(null); }} onDragEnd={() => setDraggedCostId(null)} className="overflow-hidden rounded-[16px] border border-[#d8e8f6]/80 bg-white/[0.55] transition duration-200 hover:-translate-y-0.5 hover:scale-[1.004] hover:border-[#2f80ed]/[0.18] hover:bg-white/[0.72] hover:shadow-[0_16px_36px_rgba(41,73,112,0.10)]">
+                            <button type="button" onClick={() => toggleCost(cost.id)} className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left">
+                                <div className="min-w-0">
+                                    <div className="text-[12px] font-semibold text-[#0b1623]">{draft.label || cost.label}</div>
+                                    <div className="mt-0.5 text-[10px] text-[#7a90a8]">{linkedExpense ? `Linked to Expenses · ${linkedExpense.category} · ${linkedExpense.status}` : "Local real estate row"} · {draft.include_in_total ? "included" : "excluded"} · {formatEur(calculatedAmount)}</div>
                                 </div>
-                                <div className="flex gap-1.5">
-                                    <button type="button" onClick={() => void saveCost(cost)} disabled={saving} className="rounded-[9px] border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-2.5 py-1.5 text-[10.5px] font-semibold text-[#1560bc] transition hover:bg-[#2f80ed]/[0.14]">Save</button>
-                                    <button type="button" onClick={() => void removeCost(cost)} disabled={saving} className="rounded-[9px] border border-[#cfa090]/[0.24] bg-[#cfa090]/[0.08] px-2.5 py-1.5 text-[10.5px] font-semibold text-[#8c5947] transition hover:bg-[#cfa090]/[0.14]">Delete</button>
-                                </div>
+                                <span className={["flex h-8 w-8 items-center justify-center rounded-full border border-[#ccd9e8] bg-white/[0.72] text-[#607993] transition", expandedCostIds.has(cost.id) ? "rotate-180" : ""].join(" ")}>⌄</span>
+                            </button>
+                            {expandedCostIds.has(cost.id) ? (
+                            <div className="border-t border-white/[0.70] px-3 pb-3 pt-2">
+                            <div className="mb-2 flex justify-end gap-1.5">
+                                <button type="button" onClick={() => void saveCost(cost)} disabled={saving} className="rounded-[9px] border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-2.5 py-1.5 text-[10.5px] font-semibold text-[#1560bc] transition hover:bg-[#2f80ed]/[0.14]">Save</button>
+                                <button type="button" onClick={() => cancelCost(cost)} disabled={saving} className="rounded-[9px] border border-[#ccd9e8] bg-white/[0.62] px-2.5 py-1.5 text-[10.5px] font-semibold text-[#607993] transition hover:bg-white">Cancel</button>
+                                <button type="button" onClick={() => void removeCost(cost)} disabled={saving} className="rounded-[9px] border border-[#cfa090]/[0.24] bg-[#cfa090]/[0.08] px-2.5 py-1.5 text-[10.5px] font-semibold text-[#8c5947] transition hover:bg-[#cfa090]/[0.14]">Delete</button>
                             </div>
                             <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
                                 <InputField label="Label" value={draft.label} onChange={(value) => setCostDrafts((current) => ({ ...current, [cost.id]: { ...draft, label: value } }))} />
@@ -1072,6 +1184,8 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
                                 <label className="flex h-9 items-center gap-2 rounded-[11px] border border-[#ccd9e8] bg-white/[0.58] px-3 text-[11px] font-semibold text-[#0b1623]"><input type="checkbox" checked={draft.include_in_total} onChange={(event) => setCostDrafts((current) => ({ ...current, [cost.id]: { ...draft, include_in_total: event.target.checked } }))} /> Include in acquisition total</label>
                                 <div className="sm:col-span-2 xl:col-span-4"><TextAreaField label="Note" value={draft.note} onChange={(value) => setCostDrafts((current) => ({ ...current, [cost.id]: { ...draft, note: value } }))} /></div>
                             </div>
+                            </div>
+                            ) : null}
                         </div>
                     );
                 })}
@@ -1088,7 +1202,7 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
                     const expanded = expandedServiceIds.has(service.id);
                     const ready = Boolean(draft.provider_name || draft.account_number || draft.meter_number || draft.customer_code || draft.monthly_fee_eur);
                     return (
-                        <div key={service.id} className="overflow-hidden rounded-[16px] border border-[#d8e8f6]/80 bg-white/[0.55] transition duration-200 hover:-translate-y-0.5 hover:scale-[1.004] hover:border-[#2f80ed]/[0.18] hover:bg-white/[0.72] hover:shadow-[0_16px_36px_rgba(41,73,112,0.10)]">
+                        <div key={service.id} ref={expandedServiceIds.has(service.id) ? newItemRef : null} draggable onDragStart={(event) => { setDraggedServiceId(service.id); event.dataTransfer.effectAllowed = "move"; }} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); if (draggedServiceId) void reorderService(draggedServiceId, service.id); setDraggedServiceId(null); }} onDragEnd={() => setDraggedServiceId(null)} className="overflow-hidden rounded-[16px] border border-[#d8e8f6]/80 bg-white/[0.55] transition duration-200 hover:-translate-y-0.5 hover:scale-[1.004] hover:border-[#2f80ed]/[0.18] hover:bg-white/[0.72] hover:shadow-[0_16px_36px_rgba(41,73,112,0.10)]">
                             <button type="button" onClick={() => toggleService(service.id)} className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left">
                                 <div className="min-w-0">
                                     <div className="flex flex-wrap items-center gap-2">
@@ -1107,6 +1221,7 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
                                 <div className="border-t border-white/[0.70] px-3 pb-3 pt-2">
                                     <div className="mb-2 flex justify-end gap-1.5">
                                         <button type="button" onClick={() => void saveService(service)} disabled={saving} className="rounded-[9px] border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-2.5 py-1.5 text-[10.5px] font-semibold text-[#1560bc] transition hover:bg-[#2f80ed]/[0.14]">Save</button>
+                                        <button type="button" onClick={() => cancelService(service)} disabled={saving} className="rounded-[9px] border border-[#ccd9e8] bg-white/[0.62] px-2.5 py-1.5 text-[10.5px] font-semibold text-[#607993] transition hover:bg-white">Cancel</button>
                                         <button type="button" onClick={() => void removeService(service)} disabled={saving} className="rounded-[9px] border border-[#cfa090]/[0.24] bg-[#cfa090]/[0.08] px-2.5 py-1.5 text-[10.5px] font-semibold text-[#8c5947] transition hover:bg-[#cfa090]/[0.14]">Delete</button>
                                     </div>
                                     <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
@@ -1143,7 +1258,7 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
                     const draft = contactDrafts[contact.id] ?? contactToDraft(contact);
                     const expanded = expandedContactIds.has(contact.id);
                     return (
-                        <div key={contact.id} className="overflow-hidden rounded-[16px] border border-[#d8e8f6]/80 bg-white/[0.55] transition duration-200 hover:-translate-y-0.5 hover:scale-[1.004] hover:border-[#2f80ed]/[0.18] hover:bg-white/[0.72] hover:shadow-[0_16px_36px_rgba(41,73,112,0.10)]">
+                        <div key={contact.id} ref={expandedContactIds.has(contact.id) ? newItemRef : null} draggable onDragStart={(event) => { setDraggedContactId(contact.id); event.dataTransfer.effectAllowed = "move"; }} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); if (draggedContactId) void reorderContact(draggedContactId, contact.id); setDraggedContactId(null); }} onDragEnd={() => setDraggedContactId(null)} className="overflow-hidden rounded-[16px] border border-[#d8e8f6]/80 bg-white/[0.55] transition duration-200 hover:-translate-y-0.5 hover:scale-[1.004] hover:border-[#2f80ed]/[0.18] hover:bg-white/[0.72] hover:shadow-[0_16px_36px_rgba(41,73,112,0.10)]">
                             <button type="button" onClick={() => toggleContact(contact.id)} className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left">
                                 <div className="min-w-0">
                                     <div className="flex flex-wrap items-center gap-2">
@@ -1159,7 +1274,7 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
                             </button>
                             {expanded ? (
                                 <div className="border-t border-white/[0.70] px-3 pb-3 pt-2">
-                                    <div className="mb-2 flex justify-end gap-1.5"><button type="button" onClick={() => void saveContact(contact)} disabled={saving} className="rounded-[9px] border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-2.5 py-1.5 text-[10.5px] font-semibold text-[#1560bc] transition hover:bg-[#2f80ed]/[0.14]">Save</button><button type="button" onClick={() => void removeContact(contact)} disabled={saving} className="rounded-[9px] border border-[#cfa090]/[0.24] bg-[#cfa090]/[0.08] px-2.5 py-1.5 text-[10.5px] font-semibold text-[#8c5947] transition hover:bg-[#cfa090]/[0.14]">Delete</button></div>
+                                    <div className="mb-2 flex justify-end gap-1.5"><button type="button" onClick={() => void saveContact(contact)} disabled={saving} className="rounded-[9px] border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-2.5 py-1.5 text-[10.5px] font-semibold text-[#1560bc] transition hover:bg-[#2f80ed]/[0.14]">Save</button><button type="button" onClick={() => cancelContact(contact)} disabled={saving} className="rounded-[9px] border border-[#ccd9e8] bg-white/[0.62] px-2.5 py-1.5 text-[10.5px] font-semibold text-[#607993] transition hover:bg-white">Cancel</button><button type="button" onClick={() => void removeContact(contact)} disabled={saving} className="rounded-[9px] border border-[#cfa090]/[0.24] bg-[#cfa090]/[0.08] px-2.5 py-1.5 text-[10.5px] font-semibold text-[#8c5947] transition hover:bg-[#cfa090]/[0.14]">Delete</button></div>
                                     <div className="grid gap-2 sm:grid-cols-2">
                                         <label className="block"><span className="mb-1 block text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7a90a8]">Type</span><select value={draft.contact_type} onChange={(event) => setContactDrafts((current) => ({ ...current, [contact.id]: { ...draft, contact_type: event.target.value as ManagedPropertyRealEstateContactType } }))} className="h-9 w-full rounded-[11px] border border-[#ccd9e8] bg-white/[0.72] px-3 text-[12px] font-medium text-[#0b1623] outline-none">{Object.entries(contactLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
                                         <InputField label="Name" value={draft.full_name} onChange={(value) => setContactDrafts((current) => ({ ...current, [contact.id]: { ...draft, full_name: value } }))} />
