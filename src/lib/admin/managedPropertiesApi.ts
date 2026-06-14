@@ -909,17 +909,15 @@ export async function updateManagedPropertyIncomeMonth(
 export async function updateManagedPropertyIncomeMonths(
     patches: Array<{ id: string; patch: ManagedPropertyIncomeMonthPatch }>,
 ) {
-    if (patches.length === 0) return [];
-
-    const concurrency = 12;
     const updated: ManagedPropertyIncomeMonth[] = [];
+    const chunkSize = 8;
 
-    for (let index = 0; index < patches.length; index += concurrency) {
-        const batch = patches.slice(index, index + concurrency);
-        const batchResult = await Promise.all(
-            batch.map((item) => updateManagedPropertyIncomeMonth(item.id, item.patch)),
+    for (let index = 0; index < patches.length; index += chunkSize) {
+        const chunk = patches.slice(index, index + chunkSize);
+        const result = await Promise.all(
+            chunk.map((item) => updateManagedPropertyIncomeMonth(item.id, item.patch)),
         );
-        updated.push(...batchResult);
+        updated.push(...result);
     }
 
     return updated;
