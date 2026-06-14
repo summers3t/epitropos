@@ -298,14 +298,11 @@ export default function AdminDatePicker({
           setOpen(nextOpen);
         }}
         className={[
-          "flex w-full items-center justify-between rounded-xl border border-[#ccd9e8] bg-white/[0.82] px-3 py-2 text-left text-[13px] text-[#0b1623] outline-none transition focus:border-[#2f80ed] focus:ring-2 focus:ring-[#2f80ed]/[0.12]",
+          "flex w-full min-w-0 items-center rounded-xl border border-[#ccd9e8] bg-white/[0.82] px-2.5 py-2 text-left text-[12px] text-[#0b1623] outline-none transition focus:border-[#2f80ed] focus:ring-2 focus:ring-[#2f80ed]/[0.12]",
           className ?? "",
         ].join(" ")}
       >
-        <span>{formatDisplayDate(value)}</span>
-        <span className="text-[#607993]" aria-hidden="true">
-          ▾
-        </span>
+        <span className="block min-w-0 truncate whitespace-nowrap">{formatDisplayDate(value)}</span>
       </button>
 
       {mounted && typeof document !== "undefined"

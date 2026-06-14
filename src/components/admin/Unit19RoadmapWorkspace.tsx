@@ -1334,7 +1334,7 @@ export default function Unit19RoadmapWorkspace({
                         ) : null}
 
                         {pendingDeletionLabel ? (
-                            <div className="fixed bottom-5 right-5 z-[120] w-[min(360px,calc(100vw-32px))] overflow-hidden rounded-[18px] border border-[#c78973]/[0.28] bg-white/[0.90] px-4 py-3 text-[12px] font-semibold text-[#8c5947] shadow-[0_24px_70px_rgba(6,16,29,0.22)] backdrop-blur-xl">
+                            <div className="fixed bottom-5 left-1/2 z-[120] -translate-x-1/2 w-[min(360px,calc(100vw-32px))] overflow-hidden rounded-[18px] border border-[#c78973]/[0.28] bg-white/[0.90] px-4 py-3 text-[12px] font-semibold text-[#8c5947] shadow-[0_24px_70px_rgba(6,16,29,0.22)] backdrop-blur-xl">
                                 <div className="flex items-center justify-between gap-3">
                                     <span className="min-w-0">{pendingDeletionLabel}. Undo available.</span>
                                     <button

@@ -76,6 +76,23 @@ type Unit19CreditConfig = {
   property_insurance_eur: number;
   property_insurance_month: number;
 };
+
+type Unit19RentConfig = {
+  marker: "unit19_rent_v1";
+  amount_eur: number;
+  start_date: string | null;
+  end_date: string | null;
+  index_percent: number;
+  index_start_date: string | null;
+  index_end_date: string | null;
+  paid_day: number;
+};
+
+type Unit19SetupConfig = {
+  marker: "unit19_setup_v1";
+  rent: Unit19RentConfig;
+  credit: Unit19CreditConfig;
+};
 type NorthStarBudgetKey =
   | "electricity"
   | "water"
@@ -355,6 +372,93 @@ function serializeUnit19CreditConfig(config: Unit19CreditConfig) {
   });
 }
 
+function defaultUnit19RentConfig(): Unit19RentConfig {
+  return {
+    marker: "unit19_rent_v1",
+    amount_eur: 0,
+    start_date: null,
+    end_date: null,
+    index_percent: 0,
+    index_start_date: null,
+    index_end_date: null,
+    paid_day: 15,
+  };
+}
+
+function parseUnit19SetupConfig(note: string | null | undefined): Unit19SetupConfig {
+  const fallback: Unit19SetupConfig = {
+    marker: "unit19_setup_v1",
+    rent: defaultUnit19RentConfig(),
+    credit: parseUnit19CreditConfig(note),
+  };
+
+  if (!note) return fallback;
+
+  try {
+    const parsed = JSON.parse(note) as Partial<Unit19SetupConfig> & { marker?: string; rent?: Partial<Unit19RentConfig>; credit?: Partial<Unit19CreditConfig> };
+
+    if (parsed.marker === "unit19_setup_v1") {
+      const rent = parsed.rent ?? {};
+      const credit = parsed.credit ?? {};
+      return {
+        marker: "unit19_setup_v1",
+        rent: {
+          marker: "unit19_rent_v1",
+          amount_eur: Number(rent.amount_eur ?? 0),
+          start_date: typeof rent.start_date === "string" ? rent.start_date : null,
+          end_date: typeof rent.end_date === "string" ? rent.end_date : null,
+          index_percent: Number(rent.index_percent ?? 0),
+          index_start_date: typeof rent.index_start_date === "string" ? rent.index_start_date : null,
+          index_end_date: typeof rent.index_end_date === "string" ? rent.index_end_date : null,
+          paid_day: Number(rent.paid_day ?? 15),
+        },
+        credit: {
+          marker: "unit19_credit_v1",
+          payment_eur: Number(credit.payment_eur ?? 0),
+          start_month: clampMonth(Number(credit.start_month ?? 1)),
+          end_month: clampMonth(Number(credit.end_month ?? 12)),
+          start_date: typeof credit.start_date === "string" ? credit.start_date : null,
+          end_date: typeof credit.end_date === "string" ? credit.end_date : null,
+          life_insurance_eur: Number(credit.life_insurance_eur ?? 0),
+          property_insurance_eur: Number(credit.property_insurance_eur ?? 0),
+          property_insurance_month: clampMonth(Number(credit.property_insurance_month ?? 1)),
+        },
+      };
+    }
+  } catch {
+    return fallback;
+  }
+
+  return fallback;
+}
+
+function serializeUnit19SetupConfig(config: Unit19SetupConfig) {
+  return JSON.stringify({
+    marker: "unit19_setup_v1",
+    rent: {
+      marker: "unit19_rent_v1",
+      amount_eur: Number(config.rent.amount_eur || 0),
+      start_date: config.rent.start_date ?? null,
+      end_date: config.rent.end_date ?? null,
+      index_percent: Number(config.rent.index_percent || 0),
+      index_start_date: config.rent.index_start_date ?? null,
+      index_end_date: config.rent.index_end_date ?? null,
+      paid_day: Number(config.rent.paid_day || 15),
+    },
+    credit: {
+      marker: "unit19_credit_v1",
+      payment_eur: Number(config.credit.payment_eur || 0),
+      start_month: clampMonth(config.credit.start_month),
+      end_month: clampMonth(config.credit.end_month),
+      start_date: config.credit.start_date ?? null,
+      end_date: config.credit.end_date ?? null,
+      life_insurance_eur: Number(config.credit.life_insurance_eur || 0),
+      property_insurance_eur: Number(config.credit.property_insurance_eur || 0),
+      property_insurance_month: clampMonth(config.credit.property_insurance_month),
+    },
+  });
+}
+
 function getCreditExpectedForMonth(month: number, year: number, config: Unit19CreditConfig) {
   if (config.payment_eur <= 0) return 0;
   if (config.start_date || config.end_date) {
@@ -630,7 +734,7 @@ export default function Unit19IncomeModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [monthUndo, setMonthUndo] = useState<{ label: string; restore: () => Promise<void> } | null>(null);
-  const monthUndoTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
+  const monthUndoTimerRef = useRef<number | null>(null);
 
   const isNorthStarWorkspace =
     propertySlug === "maria-northstar" ||
@@ -673,6 +777,20 @@ export default function Unit19IncomeModal({
     ],
   );
 
+  const unit19RentConfig = useMemo<Unit19RentConfig>(
+    () => ({
+      marker: "unit19_rent_v1",
+      amount_eur: Number(monthlyRentEur || 0),
+      start_date: rentStartDate || null,
+      end_date: rentEndDate || null,
+      index_percent: Number(rentIndexPercent || 0),
+      index_start_date: rentIndexStartDate || null,
+      index_end_date: rentIndexEndDate || null,
+      paid_day: Number(rentPaidDay || 15),
+    }),
+    [monthlyRentEur, rentStartDate, rentEndDate, rentIndexPercent, rentIndexStartDate, rentIndexEndDate, rentPaidDay],
+  );
+
   async function loadIncome(targetYear = year) {
     try {
       setLoading(true);
@@ -687,23 +805,47 @@ export default function Unit19IncomeModal({
       setOwnerExpenses(result.ownerExpenses);
       setTaxReserve(result.taxReserve);
 
-      const activeMonths = result.months.filter(
-        (month) => month.rent_expected_eur > 0,
-      );
-      if (activeMonths.length > 0) {
-        setMonthlyRentEur(activeMonths[0].rent_expected_eur);
-        setRentStartMonth(
-          Math.min(...activeMonths.map((month) => month.month)),
+      const isNorthStarProperty =
+        property.slug === "maria-northstar" ||
+        property.property_type === "personal_roadmap" ||
+        property.property_type === "student_roadmap";
+      const unit19Setup = parseUnit19SetupConfig(result.taxReserve?.note);
+      const savedRent = unit19Setup.rent;
+      const hasSavedRentConfig =
+        !isNorthStarProperty &&
+        (savedRent.amount_eur > 0 || Boolean(savedRent.start_date) || Boolean(savedRent.end_date));
+
+      if (hasSavedRentConfig) {
+        setMonthlyRentEur(savedRent.amount_eur);
+        setRentStartDate(savedRent.start_date ?? `${targetYear}-01-01`);
+        setRentEndDate(savedRent.end_date ?? `${targetYear}-12-31`);
+        const parsedStart = parseDate(savedRent.start_date);
+        const parsedEnd = parseDate(savedRent.end_date);
+        setRentStartMonth(parsedStart ? parsedStart.getMonth() + 1 : 1);
+        setRentEndMonth(parsedEnd ? parsedEnd.getMonth() + 1 : 12);
+        setRentIndexPercent(savedRent.index_percent);
+        setRentIndexStartDate(savedRent.index_start_date ?? "");
+        setRentIndexEndDate(savedRent.index_end_date ?? "");
+        setRentPaidDay(savedRent.paid_day || 15);
+      } else {
+        const activeMonths = result.months.filter(
+          (month) => month.rent_expected_eur > 0,
         );
-        setRentEndMonth(Math.max(...activeMonths.map((month) => month.month)));
-        const firstActive = activeMonths.reduce((first, month) => (month.year < first.year || (month.year === first.year && month.month < first.month) ? month : first), activeMonths[0]);
-        const lastActive = activeMonths.reduce((last, month) => (month.year > last.year || (month.year === last.year && month.month > last.month) ? month : last), activeMonths[0]);
-        setRentStartDate(firstActive.rent_paid_date ?? `${firstActive.year}-${String(firstActive.month).padStart(2, "0")}-01`);
-        setRentEndDate(`${lastActive.year}-${String(lastActive.month).padStart(2, "0")}-${String(new Date(lastActive.year, lastActive.month, 0).getDate()).padStart(2, "0")}`);
-      } else if (property.slug === "maria-northstar") {
-        setMonthlyRentEur(270);
-        setRentStartMonth(1);
-        setRentEndMonth(12);
+        if (activeMonths.length > 0) {
+          setMonthlyRentEur(activeMonths[0].rent_expected_eur);
+          setRentStartMonth(
+            Math.min(...activeMonths.map((month) => month.month)),
+          );
+          setRentEndMonth(Math.max(...activeMonths.map((month) => month.month)));
+          const firstActive = activeMonths.reduce((first, month) => (month.year < first.year || (month.year === first.year && month.month < first.month) ? month : first), activeMonths[0]);
+          const lastActive = activeMonths.reduce((last, month) => (month.year > last.year || (month.year === last.year && month.month > last.month) ? month : last), activeMonths[0]);
+          setRentStartDate(firstActive.rent_paid_date ?? `${firstActive.year}-${String(firstActive.month).padStart(2, "0")}-01`);
+          setRentEndDate(`${lastActive.year}-${String(lastActive.month).padStart(2, "0")}-${String(new Date(lastActive.year, lastActive.month, 0).getDate()).padStart(2, "0")}`);
+        } else if (property.slug === "maria-northstar") {
+          setMonthlyRentEur(270);
+          setRentStartMonth(1);
+          setRentEndMonth(12);
+        }
       }
 
       const tuition = parseNorthStarTuitionConfig(result.taxReserve?.note);
@@ -712,9 +854,12 @@ export default function Unit19IncomeModal({
       setTuitionEndMonth(tuition.end_month);
       setTuitionPaymentMode(tuition.payment_mode);
 
-      const credit = parseUnit19CreditConfig(result.taxReserve?.note);
-      const hasSavedCreditConfig = Boolean(result.taxReserve?.note) && credit.marker === "unit19_credit_v1" && (credit.payment_eur > 0 || credit.start_date || credit.end_date);
-      if (hasSavedCreditConfig || creditPaymentEur <= 0) {
+      const credit = unit19Setup.credit;
+      const hasSavedCreditConfig =
+        !isNorthStarProperty &&
+        Boolean(result.taxReserve?.note) &&
+        (credit.payment_eur > 0 || Boolean(credit.start_date) || Boolean(credit.end_date));
+      if (hasSavedCreditConfig || (!isNorthStarProperty && creditPaymentEur <= 0)) {
         setCreditPaymentEur(credit.payment_eur);
         setCreditStartMonth(credit.start_month);
         setCreditEndMonth(credit.end_month);
@@ -922,7 +1067,24 @@ export default function Unit19IncomeModal({
       setError(null);
 
       const scheduleYears = yearRangeFromDates(rentStartDate, rentEndDate, year);
-      const allMonths = (await Promise.all(scheduleYears.map((targetYear) => getManagedPropertyIncome(managedPropertyId, targetYear)))).flatMap((result) => result.months);
+      const incomeByYear = await Promise.all(scheduleYears.map((targetYear) => getManagedPropertyIncome(managedPropertyId, targetYear)));
+      const allMonths = incomeByYear.flatMap((result) => result.months);
+
+      if (!isNorthStarWorkspace) {
+        const setupNote = serializeUnit19SetupConfig({
+          marker: "unit19_setup_v1",
+          rent: unit19RentConfig,
+          credit: unit19CreditConfig,
+        });
+        const updatedReserves = await Promise.all(
+          incomeByYear
+            .map((result) => result.taxReserve)
+            .filter(Boolean)
+            .map((reserve) => updateManagedPropertyTaxReserve(reserve!.id, { note: setupNote })),
+        );
+        const visibleReserve = updatedReserves.find((reserve) => reserve.year === year);
+        if (visibleReserve) setTaxReserve(visibleReserve);
+      }
 
       const patches = allMonths
         .filter((month) => monthInDateRange(month.year, month.month, rentStartDate, rentEndDate))
@@ -1030,7 +1192,13 @@ export default function Unit19IncomeModal({
         incomeByYear
           .map((result) => result.taxReserve)
           .filter(Boolean)
-          .map((reserve) => updateManagedPropertyTaxReserve(reserve!.id, { note: serializeUnit19CreditConfig(unit19CreditConfig) })),
+          .map((reserve) => updateManagedPropertyTaxReserve(reserve!.id, {
+            note: serializeUnit19SetupConfig({
+              marker: "unit19_setup_v1",
+              rent: unit19RentConfig,
+              credit: unit19CreditConfig,
+            }),
+          })),
       );
       const visibleReserve = updatedReserves.find((reserve) => reserve.year === year);
       if (visibleReserve) setTaxReserve(visibleReserve);
@@ -1146,7 +1314,7 @@ export default function Unit19IncomeModal({
   }
 
   async function clearSelectedMonthWithUndo() {
-    const month = selectedMonthData;
+    const month = selected;
     if (!month) return;
     const previousMonth = month;
     const label = `${monthLabels[month.month - 1]} ${month.year}`;
@@ -1194,11 +1362,16 @@ export default function Unit19IncomeModal({
   }
 
   async function applyPrimarySchedule() {
-    await applyRentSchedule();
     if (isNorthStarWorkspace) {
+      await applyRentSchedule();
       await applyTuitionSetup();
-    } else {
+      return;
+    }
+
+    if (setupMode === "credit") {
       await applyCreditSetup();
+    } else {
+      await applyRentSchedule();
     }
   }
 
@@ -1788,7 +1961,7 @@ export default function Unit19IncomeModal({
         <style>{`@keyframes shrinkUndo { from { width: 100%; } to { width: 0%; } }`}</style>
 
         {monthUndo ? (
-          <div className="fixed bottom-5 right-5 z-[9998] w-[320px] overflow-hidden rounded-2xl border border-[#d96969]/[0.26] bg-white/[0.92] p-3 shadow-[0_20px_70px_rgba(6,16,29,0.18)] backdrop-blur-2xl">
+          <div className="fixed bottom-5 left-1/2 z-[9998] -translate-x-1/2 w-[320px] overflow-hidden rounded-2xl border border-[#d96969]/[0.26] bg-white/[0.92] p-3 shadow-[0_20px_70px_rgba(6,16,29,0.18)] backdrop-blur-2xl">
             <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#9d2f2f]">Month cleared</div>
             <div className="mt-1 text-[12px] text-[#607993]">{monthUndo.label} was cleared. Undo available for 5 seconds.</div>
             <div className="mt-2 flex items-center justify-between gap-2">
@@ -2004,7 +2177,7 @@ function Unit19SetupPanel({
               className={inputClass}
             />
           </Field>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid gap-2">
             <Field label="From date">
               <AdminDatePicker value={rentStartDate} onChange={(date) => { onRentStartDateChange(date); const parsed = parseDate(date); if (parsed) onRentStartMonthChange(parsed.getMonth() + 1); }} />
             </Field>
@@ -2016,7 +2189,7 @@ function Unit19SetupPanel({
             <div className="mb-2 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#2060cc]">Indexation</div>
             <div className="space-y-2">
               <Field label="% / year"><input type="number" value={rentIndexPercent} onChange={(event) => onRentIndexPercentChange(Number(event.target.value || 0))} className={inputClass} /></Field>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid gap-2">
                 <Field label="From"><AdminDatePicker value={rentIndexStartDate} onChange={onRentIndexStartDateChange} /></Field>
                 <Field label="To"><AdminDatePicker value={rentIndexEndDate} onChange={onRentIndexEndDateChange} /></Field>
               </div>
@@ -2042,7 +2215,7 @@ function Unit19SetupPanel({
               className={inputClass}
             />
           </Field>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid gap-2">
             <Field label="From date">
               <AdminDatePicker value={creditStartDate} onChange={(date) => { onCreditStartDateChange(date); const parsed = parseDate(date); if (parsed) onCreditStartMonthChange(parsed.getMonth() + 1); }} />
             </Field>

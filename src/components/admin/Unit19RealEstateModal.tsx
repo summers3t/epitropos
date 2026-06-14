@@ -402,7 +402,7 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [deleteUndo, setDeleteUndo] = useState<{ label: string; restore: () => Promise<void> } | null>(null);
-    const deleteUndoTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
+    const deleteUndoTimerRef = useRef<number | null>(null);
 
     const expenseById = useMemo(() => {
         return new Map(expenses.map((expense) => [expense.id, expense]));
@@ -1419,7 +1419,7 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
             </div>
             <style>{`@keyframes shrinkUndo { from { width: 100%; } to { width: 0%; } }`}</style>
             {deleteUndo ? (
-                <div className="fixed bottom-5 right-5 z-[9998] w-[320px] overflow-hidden rounded-2xl border border-[#d96969]/[0.26] bg-white/[0.92] p-3 shadow-[0_20px_70px_rgba(6,16,29,0.18)] backdrop-blur-2xl">
+                <div className="fixed bottom-5 left-1/2 z-[9998] -translate-x-1/2 w-[320px] overflow-hidden rounded-2xl border border-[#d96969]/[0.26] bg-white/[0.92] p-3 shadow-[0_20px_70px_rgba(6,16,29,0.18)] backdrop-blur-2xl">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#9d2f2f]">Deleted</div>
                     <div className="mt-1 text-[12px] text-[#607993]">{deleteUndo.label} deleted. Undo available for 5 seconds.</div>
                     <div className="mt-2 flex items-center justify-between gap-2">
