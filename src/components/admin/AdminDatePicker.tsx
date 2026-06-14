@@ -10,6 +10,20 @@ type AdminDatePickerProps = {
 };
 
 const weekDayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const monthOptions = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
 
 function parseLocalDate(value: string) {
   const [year, month, day] = value.split("-").map(Number);
@@ -51,15 +65,15 @@ function formatDisplayDate(value: string) {
   return `${String(date.getDate()).padStart(2, "0")}.${String(date.getMonth() + 1).padStart(2, "0")}.${date.getFullYear()}`;
 }
 
-function formatMonthTitle(date: Date) {
-  return new Intl.DateTimeFormat("en-GB", {
-    month: "long",
-    year: "numeric",
-  }).format(date);
-}
-
 function isSameDay(a: Date, b: Date) {
   return toIsoDate(a) === toIsoDate(b);
+}
+
+function buildYearOptions(visibleYear: number) {
+  const start = Math.min(2000, visibleYear - 30);
+  const end = Math.max(2060, visibleYear + 30);
+
+  return Array.from({ length: end - start + 1 }, (_, index) => start + index);
 }
 
 export default function AdminDatePicker({
@@ -78,15 +92,15 @@ export default function AdminDatePicker({
   const [popoverPosition, setPopoverPosition] = useState({
     left: 0,
     top: 0,
-    maxHeight: 388,
+    maxHeight: 420,
   });
 
   function updatePopoverPosition() {
     const rect = buttonRef.current?.getBoundingClientRect();
     if (!rect || typeof window === "undefined") return;
 
-    const popoverWidth = 286;
-    const preferredHeight = 388;
+    const popoverWidth = 320;
+    const preferredHeight = 420;
     const viewportPadding = 12;
     const availableBelow =
       window.innerHeight - rect.bottom - viewportPadding - 6;
@@ -94,7 +108,7 @@ export default function AdminDatePicker({
     const openBelow =
       availableBelow >= Math.min(preferredHeight, availableAbove);
     const availableHeight = Math.max(
-      240,
+      260,
       openBelow ? availableBelow : availableAbove,
     );
     const maxHeight = Math.min(preferredHeight, availableHeight);
@@ -162,54 +176,95 @@ export default function AdminDatePicker({
     );
   }, [visibleMonth]);
 
+  const yearOptions = useMemo(
+    () => buildYearOptions(visibleMonth.getFullYear()),
+    [visibleMonth],
+  );
+
   function selectDate(date: Date) {
     onChange(toIsoDate(date));
     setVisibleMonth(startOfMonth(date));
     setOpen(false);
   }
 
+  function changeVisibleMonth(month: number) {
+    setVisibleMonth(new Date(visibleMonth.getFullYear(), month, 1));
+  }
+
+  function changeVisibleYear(year: number) {
+    setVisibleMonth(new Date(year, visibleMonth.getMonth(), 1));
+  }
+
+  function shiftVisibleMonth(delta: number) {
+    setVisibleMonth(
+      new Date(
+        visibleMonth.getFullYear(),
+        visibleMonth.getMonth() + delta,
+        1,
+      ),
+    );
+  }
+
   const popover = open ? (
     <div
       ref={popoverRef}
-      className="fixed z-[9999] w-[286px] overflow-y-auto rounded-[18px] border border-[#ccd9e8] bg-white/[0.98] p-3 shadow-[0_22px_70px_rgba(6,16,29,0.20)] backdrop-blur-2xl"
+      className="fixed z-[9999] w-[320px] overflow-y-auto rounded-[18px] border border-[#ccd9e8] bg-white/[0.98] p-3 shadow-[0_22px_70px_rgba(6,16,29,0.20)] backdrop-blur-2xl"
       style={{
         left: popoverPosition.left,
         top: popoverPosition.top,
         maxHeight: popoverPosition.maxHeight,
       }}
     >
-      <div className="mb-3 flex items-center justify-between gap-2">
+      <div className="mb-3 flex items-center gap-1.5">
         <button
           type="button"
-          onClick={() =>
-            setVisibleMonth(
-              new Date(
-                visibleMonth.getFullYear(),
-                visibleMonth.getMonth() - 1,
-                1,
-              ),
-            )
-          }
-          className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#ccd9e8] bg-white/[0.70] text-[#607993] transition hover:bg-white"
+          onClick={() => shiftVisibleMonth(-1)}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-[#ccd9e8] bg-white/[0.70] text-[#607993] transition hover:bg-white active:scale-[0.96]"
           aria-label="Previous month"
         >
           ‹
         </button>
-        <div className="text-[13px] font-semibold text-[#0b1623]">
-          {formatMonthTitle(visibleMonth)}
+
+        <div className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_88px] gap-1.5">
+          <label className="sr-only" htmlFor="admin-date-picker-month">
+            Month
+          </label>
+          <select
+            id="admin-date-picker-month"
+            value={visibleMonth.getMonth()}
+            onChange={(event) => changeVisibleMonth(Number(event.target.value))}
+            className="h-8 min-w-0 rounded-xl border border-[#ccd9e8] bg-white/[0.82] px-2 text-[12px] font-semibold text-[#0b1623] outline-none transition hover:bg-white focus:border-[#2f80ed] focus:ring-2 focus:ring-[#2f80ed]/[0.12]"
+            aria-label="Select month"
+          >
+            {monthOptions.map((month, index) => (
+              <option key={month} value={index}>
+                {month}
+              </option>
+            ))}
+          </select>
+
+          <label className="sr-only" htmlFor="admin-date-picker-year">
+            Year
+          </label>
+          <select
+            id="admin-date-picker-year"
+            value={visibleMonth.getFullYear()}
+            onChange={(event) => changeVisibleYear(Number(event.target.value))}
+            className="h-8 rounded-xl border border-[#ccd9e8] bg-white/[0.82] px-2 text-[12px] font-semibold text-[#0b1623] outline-none transition hover:bg-white focus:border-[#2f80ed] focus:ring-2 focus:ring-[#2f80ed]/[0.12]"
+            aria-label="Select year"
+          >
+            {yearOptions.map((year) => (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            ))}
+          </select>
         </div>
+
         <button
           type="button"
-          onClick={() =>
-            setVisibleMonth(
-              new Date(
-                visibleMonth.getFullYear(),
-                visibleMonth.getMonth() + 1,
-                1,
-              ),
-            )
-          }
-          className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#ccd9e8] bg-white/[0.70] text-[#607993] transition hover:bg-white"
+          onClick={() => shiftVisibleMonth(1)}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-[#ccd9e8] bg-white/[0.70] text-[#607993] transition hover:bg-white active:scale-[0.96]"
           aria-label="Next month"
         >
           ›
