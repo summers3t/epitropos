@@ -57,6 +57,11 @@ type Unit19BudgetEntry = {
 
 type Unit19BudgetState = {
   marker: "unit19_budget_v1";
+  /**
+   * When true, this month uses credit_expected_eur as a manual override,
+   * including 0. When false/undefined, the amount is derived from Credit setup.
+   */
+  credit_expected_manual?: boolean;
   credit_expected_eur?: number;
   credit_paid?: boolean;
   credit_paid_date?: string | null;
@@ -298,6 +303,7 @@ function parseUnit19BudgetState(
     if (parsed?.marker === "unit19_budget_v1") {
       return {
         marker: "unit19_budget_v1",
+        credit_expected_manual: Boolean(parsed.credit_expected_manual),
         credit_expected_eur: Number(parsed.credit_expected_eur ?? 0),
         credit_paid: Boolean(parsed.credit_paid),
         credit_paid_date: parsed.credit_paid_date ?? null,
@@ -314,6 +320,7 @@ function parseUnit19BudgetState(
 function serializeUnit19BudgetState(state: Unit19BudgetState) {
   return JSON.stringify({
     marker: "unit19_budget_v1",
+    credit_expected_manual: Boolean(state.credit_expected_manual),
     credit_expected_eur: Number(state.credit_expected_eur ?? 0),
     credit_paid: Boolean(state.credit_paid),
     credit_paid_date: state.credit_paid_date ?? null,
@@ -426,8 +433,10 @@ function getCreditExpectedForState(
   config: Unit19CreditConfig,
   state: Unit19BudgetState,
 ) {
-  if (Number(state.credit_expected_eur ?? 0) > 0)
+  if (state.credit_expected_manual) {
     return Number(state.credit_expected_eur ?? 0);
+  }
+
   return getCreditExpectedForMonth(month, year, config);
 }
 
@@ -1204,9 +1213,16 @@ export default function Unit19IncomeModal({
             patch: {
               note: serializeUnit19BudgetState({
                 ...currentState,
-                credit_expected_eur: expectedCredit,
-                credit_paid:
-                  expectedCredit > 0 ? currentState.credit_paid : false,
+                credit_expected_eur: currentState.credit_expected_manual
+                  ? Number(currentState.credit_expected_eur ?? 0)
+                  : expectedCredit,
+                credit_paid: currentState.credit_expected_manual
+                  ? Number(currentState.credit_expected_eur ?? 0) > 0
+                    ? currentState.credit_paid
+                    : false
+                  : expectedCredit > 0
+                    ? currentState.credit_paid
+                    : false,
                 entries: nextEntries,
               }),
             },
@@ -1290,7 +1306,14 @@ export default function Unit19IncomeModal({
       water_confirmed: false,
       gas_confirmed: false,
       building_fees_confirmed: false,
-      note: serializeUnit19BudgetState(defaultUnit19BudgetState()),
+      note: serializeUnit19BudgetState({
+        ...defaultUnit19BudgetState(),
+        credit_expected_manual: true,
+        credit_expected_eur: 0,
+        credit_paid: false,
+        credit_paid_date: null,
+        entries: {},
+      }),
     };
 
     try {
@@ -1891,6 +1914,11 @@ export default function Unit19IncomeModal({
                     unit19CreditConfig,
                     unit19MonthState.get(selected.id) ?? defaultUnit19BudgetState(),
                   )}
+                  creditScheduledExpected={getCreditExpectedForMonth(
+                    selected.month,
+                    selected.year,
+                    unit19CreditConfig,
+                  )}
                   onTogglePaid={() => void markRentPaid(selected)}
                   onToggleCreditPaid={() => void markCreditPaid(selected)}
                   onPatch={(patch) => void patchMonth(selected, patch)}
@@ -2373,6 +2401,7 @@ function MonthDetails({
   onDetailsModeChange,
   budgetState,
   creditExpected,
+  creditScheduledExpected,
   onTogglePaid,
   onToggleCreditPaid,
   onPatch,
@@ -2394,6 +2423,7 @@ function MonthDetails({
   onDetailsModeChange: (mode: "rent" | "credit") => void;
   budgetState: Unit19BudgetState;
   creditExpected: number;
+  creditScheduledExpected: number;
   onTogglePaid: () => void;
   onToggleCreditPaid: () => void;
   onPatch: (patch: ManagedPropertyIncomeMonthPatch) => void;
@@ -2549,7 +2579,12 @@ function MonthDetails({
                   onChange={(event) =>
                     onPatchBudget({
                       ...budgetState,
+                      credit_expected_manual: true,
                       credit_expected_eur: Number(event.target.value || 0),
+                      credit_paid:
+                        Number(event.target.value || 0) > 0
+                          ? budgetState.credit_paid
+                          : false,
                     })
                   }
                   className={inputClass}
@@ -2563,6 +2598,32 @@ function MonthDetails({
                   className={inputClass}
                 />
               </Field>
+            </div>
+            <div className="mt-2 rounded-xl border border-[#ccd9e8] bg-white/[0.46] px-3 py-2 text-[10.5px] leading-4 text-[#607993]">
+              {budgetState.credit_expected_manual ? (
+                <div className="flex items-center justify-between gap-2">
+                  <span>Manual credit override for this month.</span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onPatchBudget({
+                        ...budgetState,
+                        credit_expected_manual: false,
+                        credit_expected_eur: undefined,
+                        credit_paid:
+                          creditScheduledExpected > 0
+                            ? budgetState.credit_paid
+                            : false,
+                      })
+                    }
+                    className="shrink-0 rounded-lg border border-[#2f80ed]/[0.22] bg-[#2f80ed]/[0.07] px-2 py-1 text-[10px] font-semibold text-[#1560bc] transition hover:bg-[#2f80ed]/[0.12]"
+                  >
+                    Use schedule
+                  </button>
+                </div>
+              ) : (
+                <span>Using Credit setup schedule: {formatEur(creditScheduledExpected)}</span>
+              )}
             </div>
             <div className="mt-2">
               <Field label="Paid date">
