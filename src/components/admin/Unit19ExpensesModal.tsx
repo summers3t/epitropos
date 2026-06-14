@@ -125,6 +125,12 @@ function toDraft(expense: ManagedPropertyExpense): ExpenseDraft {
     };
 }
 
+function isSameExpenseDraft(expense: ManagedPropertyExpense, draft: ExpenseDraft | undefined) {
+    if (!draft) return false;
+    const original = toDraft(expense);
+    return JSON.stringify(original) === JSON.stringify(draft);
+}
+
 function IconClose() {
     return (
         <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -251,16 +257,23 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
         const planned = activeExpenses.filter((expense) => expense.status === "planned");
         const paid = activeExpenses.filter((expense) => expense.status === "paid");
 
+        const pendingAmount = pending.reduce((sum, expense) => sum + Number(expense.amount_eur ?? 0), 0);
+        const plannedAmount = planned.reduce((sum, expense) => sum + Number(expense.amount_eur ?? 0), 0);
+        const paidAmount = paid.reduce((sum, expense) => sum + Number(expense.amount_eur ?? 0), 0);
+        const openAmount = pendingAmount + plannedAmount;
+
         return {
             total,
             greekClosing,
             credit,
-            pendingAmount: pending.reduce((sum, expense) => sum + Number(expense.amount_eur ?? 0), 0),
+            pendingAmount,
             pendingCount: pending.length,
-            plannedAmount: planned.reduce((sum, expense) => sum + Number(expense.amount_eur ?? 0), 0),
+            plannedAmount,
             plannedCount: planned.length,
-            paidAmount: paid.reduce((sum, expense) => sum + Number(expense.amount_eur ?? 0), 0),
+            paidAmount,
             paidCount: paid.length,
+            openAmount,
+            openCount: pending.length + planned.length,
             trackedCount: activeExpenses.length,
         };
     }, [activeExpenses]);
@@ -298,10 +311,10 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
                     variant: "warm",
                 },
                 {
-                    label: "BGN equivalent",
-                    value: formatBgn(stats.total * EUR_TO_BGN),
-                    helper: "fixed 1.95583",
-                    variant: "default",
+                    label: "Open items",
+                    value: formatEur(stats.openAmount),
+                    helper: `${stats.openCount} planned / clarify rows`,
+                    variant: stats.openAmount > 0 ? "warm" : "default",
                 },
             ];
         }
@@ -332,9 +345,9 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
                 variant: "warm",
             },
             {
-                label: "BGN equivalent",
-                value: formatBgn(stats.total * EUR_TO_BGN),
-                helper: "fixed 1.95583",
+                label: "Paid / committed",
+                value: formatEur(stats.paidAmount),
+                helper: `${stats.paidCount} paid rows`,
                 variant: "default",
             },
         ];
@@ -601,7 +614,7 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
                                 <div
                                     key={card.label}
                                     className={[
-                                        "rounded-[16px] px-3.5 py-2.5 shadow-[0_10px_28px_rgba(41,73,112,0.07)]",
+                                        "rounded-[16px] px-3.5 py-2.5 shadow-[0_10px_28px_rgba(41,73,112,0.07)] transition-all duration-300 hover:-translate-y-0.5 hover:scale-[1.015] hover:shadow-[0_18px_44px_rgba(41,73,112,0.13)]",
                                         warm
                                             ? "border border-[#cfa090]/[0.24] bg-[#cfa090]/[0.08]"
                                             : "border border-white/[0.80] bg-white/[0.62]",
@@ -827,7 +840,7 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
                                                 <div className="flex flex-wrap items-start justify-end gap-1.5">
                                                     <button
                                                         type="button"
-                                                        disabled={Boolean(savingId)}
+                                                        disabled={Boolean(savingId) || (editing && !draftDirty)}
                                                         onClick={() => (editing ? saveExpense(expense) : startEdit(expense))}
                                                         className="rounded-lg border border-[#ccd9e8] bg-white/[0.62] px-2 py-1 text-[10.5px] font-semibold text-[#4e6880] transition hover:border-[#2f80ed]/[0.32] hover:bg-white/[0.88] hover:text-[#2060cc] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
                                                     >

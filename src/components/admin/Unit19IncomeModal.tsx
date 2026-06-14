@@ -971,14 +971,20 @@ export default function Unit19IncomeModal({
       return sum + getUnit19BudgetTotals(state).expenses;
     }, 0);
 
+    const totalTrackedCosts = ownerCostTotal + unit19TrackedExpenses;
+    const currentCashflow = collectedRent - creditPaid - totalTrackedCosts;
+    const yearOutlook = expectedRent - creditExpected - totalTrackedCosts;
+
     return {
       expectedRent,
       collectedRent,
       outstanding: Math.max(expectedRent - collectedRent, 0),
       ownerExpenses: ownerCostTotal,
       estimatedTax,
-      netAfterOwnerCosts:
-        collectedRent - creditExpected - unit19TrackedExpenses - ownerCostTotal - estimatedTax,
+      netAfterOwnerCosts: yearOutlook,
+      currentCashflow,
+      yearOutlook,
+      totalTrackedCosts,
       unpaidMonths,
       tuitionExpected,
       tuitionPaid,
@@ -1511,27 +1517,7 @@ export default function Unit19IncomeModal({
                 incomeLabel="Budget"
                 showRealEstate={propertySlug === "unit-19"}
               />
-              <div className="inline-flex items-center gap-1 rounded-[13px] border border-white/[0.76] bg-white/[0.48] p-1">
-                <button
-                  type="button"
-                  onClick={() => void changeYear(year - 1)}
-                  disabled={saving || loading || year <= MIN_YEAR}
-                  className="rounded-[10px] px-2.5 py-1.5 text-[12px] font-semibold text-[#607993] transition hover:bg-white/[0.86] disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  ←
-                </button>
-                <span className="min-w-[54px] text-center text-[12px] font-semibold text-[#0b1623]">
-                  {year}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => void changeYear(year + 1)}
-                  disabled={saving || loading}
-                  className="rounded-[10px] px-2.5 py-1.5 text-[12px] font-semibold text-[#607993] transition hover:bg-white/[0.86] disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  →
-                </button>
-              </div>
+
               <button
                 type="button"
                 onClick={applyPrimarySchedule}
@@ -1610,22 +1596,22 @@ export default function Unit19IncomeModal({
                   tone={stats.creditExpected > stats.creditPaid ? "warn" : "ok"}
                 />
                 <StatCard
-                  label="Owner costs"
-                  value={formatEur(stats.ownerExpenses + stats.unit19TrackedExpenses)}
-                  detail="utilities, insurance, repairs"
+                  label="Tracked costs"
+                  value={formatEur(stats.totalTrackedCosts)}
+                  detail={`${formatEur(stats.ownerExpenses)} owner rows · ${formatEur(stats.unit19TrackedExpenses)} monthly checks`}
                   tone="base"
                 />
                 <StatCard
-                  label="Tax reserve"
-                  value={formatEur(stats.estimatedTax)}
-                  detail="estimated from paid rent"
-                  tone={isTaxDue(taxReserve) ? "warn" : "base"}
+                  label="Current state"
+                  value={formatEur(stats.currentCashflow)}
+                  detail="paid rent − paid credit − tracked costs"
+                  tone={stats.currentCashflow >= 0 ? "ok" : "warn"}
                 />
                 <StatCard
-                  label="Net estimate"
-                  value={formatEur(stats.netAfterOwnerCosts)}
-                  detail="rent minus credit and costs"
-                  tone={stats.netAfterOwnerCosts >= 0 ? "ok" : "warn"}
+                  label="Year outlook"
+                  value={formatEur(stats.yearOutlook)}
+                  detail="scheduled rent − credit − tracked costs"
+                  tone={stats.yearOutlook >= 0 ? "ok" : "warn"}
                 />
               </>
             )}
@@ -1979,6 +1965,7 @@ export default function Unit19IncomeModal({
         {expenseDraft ? (
           <ExpenseEditor
             draft={expenseDraft}
+            canSave={expenseDraft.title.trim().length > 0 || Number(expenseDraft.amountEur || 0) > 0}
             onChange={setExpenseDraft}
             onSave={saveExpense}
             onCancel={() => setExpenseDraft(null)}
@@ -2010,7 +1997,7 @@ function StatCard({
   return (
     <div
       className={[
-        "rounded-[16px] px-3.5 py-2.5 shadow-[0_10px_28px_rgba(41,73,112,0.07)]",
+        "rounded-[16px] px-3.5 py-2.5 shadow-[0_10px_28px_rgba(41,73,112,0.07)] transition-all duration-300 hover:-translate-y-0.5 hover:scale-[1.015] hover:shadow-[0_18px_44px_rgba(41,73,112,0.13)]",
         toneClass,
       ].join(" ")}
     >
@@ -2055,6 +2042,59 @@ function MonthSelect({
         </option>
       ))}
     </select>
+  );
+}
+
+function YearJumpInput({
+  value,
+  onCommit,
+}: {
+  value: number;
+  onCommit: (value: number) => void;
+}) {
+  const [draft, setDraft] = useState(String(value));
+
+  function commit() {
+    const parsed = Number(draft);
+    if (!Number.isFinite(parsed)) {
+      setDraft(String(value));
+      return;
+    }
+
+    const safeYear = Math.max(MIN_YEAR, Math.round(parsed));
+    setDraft(String(safeYear));
+    onCommit(safeYear);
+  }
+
+  return (
+    <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-1.5">
+      <input
+        type="number"
+        min={MIN_YEAR}
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={commit}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") event.currentTarget.blur();
+          if (event.key === "Escape") setDraft(String(value));
+        }}
+        className={inputClass}
+      />
+      <button
+        type="button"
+        onClick={() => onCommit(Math.max(MIN_YEAR, value - 1))}
+        className="rounded-xl border border-[#ccd9e8] bg-white/[0.58] px-2.5 text-[12px] font-semibold text-[#607993] transition hover:bg-white active:scale-[0.97]"
+      >
+        ←
+      </button>
+      <button
+        type="button"
+        onClick={() => onCommit(value + 1)}
+        className="rounded-xl border border-[#ccd9e8] bg-white/[0.58] px-2.5 text-[12px] font-semibold text-[#607993] transition hover:bg-white active:scale-[0.97]"
+      >
+        →
+      </button>
+    </div>
   );
 }
 
@@ -2163,14 +2203,8 @@ function Unit19SetupPanel({
 
       {mode === "rent" ? (
         <div className="space-y-2">
-          <Field label="Year">
-            <input
-              type="number"
-              value={year}
-              min={MIN_YEAR}
-              onChange={(event) => onYearChange(Number(event.target.value || DEFAULT_YEAR))}
-              className={inputClass}
-            />
+          <Field label="Budget year">
+            <YearJumpInput key={year} value={year} onCommit={onYearChange} />
           </Field>
           <Field label="Monthly rent">
             <MoneyInput value={rentAmount} onChange={onRentAmountChange} />
@@ -2196,14 +2230,8 @@ function Unit19SetupPanel({
         </div>
       ) : (
         <div className="space-y-2">
-          <Field label="Year">
-            <input
-              type="number"
-              value={year}
-              min={MIN_YEAR}
-              onChange={(event) => onYearChange(Number(event.target.value || DEFAULT_YEAR))}
-              className={inputClass}
-            />
+          <Field label="Budget year">
+            <YearJumpInput key={year} value={year} onCommit={onYearChange} />
           </Field>
           <Field label="Monthly credit payment">
             <MoneyInput value={creditAmount} onChange={onCreditAmountChange} />
@@ -2274,16 +2302,8 @@ function ScheduleSetupCard({
         {title}
       </div>
       <div className="space-y-2">
-        <Field label="Year">
-          <input
-            type="number"
-            min={MIN_YEAR}
-            value={year}
-            onChange={(event) =>
-              onYearChange(Number(event.target.value || DEFAULT_YEAR))
-            }
-            className={inputClass}
-          />
+        <Field label="Budget year">
+          <YearJumpInput key={year} value={year} onCommit={onYearChange} />
         </Field>
         <Field label={amountLabel}>
           <input
@@ -2935,10 +2955,12 @@ function BudgetEntryRow({
 function ExpenseEditor({
   draft,
   onChange,
+  canSave,
   onSave,
   onCancel,
 }: {
   draft: ExpenseDraft;
+  canSave: boolean;
   onChange: (draft: ExpenseDraft) => void;
   onSave: () => void;
   onCancel: () => void;
@@ -2985,7 +3007,8 @@ function ExpenseEditor({
           <button
             type="button"
             onClick={onSave}
-            className="rounded-xl border border-[#20a76b]/[0.24] bg-[#20a76b]/[0.08] px-4 py-2 text-[12px] font-semibold text-[#0f7448] transition hover:bg-[#20a76b]/[0.13]"
+            disabled={!canSave}
+            className="rounded-xl border border-[#20a76b]/[0.24] bg-[#20a76b]/[0.08] px-4 py-2 text-[12px] font-semibold text-[#0f7448] transition hover:bg-[#20a76b]/[0.13] disabled:cursor-not-allowed disabled:opacity-45"
           >
             Save expense
           </button>

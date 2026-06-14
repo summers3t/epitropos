@@ -254,6 +254,10 @@ function contactToDraft(contact: ManagedPropertyRealEstateContact): ContactDraft
     };
 }
 
+function isSameDraft<T>(left: T, right: T) {
+    return JSON.stringify(left) === JSON.stringify(right);
+}
+
 type PropertySectionKey = "overview" | "services" | "costs" | "people";
 type AddressLanguage = "en" | "local";
 
@@ -1222,6 +1226,7 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
             <div className="space-y-2">
                 {nonPriceCosts.map((cost) => {
                     const draft = costDrafts[cost.id] ?? costToDraft(cost);
+                    const costDirty = !isSameDraft(draft, costToDraft(cost));
                     const linkedExpense = cost.expense_id ? expenseById.get(cost.expense_id) : null;
                     const calculatedAmount = calculatedCostAmount(draft);
                     return (
@@ -1236,7 +1241,7 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
                             {expandedCostIds.has(cost.id) ? (
                             <div className="border-t border-white/[0.70] px-3 pb-3 pt-2">
                             <div className="mb-2 flex justify-end gap-1.5">
-                                <button type="button" onClick={() => void saveCost(cost)} disabled={saving} className="rounded-[9px] border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-2.5 py-1.5 text-[10.5px] font-semibold text-[#1560bc] transition hover:bg-[#2f80ed]/[0.14]">Save</button>
+                                <button type="button" onClick={() => void saveCost(cost)} disabled={saving || !costDirty} className="rounded-[9px] border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-2.5 py-1.5 text-[10.5px] font-semibold text-[#1560bc] transition hover:bg-[#2f80ed]/[0.14] disabled:cursor-not-allowed disabled:opacity-45">Save</button>
                                 <button type="button" onClick={() => cancelCost(cost)} disabled={saving} className="rounded-[9px] border border-[#ccd9e8] bg-white/[0.62] px-2.5 py-1.5 text-[10.5px] font-semibold text-[#607993] transition hover:bg-white">Cancel</button>
                                 <button type="button" onClick={() => void removeCost(cost)} disabled={saving} className="rounded-[9px] border border-[#cfa090]/[0.24] bg-[#cfa090]/[0.08] px-2.5 py-1.5 text-[10.5px] font-semibold text-[#8c5947] transition hover:bg-[#cfa090]/[0.14]">Delete</button>
                             </div>
@@ -1264,6 +1269,7 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
             <div className="space-y-2">
                 {services.map((service) => {
                     const draft = serviceDrafts[service.id] ?? serviceToDraft(service);
+                    const serviceDirty = !isSameDraft(draft, serviceToDraft(service));
                     const labels = serviceLabels[draft.service_type] ?? serviceLabels.other;
                     const expanded = expandedServiceIds.has(service.id);
                     const ready = Boolean(draft.provider_name || draft.account_number || draft.meter_number || draft.customer_code || draft.monthly_fee_eur);
@@ -1286,7 +1292,7 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
                             {expanded ? (
                                 <div className="border-t border-white/[0.70] px-3 pb-3 pt-2">
                                     <div className="mb-2 flex justify-end gap-1.5">
-                                        <button type="button" onClick={() => void saveService(service)} disabled={saving} className="rounded-[9px] border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-2.5 py-1.5 text-[10.5px] font-semibold text-[#1560bc] transition hover:bg-[#2f80ed]/[0.14]">Save</button>
+                                        <button type="button" onClick={() => void saveService(service)} disabled={saving || !serviceDirty} className="rounded-[9px] border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-2.5 py-1.5 text-[10.5px] font-semibold text-[#1560bc] transition hover:bg-[#2f80ed]/[0.14] disabled:cursor-not-allowed disabled:opacity-45">Save</button>
                                         <button type="button" onClick={() => cancelService(service)} disabled={saving} className="rounded-[9px] border border-[#ccd9e8] bg-white/[0.62] px-2.5 py-1.5 text-[10.5px] font-semibold text-[#607993] transition hover:bg-white">Cancel</button>
                                         <button type="button" onClick={() => void removeService(service)} disabled={saving} className="rounded-[9px] border border-[#cfa090]/[0.24] bg-[#cfa090]/[0.08] px-2.5 py-1.5 text-[10.5px] font-semibold text-[#8c5947] transition hover:bg-[#cfa090]/[0.14]">Delete</button>
                                     </div>
@@ -1322,6 +1328,7 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
             <div className="space-y-2">
                 {contacts.map((contact) => {
                     const draft = contactDrafts[contact.id] ?? contactToDraft(contact);
+                    const contactDirty = !isSameDraft(draft, contactToDraft(contact));
                     const expanded = expandedContactIds.has(contact.id);
                     return (
                         <div key={contact.id} ref={expandedContactIds.has(contact.id) ? newItemRef : null} draggable onDragStart={(event) => { setDraggedContactId(contact.id); event.dataTransfer.effectAllowed = "move"; }} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); if (draggedContactId) void reorderContact(draggedContactId, contact.id); setDraggedContactId(null); }} onDragEnd={() => setDraggedContactId(null)} className="overflow-hidden rounded-[16px] border border-[#d8e8f6]/80 bg-white/[0.55] transition duration-200 hover:-translate-y-0.5 hover:scale-[1.004] hover:border-[#2f80ed]/[0.18] hover:bg-white/[0.72] hover:shadow-[0_16px_36px_rgba(41,73,112,0.10)]">
@@ -1340,7 +1347,7 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
                             </button>
                             {expanded ? (
                                 <div className="border-t border-white/[0.70] px-3 pb-3 pt-2">
-                                    <div className="mb-2 flex justify-end gap-1.5"><button type="button" onClick={() => void saveContact(contact)} disabled={saving} className="rounded-[9px] border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-2.5 py-1.5 text-[10.5px] font-semibold text-[#1560bc] transition hover:bg-[#2f80ed]/[0.14]">Save</button><button type="button" onClick={() => cancelContact(contact)} disabled={saving} className="rounded-[9px] border border-[#ccd9e8] bg-white/[0.62] px-2.5 py-1.5 text-[10.5px] font-semibold text-[#607993] transition hover:bg-white">Cancel</button><button type="button" onClick={() => void removeContact(contact)} disabled={saving} className="rounded-[9px] border border-[#cfa090]/[0.24] bg-[#cfa090]/[0.08] px-2.5 py-1.5 text-[10.5px] font-semibold text-[#8c5947] transition hover:bg-[#cfa090]/[0.14]">Delete</button></div>
+                                    <div className="mb-2 flex justify-end gap-1.5"><button type="button" onClick={() => void saveContact(contact)} disabled={saving || !contactDirty} className="rounded-[9px] border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-2.5 py-1.5 text-[10.5px] font-semibold text-[#1560bc] transition hover:bg-[#2f80ed]/[0.14] disabled:cursor-not-allowed disabled:opacity-45">Save</button><button type="button" onClick={() => cancelContact(contact)} disabled={saving} className="rounded-[9px] border border-[#ccd9e8] bg-white/[0.62] px-2.5 py-1.5 text-[10.5px] font-semibold text-[#607993] transition hover:bg-white">Cancel</button><button type="button" onClick={() => void removeContact(contact)} disabled={saving} className="rounded-[9px] border border-[#cfa090]/[0.24] bg-[#cfa090]/[0.08] px-2.5 py-1.5 text-[10.5px] font-semibold text-[#8c5947] transition hover:bg-[#cfa090]/[0.14]">Delete</button></div>
                                     <div className="grid gap-2 sm:grid-cols-2">
                                         <label className="block"><span className="mb-1 block text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7a90a8]">Type</span><select value={draft.contact_type} onChange={(event) => setContactDrafts((current) => ({ ...current, [contact.id]: { ...draft, contact_type: event.target.value as ManagedPropertyRealEstateContactType } }))} className="h-9 w-full rounded-[11px] border border-[#ccd9e8] bg-white/[0.72] px-3 text-[12px] font-medium text-[#0b1623] outline-none">{Object.entries(contactLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
                                         <InputField label="Name" value={draft.full_name} onChange={(value) => setContactDrafts((current) => ({ ...current, [contact.id]: { ...draft, full_name: value } }))} />
