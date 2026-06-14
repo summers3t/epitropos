@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Unit19ModalSwitcher, {
   type Unit19PanelKey,
 } from "@/components/admin/Unit19ModalSwitcher";
@@ -212,13 +212,6 @@ function formatEur(value: number) {
   return euroFormatter.format(Number.isFinite(value) ? value : 0);
 }
 
-function formatDateDisplay(value: string | null | undefined) {
-  if (!value) return "Select date";
-  const parsed = parseDate(value);
-  if (!parsed) return "Select date";
-  return `${String(parsed.getDate()).padStart(2, "0")}.${String(parsed.getMonth() + 1).padStart(2, "0")}.${parsed.getFullYear()}`;
-}
-
 function yearRangeFromDates(startDate: string | null | undefined, endDate: string | null | undefined, fallbackYear: number) {
   const start = parseDate(startDate) ?? new Date(fallbackYear, 0, 1);
   const end = parseDate(endDate) ?? start;
@@ -348,7 +341,7 @@ function parseUnit19CreditConfig(
   if (!note) return defaultUnit19CreditConfig();
 
   try {
-    const parsed = JSON.parse(note) as Partial<Unit19CreditConfig> & { marker?: string; credit?: Partial<Omit<Unit19CreditConfig, "marker"> & { paid_day?: number }> };
+    const parsed = JSON.parse(note) as Partial<Omit<Unit19CreditConfig, "marker">> & { marker?: string; credit?: Partial<Omit<Unit19CreditConfig, "marker"> & { paid_day?: number }> };
     if (parsed?.marker === "unit19_setup_v1" && parsed.credit) {
       return {
         marker: "unit19_credit_v1",
@@ -380,18 +373,6 @@ function parseUnit19CreditConfig(
   }
 
   return defaultUnit19CreditConfig();
-}
-
-function defaultUnit19RentConfig(): Unit19RentConfig {
-  return {
-    amount_eur: 450,
-    start_date: `${DEFAULT_YEAR}-05-01`,
-    end_date: `${DEFAULT_YEAR}-09-30`,
-    index_percent: 0,
-    index_start_date: `${DEFAULT_YEAR}-09-15`,
-    index_end_date: null,
-    paid_day: 15,
-  };
 }
 
 function parseUnit19SetupConfig(note: string | null | undefined): Unit19SetupConfig | null {
@@ -429,20 +410,6 @@ function parseUnit19SetupConfig(note: string | null | undefined): Unit19SetupCon
 
 function serializeUnit19SetupConfig(config: Unit19SetupConfig) {
   return JSON.stringify(config);
-}
-
-function serializeUnit19CreditConfig(config: Unit19CreditConfig) {
-  return JSON.stringify({
-    marker: "unit19_credit_v1",
-    payment_eur: Number(config.payment_eur || 0),
-    start_month: clampMonth(config.start_month),
-    end_month: clampMonth(config.end_month),
-    start_date: config.start_date ?? null,
-    end_date: config.end_date ?? null,
-    life_insurance_eur: Number(config.life_insurance_eur || 0),
-    property_insurance_eur: Number(config.property_insurance_eur || 0),
-    property_insurance_month: clampMonth(config.property_insurance_month),
-  });
 }
 
 function getCreditExpectedForMonth(month: number, year: number, config: Unit19CreditConfig) {
@@ -720,7 +687,7 @@ export default function Unit19IncomeModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [monthUndo, setMonthUndo] = useState<{ label: string; restore: () => Promise<void> } | null>(null);
-  const monthUndoTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
+  const monthUndoTimerRef = useRef<number | null>(null);
 
   const isNorthStarWorkspace =
     propertySlug === "maria-northstar" ||
@@ -808,7 +775,7 @@ export default function Unit19IncomeModal({
     ],
   );
 
-  async function loadIncome(targetYear = year) {
+  const loadIncome = useCallback(async (targetYear = year) => {
     try {
       setLoading(true);
       setError(null);
@@ -883,7 +850,7 @@ export default function Unit19IncomeModal({
     } finally {
       setLoading(false);
     }
-  }
+  }, [creditPaymentEur, propertySlug, year]);
 
   useEffect(() => {
     if (!open) return;
@@ -900,7 +867,7 @@ export default function Unit19IncomeModal({
       document.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = "";
     };
-  }, [open, onClose, propertySlug, year]);
+  }, [open, onClose, loadIncome, year]);
 
   const selected =
     months.find((month) => month.month === selectedMonth) ?? months[0];
@@ -1663,11 +1630,7 @@ export default function Unit19IncomeModal({
                 onModeChange={setSetupMode}
                 year={year}
                 rentAmount={monthlyRentEur}
-                rentStartMonth={rentStartMonth}
-                rentEndMonth={rentEndMonth}
                 creditAmount={creditPaymentEur}
-                creditStartMonth={creditStartMonth}
-                creditEndMonth={creditEndMonth}
                 rentStartDate={rentStartDate}
                 rentEndDate={rentEndDate}
                 creditStartDate={creditStartDate}
@@ -1733,7 +1696,8 @@ export default function Unit19IncomeModal({
               <div className="grid gap-2.5 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                 {months.map((month) => {
                   const monthSelected = selectedMonth === month.month;
-                  const expected = month.rent_expected_eur > 0;
+                  const expectedRentAmount = Number(month.rent_expected_eur || 0);
+                  const expected = expectedRentAmount > 0;
                   const now = new Date();
                   const currentCalendarMonth = month.year === now.getFullYear() && month.month === now.getMonth() + 1;
                   const monthExpenses = expensesByMonthId.get(month.id) ?? [];
@@ -1741,9 +1705,6 @@ export default function Unit19IncomeModal({
                     (sum, expense) => sum + expense.amount_eur,
                     0,
                   );
-                  const utilityCount = utilityOrder.filter(
-                    (key) => month[key],
-                  ).length;
                   const northStarState =
                     northStarMonthState.get(month.id) ??
                     defaultNorthStarBudgetState();
@@ -1785,7 +1746,7 @@ export default function Unit19IncomeModal({
                           <div className="mt-0.5 text-[10.5px] text-[#7a90a8]">
                             {month.year}
                           </div>
-                          {!isNorthStarWorkspace && expected > 0 ? (
+                          {!isNorthStarWorkspace && expected ? (
                             <div className="mt-1 rounded-full border border-[#ccd9e8]/[0.75] bg-white/[0.42] px-2 py-0.5 text-[9.5px] font-semibold text-[#607993]">
                               {rentCoverageLabel(month.year, month.month, rentPaidDay)}
                             </div>
@@ -2094,11 +2055,7 @@ function Unit19SetupPanel({
   onModeChange,
   year,
   rentAmount,
-  rentStartMonth,
-  rentEndMonth,
   creditAmount,
-  creditStartMonth,
-  creditEndMonth,
   rentStartDate,
   rentEndDate,
   creditStartDate,
@@ -2131,11 +2088,7 @@ function Unit19SetupPanel({
   onModeChange: (mode: "rent" | "credit") => void;
   year: number;
   rentAmount: number;
-  rentStartMonth: number;
-  rentEndMonth: number;
   creditAmount: number;
-  creditStartMonth: number;
-  creditEndMonth: number;
   rentStartDate: string;
   rentEndDate: string;
   creditStartDate: string;

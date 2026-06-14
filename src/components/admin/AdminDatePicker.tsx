@@ -72,7 +72,6 @@ export default function AdminDatePicker({
   const popoverRef = useRef<HTMLDivElement | null>(null);
   const selectedDate = value ? parseLocalDate(value) : new Date();
   const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
   const [visibleMonth, setVisibleMonth] = useState(() =>
     startOfMonth(selectedDate),
   );
@@ -81,10 +80,6 @@ export default function AdminDatePicker({
     top: 0,
     maxHeight: 388,
   });
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   function updatePopoverPosition() {
     const rect = buttonRef.current?.getBoundingClientRect();
@@ -305,7 +300,7 @@ export default function AdminDatePicker({
         <span className="block min-w-0 truncate whitespace-nowrap">{formatDisplayDate(value)}</span>
       </button>
 
-      {mounted && typeof document !== "undefined"
+      {open && typeof document !== "undefined"
         ? createPortal(popover, document.body)
         : null}
     </div>
