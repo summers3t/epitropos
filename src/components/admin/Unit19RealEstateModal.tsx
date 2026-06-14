@@ -401,6 +401,8 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [deleteUndo, setDeleteUndo] = useState<{ label: string; restore: () => Promise<void> } | null>(null);
+    const deleteUndoTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
 
     const expenseById = useMemo(() => {
         return new Map(expenses.map((expense) => [expense.id, expense]));
@@ -640,15 +642,39 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
         }
     }
 
-    async function removeCost(cost: ManagedPropertyRealEstateCost, options?: { skipConfirm?: boolean }) {
-        if (!options?.skipConfirm && !window.confirm(`Delete ${cost.label}? The linked expense row is not deleted.`)) return;
+    function queueDeleteUndo(label: string, restore: () => Promise<void>) {
+        if (deleteUndoTimerRef.current) window.clearTimeout(deleteUndoTimerRef.current);
+        setDeleteUndo({ label, restore });
+        deleteUndoTimerRef.current = window.setTimeout(() => setDeleteUndo(null), 5000);
+    }
 
+    async function removeCost(cost: ManagedPropertyRealEstateCost, _options?: { skipConfirm?: boolean }) {
         setSaving(true);
         setError(null);
 
         try {
             await deleteManagedPropertyRealEstateCost(cost.id);
             setCosts((current) => current.filter((item) => item.id !== cost.id));
+            queueDeleteUndo(cost.label, async () => {
+                if (!managedProperty) return;
+                const restored = await createManagedPropertyRealEstateCost({
+                    managed_property_id: managedProperty.id,
+                    stable_key: `${cost.stable_key}-restored-${Date.now()}`,
+                    label: cost.label,
+                    local_label: cost.local_label,
+                    category: cost.category,
+                    amount_eur: cost.amount_eur,
+                    rate_percent: cost.rate_percent,
+                    vat_rate_percent: cost.vat_rate_percent,
+                    vat_included: cost.vat_included,
+                    include_in_total: cost.include_in_total,
+                    expense_id: cost.expense_id,
+                    note: cost.note,
+                    sort_order: cost.sort_order,
+                });
+                setCosts((current) => [...current, restored].sort((a, b) => a.sort_order - b.sort_order));
+                setCostDrafts((current) => ({ ...current, [restored.id]: costToDraft(restored) }));
+            });
         } catch (currentError) {
             setError(currentError instanceof Error ? currentError.message : "Failed to delete cost");
         } finally {
@@ -734,15 +760,41 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
         }
     }
 
-    async function removeService(service: ManagedPropertyServiceAccount, options?: { skipConfirm?: boolean }) {
-        if (!options?.skipConfirm && !window.confirm(`Delete ${service.provider_name || serviceLabels[service.service_type].label}?`)) return;
-
+    async function removeService(service: ManagedPropertyServiceAccount, _options?: { skipConfirm?: boolean }) {
         setSaving(true);
         setError(null);
 
         try {
             await deleteManagedPropertyServiceAccount(service.id);
             setServices((current) => current.filter((item) => item.id !== service.id));
+            queueDeleteUndo(service.provider_name || serviceLabels[service.service_type].label, async () => {
+                if (!managedProperty) return;
+                const restored = await createManagedPropertyServiceAccount({
+                    managed_property_id: managedProperty.id,
+                    service_type: service.service_type,
+                    provider_name: service.provider_name,
+                    start_date: service.start_date,
+                    account_holder: service.account_holder,
+                    account_number: service.account_number,
+                    meter_number: service.meter_number,
+                    contract_number: service.contract_number,
+                    customer_code: service.customer_code,
+                    payment_code: service.payment_code,
+                    delivery_point: service.delivery_point,
+                    plan_name: service.plan_name,
+                    monthly_fee_eur: service.monthly_fee_eur,
+                    manager_name: service.manager_name,
+                    manager_phone: service.manager_phone,
+                    manager_email: service.manager_email,
+                    manager_bank_account: service.manager_bank_account,
+                    phone: service.phone,
+                    website: service.website,
+                    note: service.note,
+                    sort_order: service.sort_order,
+                });
+                setServices((current) => [...current, restored].sort((a, b) => a.sort_order - b.sort_order));
+                setServiceDrafts((current) => ({ ...current, [restored.id]: serviceToDraft(restored) }));
+            });
         } catch (currentError) {
             setError(currentError instanceof Error ? currentError.message : "Failed to delete service account");
         } finally {
@@ -805,15 +857,29 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
         }
     }
 
-    async function removeContact(contact: ManagedPropertyRealEstateContact, options?: { skipConfirm?: boolean }) {
-        if (!options?.skipConfirm && !window.confirm(`Delete ${contact.full_name || "contact"}?`)) return;
-
+    async function removeContact(contact: ManagedPropertyRealEstateContact, _options?: { skipConfirm?: boolean }) {
         setSaving(true);
         setError(null);
 
         try {
             await deleteManagedPropertyRealEstateContact(contact.id);
             setContacts((current) => current.filter((item) => item.id !== contact.id));
+            queueDeleteUndo(contact.full_name || "contact", async () => {
+                if (!managedProperty) return;
+                const restored = await createManagedPropertyRealEstateContact({
+                    managed_property_id: managedProperty.id,
+                    contact_type: contact.contact_type,
+                    full_name: contact.full_name,
+                    afm: contact.afm,
+                    phone: contact.phone,
+                    email: contact.email,
+                    iban: contact.iban,
+                    note: contact.note,
+                    sort_order: contact.sort_order,
+                });
+                setContacts((current) => [...current, restored].sort((a, b) => a.sort_order - b.sort_order));
+                setContactDrafts((current) => ({ ...current, [restored.id]: contactToDraft(restored) }));
+            });
         } catch (currentError) {
             setError(currentError instanceof Error ? currentError.message : "Failed to delete contact");
         } finally {
@@ -1351,6 +1417,31 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
                     )}
                 </div>
             </div>
+            <style>{`@keyframes shrinkUndo { from { width: 100%; } to { width: 0%; } }`}</style>
+            {deleteUndo ? (
+                <div className="fixed bottom-5 right-5 z-[9998] w-[320px] overflow-hidden rounded-2xl border border-[#d96969]/[0.26] bg-white/[0.92] p-3 shadow-[0_20px_70px_rgba(6,16,29,0.18)] backdrop-blur-2xl">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#9d2f2f]">Deleted</div>
+                    <div className="mt-1 text-[12px] text-[#607993]">{deleteUndo.label} deleted. Undo available for 5 seconds.</div>
+                    <div className="mt-2 flex items-center justify-between gap-2">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                const pending = deleteUndo;
+                                setDeleteUndo(null);
+                                if (deleteUndoTimerRef.current) window.clearTimeout(deleteUndoTimerRef.current);
+                                void pending.restore();
+                            }}
+                            className="rounded-xl border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-3 py-1.5 text-[11px] font-semibold text-[#2060cc] transition hover:bg-[#2f80ed]/[0.14]"
+                        >
+                            Undo
+                        </button>
+                        <span className="text-[10px] text-[#7a90a8]">auto-confirms</span>
+                    </div>
+                    <div className="mt-2 h-1 overflow-hidden rounded-full bg-[#d96969]/[0.12]">
+                        <div className="h-full rounded-full bg-[#d96969]/[0.56] animate-[shrinkUndo_5s_linear_forwards]" />
+                    </div>
+                </div>
+            ) : null}
         </div>
     );
 }

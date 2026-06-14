@@ -176,6 +176,8 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
     const [savingId, setSavingId] = useState<string | null>(null);
     const newRowRef = useRef<HTMLDivElement | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [deleteUndo, setDeleteUndo] = useState<{ label: string; restore: () => Promise<void> } | null>(null);
+    const deleteUndoTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
 
     useEffect(() => {
         if (!open) return;
@@ -501,15 +503,35 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
     }
 
     async function deleteExpense(expense: ManagedPropertyExpense) {
-        const confirmed = window.confirm(`Delete expense: ${expense.title}?`);
-        if (!confirmed) return;
-
+        if (!managedProperty) return;
         try {
             setSavingId(expense.id);
             setError(null);
             await deleteManagedPropertyExpense(expense.id);
             setExpenses((current) => current.filter((item) => item.id !== expense.id));
             setEditingId((current) => (current === expense.id ? null : current));
+            if (deleteUndoTimerRef.current) window.clearTimeout(deleteUndoTimerRef.current);
+            setDeleteUndo({
+                label: expense.title,
+                restore: async () => {
+                    const restored = await createManagedPropertyExpense({
+                        managed_property_id: managedProperty.id,
+                        title: expense.title,
+                        category: expense.category,
+                        issuer: expense.issuer,
+                        note: expense.note,
+                        amount_eur: expense.amount_eur,
+                        amount_bgn: expense.amount_bgn,
+                        fx_rate: expense.fx_rate,
+                        expense_date: expense.expense_date,
+                        status: expense.status,
+                        source: expense.source,
+                        sort_order: expense.sort_order,
+                    });
+                    setExpenses((current) => [...current, restored].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)));
+                },
+            });
+            deleteUndoTimerRef.current = window.setTimeout(() => setDeleteUndo(null), 5000);
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to delete expense");
         } finally {
@@ -854,6 +876,18 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
                     </div>
                 </div>
             </div>
+            <style>{`@keyframes shrinkUndo { from { width: 100%; } to { width: 0%; } }`}</style>
+            {deleteUndo ? (
+                <div className="fixed bottom-5 right-5 z-[9998] w-[320px] overflow-hidden rounded-2xl border border-[#d96969]/[0.26] bg-white/[0.92] p-3 shadow-[0_20px_70px_rgba(6,16,29,0.18)] backdrop-blur-2xl">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#9d2f2f]">Deleted</div>
+                    <div className="mt-1 text-[12px] text-[#607993]">{deleteUndo.label} deleted. Undo available for 5 seconds.</div>
+                    <div className="mt-2 flex items-center justify-between gap-2">
+                        <button type="button" onClick={() => { const pending = deleteUndo; setDeleteUndo(null); if (deleteUndoTimerRef.current) window.clearTimeout(deleteUndoTimerRef.current); void pending.restore(); }} className="rounded-xl border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-3 py-1.5 text-[11px] font-semibold text-[#2060cc] transition hover:bg-[#2f80ed]/[0.14]">Undo</button>
+                        <span className="text-[10px] text-[#7a90a8]">auto-confirms</span>
+                    </div>
+                    <div className="mt-2 h-1 overflow-hidden rounded-full bg-[#d96969]/[0.12]"><div className="h-full rounded-full bg-[#d96969]/[0.56] animate-[shrinkUndo_5s_linear_forwards]" /></div>
+                </div>
+            ) : null}
         </div>
     );
 }

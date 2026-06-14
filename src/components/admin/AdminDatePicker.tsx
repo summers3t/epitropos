@@ -47,11 +47,8 @@ function endOfMonth(date: Date) {
 
 function formatDisplayDate(value: string) {
   if (!value) return "Select date";
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(parseLocalDate(value));
+  const date = parseLocalDate(value);
+  return `${String(date.getDate()).padStart(2, "0")}.${String(date.getMonth() + 1).padStart(2, "0")}.${date.getFullYear()}`;
 }
 
 function formatMonthTitle(date: Date) {
