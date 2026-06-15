@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Unit19ModalSwitcher, { type Unit19PanelKey } from "@/components/admin/Unit19ModalSwitcher";
 import {
     createManagedPropertyExpense,
@@ -126,9 +126,21 @@ function toDraft(expense: ManagedPropertyExpense): ExpenseDraft {
 }
 
 function isSameExpenseDraft(expense: ManagedPropertyExpense, draft: ExpenseDraft | undefined) {
-    if (!draft) return false;
+    if (!draft) {
+        return true;
+    }
+
     const original = toDraft(expense);
-    return JSON.stringify(original) === JSON.stringify(draft);
+
+    return (
+        draft.title.trim() === original.title.trim() &&
+        draft.category === original.category &&
+        draft.issuer.trim() === original.issuer.trim() &&
+        draft.note.trim() === original.note.trim() &&
+        Number(draft.amount_eur || 0) === Number(original.amount_eur || 0) &&
+        Number(draft.amount_bgn || 0) === Number(original.amount_bgn || 0) &&
+        draft.status === original.status
+    );
 }
 
 function IconClose() {
@@ -180,10 +192,7 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
     const [drafts, setDrafts] = useState<Record<string, ExpenseDraft>>({});
     const [loading, setLoading] = useState(false);
     const [savingId, setSavingId] = useState<string | null>(null);
-    const newRowRef = useRef<HTMLDivElement | null>(null);
     const [error, setError] = useState<string | null>(null);
-    const [deleteUndo, setDeleteUndo] = useState<{ label: string; restore: () => Promise<void> } | null>(null);
-    const deleteUndoTimerRef = useRef<number | null>(null);
 
     useEffect(() => {
         if (!open) return;
@@ -257,23 +266,16 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
         const planned = activeExpenses.filter((expense) => expense.status === "planned");
         const paid = activeExpenses.filter((expense) => expense.status === "paid");
 
-        const pendingAmount = pending.reduce((sum, expense) => sum + Number(expense.amount_eur ?? 0), 0);
-        const plannedAmount = planned.reduce((sum, expense) => sum + Number(expense.amount_eur ?? 0), 0);
-        const paidAmount = paid.reduce((sum, expense) => sum + Number(expense.amount_eur ?? 0), 0);
-        const openAmount = pendingAmount + plannedAmount;
-
         return {
             total,
             greekClosing,
             credit,
-            pendingAmount,
+            pendingAmount: pending.reduce((sum, expense) => sum + Number(expense.amount_eur ?? 0), 0),
             pendingCount: pending.length,
-            plannedAmount,
+            plannedAmount: planned.reduce((sum, expense) => sum + Number(expense.amount_eur ?? 0), 0),
             plannedCount: planned.length,
-            paidAmount,
+            paidAmount: paid.reduce((sum, expense) => sum + Number(expense.amount_eur ?? 0), 0),
             paidCount: paid.length,
-            openAmount,
-            openCount: pending.length + planned.length,
             trackedCount: activeExpenses.length,
         };
     }, [activeExpenses]);
@@ -311,10 +313,10 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
                     variant: "warm",
                 },
                 {
-                    label: "Open items",
-                    value: formatEur(stats.openAmount),
-                    helper: `${stats.openCount} planned / clarify rows`,
-                    variant: stats.openAmount > 0 ? "warm" : "default",
+                    label: "BGN equivalent",
+                    value: formatBgn(stats.total * EUR_TO_BGN),
+                    helper: "fixed 1.95583",
+                    variant: "default",
                 },
             ];
         }
@@ -345,9 +347,9 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
                 variant: "warm",
             },
             {
-                label: "Paid / committed",
-                value: formatEur(stats.paidAmount),
-                helper: `${stats.paidCount} paid rows`,
+                label: "BGN equivalent",
+                value: formatBgn(stats.total * EUR_TO_BGN),
+                helper: "fixed 1.95583",
                 variant: "default",
             },
         ];
@@ -400,25 +402,6 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
     function startEdit(expense: ManagedPropertyExpense) {
         setEditingId(expense.id);
         setDrafts((current) => ({ ...current, [expense.id]: toDraft(expense) }));
-    }
-
-    async function cancelExpenseEdit(expense: ManagedPropertyExpense) {
-        const isNew = expense.title === "New expense" && Number(expense.amount_eur ?? 0) === 0;
-        if (isNew) {
-            try {
-                setSavingId(expense.id);
-                await deleteManagedPropertyExpense(expense.id);
-                setExpenses((current) => current.filter((item) => item.id !== expense.id));
-                setEditingId(null);
-            } catch (err) {
-                setError(err instanceof Error ? err.message : "Failed to cancel new expense");
-            } finally {
-                setSavingId(null);
-            }
-            return;
-        }
-        setDrafts((current) => ({ ...current, [expense.id]: toDraft(expense) }));
-        setEditingId(null);
     }
 
     function patchDraft(id: string, patch: Partial<ExpenseDraft>) {
@@ -507,7 +490,6 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
 
             setExpenses((current) => [...current, created]);
             startEdit(created);
-            window.setTimeout(() => newRowRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 80);
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to create expense");
         } finally {
@@ -516,35 +498,15 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
     }
 
     async function deleteExpense(expense: ManagedPropertyExpense) {
-        if (!managedProperty) return;
+        const confirmed = window.confirm(`Delete expense: ${expense.title}?`);
+        if (!confirmed) return;
+
         try {
             setSavingId(expense.id);
             setError(null);
             await deleteManagedPropertyExpense(expense.id);
             setExpenses((current) => current.filter((item) => item.id !== expense.id));
             setEditingId((current) => (current === expense.id ? null : current));
-            if (deleteUndoTimerRef.current) window.clearTimeout(deleteUndoTimerRef.current);
-            setDeleteUndo({
-                label: expense.title,
-                restore: async () => {
-                    const restored = await createManagedPropertyExpense({
-                        managed_property_id: managedProperty.id,
-                        title: expense.title,
-                        category: expense.category,
-                        issuer: expense.issuer,
-                        note: expense.note,
-                        amount_eur: expense.amount_eur,
-                        amount_bgn: expense.amount_bgn,
-                        fx_rate: expense.fx_rate,
-                        expense_date: expense.expense_date,
-                        status: expense.status,
-                        source: expense.source,
-                        sort_order: expense.sort_order,
-                    });
-                    setExpenses((current) => [...current, restored].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)));
-                },
-            });
-            deleteUndoTimerRef.current = window.setTimeout(() => setDeleteUndo(null), 5000);
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to delete expense");
         } finally {
@@ -580,7 +542,7 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
                         </div>
 
                         <div className="flex flex-wrap items-center justify-end gap-2">
-                            <Unit19ModalSwitcher activePanel="expenses" onSwitchPanel={onSwitchPanel} incomeLabel="Budget" showRealEstate={propertySlug === "unit-19"} />
+                            <Unit19ModalSwitcher activePanel="expenses" onSwitchPanel={onSwitchPanel} />
                             <button
                                 type="button"
                                 onClick={addExpense}
@@ -614,7 +576,7 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
                                 <div
                                     key={card.label}
                                     className={[
-                                        "rounded-[16px] px-3.5 py-2.5 shadow-[0_10px_28px_rgba(41,73,112,0.07)] transition-all duration-300 hover:-translate-y-0.5 hover:scale-[1.015] hover:shadow-[0_18px_44px_rgba(41,73,112,0.13)]",
+                                        "rounded-[16px] px-3.5 py-2.5 shadow-[0_10px_28px_rgba(41,73,112,0.07)]",
                                         warm
                                             ? "border border-[#cfa090]/[0.24] bg-[#cfa090]/[0.08]"
                                             : "border border-white/[0.80] bg-white/[0.62]",
@@ -666,7 +628,7 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
                         </div>
 
                         <div className="mt-2.5 rounded-[16px] border border-white/[0.78] bg-white/[0.58] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
-                            <div className="mb-2 flex items-center justify-between gap-2"><div className="text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">Filters</div><button type="button" onClick={() => { setCategoryFilter("all"); setStatusFilter("active"); setQuery(""); }} className="rounded-lg border border-[#ccd9e8] bg-white/[0.62] px-2 py-1 text-[10px] font-semibold text-[#607993] transition hover:bg-white hover:text-[#0b1623]">Clear</button></div>
+                            <div className="mb-2 text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">Filters</div>
                             <div className="space-y-1.5">
                                 <select
                                     value={categoryFilter}
@@ -725,12 +687,12 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
                                     {filteredExpenses.map((expense) => {
                                         const editing = editingId === expense.id;
                                         const draft = drafts[expense.id] ?? toDraft(expense);
+                                        const draftDirty = editing ? !isSameExpenseDraft(expense, draft) : false;
                                         const busy = savingId === expense.id;
 
                                         return (
                                             <div
                                                 key={expense.id}
-                                                ref={editing && expense.title === "New expense" ? newRowRef : null}
                                                 className={[
                                                     "grid grid-cols-[minmax(250px,1.75fr)_135px_95px_95px_145px] gap-0 px-3.5 py-2 transition hover:bg-white/[0.55]",
                                                     expense.status === "excluded" ? "opacity-55" : "",
@@ -850,7 +812,14 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
                                                         <button
                                                             type="button"
                                                             disabled={Boolean(savingId)}
-                                                            onClick={() => void cancelExpenseEdit(expense)}
+                                                            onClick={() => {
+                                                                setEditingId(null);
+                                                                setDrafts((current) => {
+                                                                    const next = { ...current };
+                                                                    delete next[expense.id];
+                                                                    return next;
+                                                                });
+                                                            }}
                                                             className="rounded-lg border border-[#ccd9e8] bg-white/[0.45] px-2 py-1 text-[10.5px] font-semibold text-[#7a90a8] transition hover:bg-white/[0.82] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
                                                         >
                                                             Cancel
@@ -889,18 +858,6 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
                     </div>
                 </div>
             </div>
-            <style>{`@keyframes shrinkUndo { from { width: 100%; } to { width: 0%; } }`}</style>
-            {deleteUndo ? (
-                <div className="fixed bottom-5 left-1/2 z-[9998] -translate-x-1/2 w-[320px] overflow-hidden rounded-2xl border border-[#d96969]/[0.26] bg-white/[0.92] p-3 shadow-[0_20px_70px_rgba(6,16,29,0.18)] backdrop-blur-2xl">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#9d2f2f]">Deleted</div>
-                    <div className="mt-1 text-[12px] text-[#607993]">{deleteUndo.label} deleted. Undo available for 5 seconds.</div>
-                    <div className="mt-2 flex items-center justify-between gap-2">
-                        <button type="button" onClick={() => { const pending = deleteUndo; setDeleteUndo(null); if (deleteUndoTimerRef.current) window.clearTimeout(deleteUndoTimerRef.current); void pending.restore(); }} className="rounded-xl border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-3 py-1.5 text-[11px] font-semibold text-[#2060cc] transition hover:bg-[#2f80ed]/[0.14]">Undo</button>
-                        <span className="text-[10px] text-[#7a90a8]">auto-confirms</span>
-                    </div>
-                    <div className="mt-2 h-1 overflow-hidden rounded-full bg-[#d96969]/[0.12]"><div className="h-full rounded-full bg-[#d96969]/[0.56] animate-[shrinkUndo_5s_linear_forwards]" /></div>
-                </div>
-            ) : null}
         </div>
     );
 }
