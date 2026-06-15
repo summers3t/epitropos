@@ -1139,7 +1139,7 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
                             { label: "Monthly rent", value: formatEur(budgetSummary.monthlyRentEstimate), helper: "from Budget schedule" },
                             { label: "Credit / month", value: formatEur(budgetSummary.creditPaymentEur), helper: "from Budget credit" },
                             { label: "Insurance", value: `${formatEur(budgetSummary.lifeInsuranceEur)}/mo`, helper: `${formatEur(budgetSummary.propertyInsuranceEur)} property/year` },
-                            { label: "Self participation", value: formatEur(selfParticipation), helper: "cash equity" },
+                            { label: "Services", value: `${servicesReady}/${Math.max(services.length, 1)}`, helper: `${formatEur(serviceMonthly)} monthly tracked` },
                         ].map((item) => (
                             <div key={item.label} className="rounded-[14px] border border-white/[0.74] bg-white/[0.54] px-3 py-2.5 transition duration-200 hover:-translate-y-0.5 hover:scale-[1.018] hover:bg-white/[0.78] hover:shadow-[0_14px_32px_rgba(41,73,112,0.10)]">
                                 <div className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7a90a8]">{item.label}</div>
@@ -1399,7 +1399,7 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
                         { label: "Acquisition cost", value: formatEur(totalAcquisition), helper: "price + transaction costs" },
                         { label: "Transaction costs", value: formatEur(transactionCosts), helper: "linked with Expenses where possible" },
                         { label: "Finance", value: formatEur(creditAmount), helper: `monthly ${formatEur(budgetSummary.creditPaymentEur)}` },
-                        { label: "Services", value: `${servicesReady}/${Math.max(services.length, 1)}`, helper: `${formatEur(serviceMonthly)} monthly tracked` },
+                        { label: "Self participation", value: formatEur(selfParticipation), helper: "cash equity" },
                     ].map((card) => (<div key={card.label} className="rounded-[16px] border border-white/[0.80] bg-white/[0.62] px-3.5 py-2.5 shadow-[0_10px_28px_rgba(41,73,112,0.07)] transition duration-200 hover:-translate-y-0.5 hover:scale-[1.015] hover:border-[#2f80ed]/[0.24] hover:bg-white/[0.82] hover:shadow-[0_18px_44px_rgba(41,73,112,0.13)]"><div className="text-[9px] font-semibold uppercase tracking-[0.13em] text-[#7a90a8]">{card.label}</div><div className="mt-1 text-[20px] font-semibold leading-none text-[#0b1623]">{card.value}</div><div className="mt-1 text-[10px] text-[#7a90a8]">{card.helper}</div></div>))}
                 </div>
                 <div className="relative min-h-0 flex-1 px-5 py-4 sm:px-6">
