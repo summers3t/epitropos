@@ -215,12 +215,12 @@ function statusClasses(status: Unit19CalendarItemStatus, overdue: boolean) {
     return "border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] text-[#1560bc]";
 }
 
-function blankItem(nextDate: string): DraftCalendarItem {
+function blankItem(nextDate: string, nextTime = ""): DraftCalendarItem {
     return {
         id: `calendar-${Date.now()}`,
         title: "New calendar item",
         date: nextDate,
-        time: "",
+        time: nextTime,
         type: "task",
         status: "open",
         priority: "normal",
@@ -339,29 +339,6 @@ export default function Unit19CalendarModal({
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const selectedDateObject = useMemo(() => parseLocalDate(selectedDate), [selectedDate]);
-    const selectedMonth = selectedDateObject.getMonth();
-    const selectedYear = selectedDateObject.getFullYear();
-    const yearOptions = useMemo(() => {
-        const currentYear = new Date().getFullYear();
-        const startYear = Math.min(2025, selectedYear - 2);
-        const endYear = Math.max(currentYear + 4, selectedYear + 4);
-
-        return Array.from({ length: endYear - startYear + 1 }, (_, index) => startYear + index);
-    }, [selectedYear]);
-
-    function changeCalendarMonth(monthIndex: number) {
-        const nextDate = parseLocalDate(selectedDate);
-        nextDate.setMonth(monthIndex);
-        setSelectedDate(toIsoDate(nextDate));
-    }
-
-    function changeCalendarYear(year: number) {
-        const nextDate = parseLocalDate(selectedDate);
-        nextDate.setFullYear(year);
-        setSelectedDate(toIsoDate(nextDate));
-    }
-
     const loadCalendar = useCallback(async () => {
         setLoading(true);
         setError(null);
@@ -459,12 +436,9 @@ export default function Unit19CalendarModal({
     }, [orderedItems, query, quickFilter, typeFilter]);
 
     const selectedItem = useMemo(() => {
-        return items.find((item) => item.id === selectedItemId) ?? filteredItems[0] ?? null;
-    }, [filteredItems, items, selectedItemId]);
+        return items.find((item) => item.id === selectedItemId) ?? null;
+    }, [items, selectedItemId]);
 
-    const selectedDateItems = useMemo(() => {
-        return sortCalendarItemsForDay(filteredItems.filter((item) => item.date === selectedDate));
-    }, [filteredItems, selectedDate]);
 
     async function saveDraft() {
         if (!draftItem?.title.trim() || !managedPropertyId) return;
@@ -720,7 +694,7 @@ export default function Unit19CalendarModal({
                     </div>
                 </div>
 
-                <div className="relative grid min-h-0 flex-1 overflow-hidden lg:grid-cols-[248px_minmax(0,1fr)_330px]">
+                <div className="relative grid min-h-0 flex-1 overflow-hidden lg:grid-cols-[248px_minmax(0,1fr)]">
                     <aside className="h-full min-h-0 overflow-y-auto overscroll-contain border-b border-white/[0.65] bg-white/[0.42] p-3.5 lg:border-b-0 lg:border-r">
                         <div className="rounded-[16px] border border-white/[0.78] bg-white/[0.58] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
                             <div className="mb-2 text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">Views</div>
@@ -743,36 +717,11 @@ export default function Unit19CalendarModal({
                             </div>
                         </div>
 
-                        <div className="mt-2.5 rounded-[16px] border border-white/[0.78] bg-white/[0.58] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
-                            <div className="mb-2 text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">Date navigator</div>
-                            <div className="grid grid-cols-[minmax(0,1fr)_86px] gap-2">
-                                <select
-                                    value={selectedMonth}
-                                    onChange={(event) => changeCalendarMonth(Number(event.target.value))}
-                                    className="w-full rounded-xl border border-[#ccd9e8] bg-white/[0.76] px-3 py-1.5 text-[12.5px] text-[#0b1623] outline-none transition focus:border-[#2f80ed] focus:ring-2 focus:ring-[#2f80ed]/[0.12]"
-                                >
-                                    {monthLabels.map((month, index) => (
-                                        <option key={month} value={index}>{month}</option>
-                                    ))}
-                                </select>
-                                <select
-                                    value={selectedYear}
-                                    onChange={(event) => changeCalendarYear(Number(event.target.value))}
-                                    className="w-full rounded-xl border border-[#ccd9e8] bg-white/[0.76] px-3 py-1.5 text-[12.5px] text-[#0b1623] outline-none transition focus:border-[#2f80ed] focus:ring-2 focus:ring-[#2f80ed]/[0.12]"
-                                >
-                                    {yearOptions.map((year) => (
-                                        <option key={year} value={year}>{year}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => setSelectedDate(toIsoDate(new Date()))}
-                                className="mt-2 w-full rounded-xl border border-[#20a76b]/[0.24] bg-[#20a76b]/[0.08] px-3 py-1.5 text-[12px] font-semibold text-[#0f7448] transition hover:bg-[#20a76b]/[0.13] active:scale-[0.97]"
-                            >
-                                Jump to today
-                            </button>
-                        </div>
+                        <MiniDateNavigator
+                            selectedDate={selectedDate}
+                            view={view}
+                            onSelectDate={setSelectedDate}
+                        />
 
                         <div className="mt-2.5 rounded-[16px] border border-white/[0.78] bg-white/[0.58] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
                             <div className="mb-2 text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">Filters</div>
@@ -867,7 +816,7 @@ export default function Unit19CalendarModal({
                                 onSelectDate={setSelectedDate}
                                 onSelectItem={(item) => setSelectedItemId(item.id)}
                                 onEditItem={startEdit}
-                                onAddItem={(date) => setDraftItem(blankItem(date))}
+                                onAddItem={(date, time) => setDraftItem(blankItem(date, time))}
                                 onMoveItem={moveItemToDate}
                                 onDragStart={handleItemDragStart}
                                 onDragEnd={handleItemDragEnd}
@@ -890,17 +839,16 @@ export default function Unit19CalendarModal({
                         ) : null}
                     </main>
 
-                    <aside className="h-full min-h-0 overflow-y-auto overscroll-contain border-t border-white/[0.65] bg-white/[0.36] p-3.5 lg:border-l lg:border-t-0">
-                        <SelectedPanel
-                            item={selectedItem}
-                            selectedDate={selectedDate}
-                            selectedDateItems={selectedDateItems}
-                            onAdd={() => setDraftItem(blankItem(selectedDate))}
-                            onEdit={startEdit}
-                            onDone={markDone}
-                        />
-                    </aside>
                 </div>
+
+                {selectedItem && !draftItem ? (
+                    <QuickItemDetails
+                        item={selectedItem}
+                        onClose={() => setSelectedItemId(null)}
+                        onEdit={startEdit}
+                        onDone={markDone}
+                    />
+                ) : null}
 
                 {draftItem ? (
                     <CalendarEditor
@@ -1087,7 +1035,7 @@ function WeekView({
     onSelectDate: (date: string) => void;
     onSelectItem: (item: Unit19CalendarItem) => void;
     onEditItem: (item: Unit19CalendarItem) => void;
-    onAddItem: (date: string) => void;
+    onAddItem: (date: string, time?: string) => void;
     onMoveItem: (itemId: string, date: string, targetItemId?: string, placement?: "before" | "after" | "end") => void;
     onDragStart: (item: Unit19CalendarItem, event: DragEvent<HTMLDivElement>) => void;
     onDragEnd: () => void;
@@ -1095,125 +1043,137 @@ function WeekView({
     const weekStart = startOfWeek(parseLocalDate(selectedDate));
     const days = Array.from({ length: 7 }, (_, index) => addDays(weekStart, index));
     const weekNumber = getIsoWeekNumber(weekStart);
+    const hours = Array.from({ length: 13 }, (_, index) => index + 8);
+
+    function itemsForSlot(date: string, hour: number) {
+        return sortCalendarItemsForDay(items.filter((item) => {
+            if (item.date !== date || !item.time) return false;
+            return Number(item.time.slice(0, 2)) === hour;
+        }));
+    }
 
     return (
         <div className="rounded-[18px] border border-white/[0.78] bg-white/[0.58] p-3 shadow-[0_14px_40px_rgba(41,73,112,0.08),inset_0_1px_0_rgba(255,255,255,0.92)]">
             <div className="mb-3 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                    <button type="button" onClick={() => onSelectDate(toIsoDate(addDays(weekStart, -7)))} className="rounded-xl border border-[#ccd9e8] bg-white/[0.58] px-3 py-1.5 text-[12px] font-semibold text-[#607993] transition hover:bg-white/[0.86]">
-                        Previous
-                    </button>
-                    <button type="button" onClick={() => onSelectDate(toIsoDate(new Date()))} className="rounded-xl border border-[#20a76b]/[0.24] bg-[#20a76b]/[0.08] px-3 py-1.5 text-[12px] font-semibold text-[#0f7448] transition hover:bg-[#20a76b]/[0.13]">
-                        Today
-                    </button>
+                    <button type="button" onClick={() => onSelectDate(toIsoDate(addDays(weekStart, -7)))} className="rounded-xl border border-[#ccd9e8] bg-white/[0.58] px-3 py-1.5 text-[12px] font-semibold text-[#607993] transition hover:bg-white/[0.86]">Previous</button>
+                    <button type="button" onClick={() => onSelectDate(toIsoDate(new Date()))} className="rounded-xl border border-[#20a76b]/[0.24] bg-[#20a76b]/[0.08] px-3 py-1.5 text-[12px] font-semibold text-[#0f7448] transition hover:bg-[#20a76b]/[0.13]">Today</button>
                 </div>
-                <div className="text-[13px] font-semibold text-[#0b1623]">
-                    Week {weekNumber} · {formatWeekRange(weekStart)}
-                </div>
-                <button type="button" onClick={() => onSelectDate(toIsoDate(addDays(weekStart, 7)))} className="rounded-xl border border-[#ccd9e8] bg-white/[0.58] px-3 py-1.5 text-[12px] font-semibold text-[#607993] transition hover:bg-white/[0.86]">
-                    Next
-                </button>
+                <div className="text-[13px] font-semibold text-[#0b1623]">Week {weekNumber} · {formatWeekRange(weekStart)}</div>
+                <button type="button" onClick={() => onSelectDate(toIsoDate(addDays(weekStart, 7)))} className="rounded-xl border border-[#ccd9e8] bg-white/[0.58] px-3 py-1.5 text-[12px] font-semibold text-[#607993] transition hover:bg-white/[0.86]">Next</button>
             </div>
-            <div className="grid min-h-[520px] gap-2 md:grid-cols-7">
-                {days.map((day) => {
-                    const dayIso = toIsoDate(day);
-                    const dayItems = sortCalendarItemsForDay(items.filter((item) => item.date === dayIso));
-                    const selected = selectedDate === dayIso;
-                    const weekend = isWeekend(day);
-                    const today = isTodayDate(day);
 
-                    return (
-                        <div
-                            key={dayIso}
-                            role="button"
-                            tabIndex={0}
-                            onClick={() => onSelectDate(dayIso)}
-                            onDoubleClick={() => onAddItem(dayIso)}
-                            onDragOver={(event) => {
-                                event.preventDefault();
-                                event.dataTransfer.dropEffect = "move";
-                            }}
-                            onDrop={(event) => {
-                                event.preventDefault();
-                                const itemId = event.dataTransfer.getData("text/plain");
-                                if (itemId) void onMoveItem(itemId, dayIso);
-                            }}
-                            onKeyDown={(event) => {
-                                if (event.key === "Enter") onSelectDate(dayIso);
-                            }}
-                            className={[
-                                "flex min-h-[520px] flex-col justify-start rounded-[16px] border p-2 text-left transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.72] active:scale-[0.99]",
-                                selected
-                                    ? "border-[#2f80ed]/[0.34] bg-[#2f80ed]/[0.07]"
-                                    : today
-                                        ? "border-[#20a76b]/[0.32] bg-[#20a76b]/[0.10] ring-2 ring-[#20a76b]/[0.16]"
-                                        : weekend
-                                            ? "border-[#cfa090]/[0.26] bg-[#cfa090]/[0.08]"
-                                            : "border-[#d8e8f6]/[0.82] bg-white/[0.42]",
-                            ].join(" ")}
-                        >
-                            <div className="mb-2 flex items-start justify-between gap-2">
-                                <span className={[
-                                    "text-[11px] font-semibold uppercase tracking-[0.10em]",
-                                    today ? "text-[#0f7448]" : weekend ? "text-[#8c5947]" : "text-[#7a90a8]",
-                                ].join(" ")}>{formatShortDay(day)}</span>
-                                <span className="rounded-full border border-[#ccd9e8] bg-white/[0.58] px-1.5 py-0.5 text-[9px] text-[#607993]">{dayItems.length}</span>
-                            </div>
-                            <div className="mt-3 space-y-1.5">
-                                {dayItems.slice(0, 4).map((item) => (
+            <div className="overflow-x-auto rounded-[16px] border border-[#d8e8f6]/[0.82] bg-white/[0.34]">
+                <div className="min-w-[980px]">
+                    <div className="grid grid-cols-[64px_repeat(7,minmax(120px,1fr))] border-b border-[#d8e8f6]/[0.82]">
+                        <div className="border-r border-[#d8e8f6]/[0.82] bg-white/[0.48]" />
+                        {days.map((day) => {
+                            const dayIso = toIsoDate(day);
+                            const selected = selectedDate === dayIso;
+                            const today = isTodayDate(day);
+                            return (
+                                <button
+                                    key={dayIso}
+                                    type="button"
+                                    onClick={() => onSelectDate(dayIso)}
+                                    className={[
+                                        "border-r border-[#d8e8f6]/[0.82] px-2 py-2 text-left transition last:border-r-0",
+                                        selected ? "bg-[#2f80ed]/[0.10]" : today ? "bg-[#20a76b]/[0.10]" : isWeekend(day) ? "bg-[#cfa090]/[0.07]" : "bg-white/[0.44]",
+                                    ].join(" ")}
+                                >
+                                    <div className="text-[10px] font-semibold uppercase tracking-[0.11em] text-[#7a90a8]">{weekDayLabels[(day.getDay() + 6) % 7]}</div>
+                                    <div className={["mt-0.5 text-[15px] font-semibold", today ? "text-[#0f7448]" : "text-[#0b1623]"].join(" ")}>{day.getDate()}</div>
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    <div className="grid grid-cols-[64px_repeat(7,minmax(120px,1fr))] border-b border-[#d8e8f6]/[0.82]">
+                        <div className="border-r border-[#d8e8f6]/[0.82] bg-white/[0.48] px-2 py-2 text-[9.5px] font-semibold uppercase tracking-[0.10em] text-[#7a90a8]">All day</div>
+                        {days.map((day) => {
+                            const dayIso = toIsoDate(day);
+                            const allDayItems = sortCalendarItemsForDay(items.filter((item) => item.date === dayIso && !item.time));
+                            return (
+                                <div key={dayIso} className="min-h-[46px] border-r border-[#d8e8f6]/[0.82] p-1.5 last:border-r-0" onDoubleClick={() => onAddItem(dayIso)}>
+                                    <div className="space-y-1">
+                                        {allDayItems.slice(0, 2).map((item) => (
+                                            <CalendarSlotItem key={item.id} item={item} draggingItemId={draggingItemId} onSelectItem={onSelectItem} onEditItem={onEditItem} onDragStart={onDragStart} onDragEnd={onDragEnd} />
+                                        ))}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {hours.map((hour) => (
+                        <div key={hour} className="grid grid-cols-[64px_repeat(7,minmax(120px,1fr))] border-b border-[#d8e8f6]/[0.72] last:border-b-0">
+                            <div className="border-r border-[#d8e8f6]/[0.82] bg-white/[0.48] px-2 py-2 text-right text-[10px] font-semibold text-[#607993]">{String(hour).padStart(2, "0")}:00</div>
+                            {days.map((day) => {
+                                const dayIso = toIsoDate(day);
+                                const slotItems = itemsForSlot(dayIso, hour);
+                                const slotTime = `${String(hour).padStart(2, "0")}:00`;
+                                return (
                                     <div
-                                        key={item.id}
+                                        key={`${dayIso}-${hour}`}
                                         role="button"
                                         tabIndex={0}
-                                        draggable
-                                        onClick={(event) => {
-                                            event.stopPropagation();
-                                            onSelectItem(item);
-                                        }}
-                                        onDoubleClick={(event) => {
-                                            event.stopPropagation();
-                                            onEditItem(item);
-                                        }}
-                                        onDragStart={(event) => {
-                                            event.stopPropagation();
-                                            onDragStart(item, event);
-                                        }}
-                                        onDragOver={(event) => {
-                                            event.preventDefault();
-                                            event.stopPropagation();
-                                            event.dataTransfer.dropEffect = "move";
-                                        }}
-                                        onDrop={(event) => {
-                                            event.preventDefault();
-                                            event.stopPropagation();
-                                            const draggedItemId = event.dataTransfer.getData("text/plain");
-                                            if (!draggedItemId || draggedItemId === item.id) return;
-
-                                            const rect = event.currentTarget.getBoundingClientRect();
-                                            const placement = event.clientY < rect.top + rect.height / 2 ? "before" : "after";
-                                            void onMoveItem(draggedItemId, item.date, item.id, placement);
-                                        }}
-                                        onDragEnd={(event) => {
-                                            event.stopPropagation();
-                                            onDragEnd();
-                                        }}
-                                        onKeyDown={(event) => {
-                                            if (event.key === "Enter") onSelectItem(item);
-                                        }}
+                                        onClick={() => onSelectDate(dayIso)}
+                                        onDoubleClick={() => onAddItem(dayIso, slotTime)}
+                                        onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "move"; }}
+                                        onDrop={(event) => { event.preventDefault(); const itemId = event.dataTransfer.getData("text/plain"); if (itemId) void onMoveItem(itemId, dayIso); }}
                                         className={[
-                                            "cursor-grab rounded-xl border px-2 py-1.5 text-[10.5px] font-semibold leading-tight transition hover:bg-white/[0.72] active:cursor-grabbing",
-                                            draggingItemId === item.id ? "opacity-55 ring-2 ring-[#2f80ed]/[0.20]" : "",
-                                            typeClasses(item.type),
+                                            "min-h-[56px] border-r border-[#d8e8f6]/[0.82] p-1.5 transition last:border-r-0 hover:bg-[#2f80ed]/[0.045]",
+                                            selectedDate === dayIso ? "bg-[#2f80ed]/[0.025]" : isWeekend(day) ? "bg-[#cfa090]/[0.025]" : "",
                                         ].join(" ")}
                                     >
-                                        <span className="block truncate">{item.time ? `${item.time} · ` : ""}{item.title}</span>
+                                        <div className="space-y-1">
+                                            {slotItems.map((item) => (
+                                                <CalendarSlotItem key={item.id} item={item} draggingItemId={draggingItemId} onSelectItem={onSelectItem} onEditItem={onEditItem} onDragStart={onDragStart} onDragEnd={onDragEnd} />
+                                            ))}
+                                        </div>
                                     </div>
-                                ))}
-                            </div>
+                                );
+                            })}
                         </div>
-                    );
-                })}
+                    ))}
+                </div>
             </div>
+        </div>
+    );
+}
+
+function CalendarSlotItem({
+    item,
+    draggingItemId,
+    onSelectItem,
+    onEditItem,
+    onDragStart,
+    onDragEnd,
+}: {
+    item: Unit19CalendarItem;
+    draggingItemId: string | null;
+    onSelectItem: (item: Unit19CalendarItem) => void;
+    onEditItem: (item: Unit19CalendarItem) => void;
+    onDragStart: (item: Unit19CalendarItem, event: DragEvent<HTMLDivElement>) => void;
+    onDragEnd: () => void;
+}) {
+    return (
+        <div
+            role="button"
+            tabIndex={0}
+            draggable
+            onClick={(event) => { event.stopPropagation(); onSelectItem(item); }}
+            onDoubleClick={(event) => { event.stopPropagation(); onEditItem(item); }}
+            onDragStart={(event) => { event.stopPropagation(); onDragStart(item, event); }}
+            onDragEnd={(event) => { event.stopPropagation(); onDragEnd(); }}
+            onKeyDown={(event) => { if (event.key === "Enter") onSelectItem(item); }}
+            className={[
+                "cursor-grab rounded-lg border px-2 py-1 text-[10px] font-semibold leading-tight shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:cursor-grabbing",
+                draggingItemId === item.id ? "opacity-55 ring-2 ring-[#2f80ed]/[0.20]" : "",
+                typeClasses(item.type),
+            ].join(" ")}
+        >
+            <span className="block truncate">{item.time ? `${item.time} · ` : ""}{item.title}</span>
         </div>
     );
 }
@@ -1386,80 +1346,138 @@ function MonthView({
     );
 }
 
-function SelectedPanel({
-    item,
+function MiniDateNavigator({
     selectedDate,
-    selectedDateItems,
-    onAdd,
+    view,
+    onSelectDate,
+}: {
+    selectedDate: string;
+    view: CalendarView;
+    onSelectDate: (date: string) => void;
+}) {
+    const selected = parseLocalDate(selectedDate);
+    const monthStart = startOfMonth(selected);
+    const calendarStart = startOfWeek(monthStart);
+    const days = Array.from({ length: 42 }, (_, index) => addDays(calendarStart, index));
+    const weekStart = startOfWeek(selected);
+    const weekEnd = addDays(weekStart, 6);
+    const currentYear = new Date().getFullYear();
+    const years = Array.from({ length: 21 }, (_, index) => currentYear - 5 + index);
+
+    function moveMonth(offset: number) {
+        const next = new Date(selected.getFullYear(), selected.getMonth() + offset, Math.min(selected.getDate(), 28));
+        onSelectDate(toIsoDate(next));
+    }
+
+    function setMonth(month: number) {
+        onSelectDate(toIsoDate(new Date(selected.getFullYear(), month, Math.min(selected.getDate(), 28))));
+    }
+
+    function setYear(year: number) {
+        onSelectDate(toIsoDate(new Date(year, selected.getMonth(), Math.min(selected.getDate(), 28))));
+    }
+
+    return (
+        <div className="mt-2.5 rounded-[16px] border border-white/[0.78] bg-white/[0.58] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+            <div className="mb-2 text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">Date navigator</div>
+            <div className="mb-2 flex items-center gap-1.5">
+                <button type="button" onClick={() => moveMonth(-1)} aria-label="Previous month" className="flex h-7 w-7 items-center justify-center rounded-lg border border-[#ccd9e8] bg-white/[0.58] text-[#607993] transition hover:bg-white/[0.88] hover:text-[#2060cc]">‹</button>
+                <div className="relative min-w-0 flex-1">
+                    <select
+                        value={selected.getMonth()}
+                        onChange={(event) => setMonth(Number(event.target.value))}
+                        className="w-full appearance-none rounded-lg border border-[#ccd9e8] bg-white/[0.72] py-1 pl-2 pr-7 text-[11px] font-semibold text-[#0b1623] outline-none focus:border-[#2f80ed]"
+                    >
+                        {monthLabels.map((label, index) => <option key={label} value={index}>{label}</option>)}
+                    </select>
+                    <svg
+                        aria-hidden="true"
+                        viewBox="0 0 20 20"
+                        fill="none"
+                        className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#607993]"
+                    >
+                        <path d="m6 8 4 4 4-4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                </div>
+                <select value={selected.getFullYear()} onChange={(event) => setYear(Number(event.target.value))} className="w-[72px] rounded-lg border border-[#ccd9e8] bg-white/[0.72] px-1.5 py-1 text-[11px] font-semibold text-[#0b1623] outline-none focus:border-[#2f80ed]">
+                    {years.map((year) => <option key={year} value={year}>{year}</option>)}
+                </select>
+                <button type="button" onClick={() => moveMonth(1)} aria-label="Next month" className="flex h-7 w-7 items-center justify-center rounded-lg border border-[#ccd9e8] bg-white/[0.58] text-[#607993] transition hover:bg-white/[0.88] hover:text-[#2060cc]">›</button>
+            </div>
+            <div className="grid grid-cols-[20px_repeat(7,minmax(0,1fr))] text-center">
+                <div className="text-[8px] font-semibold text-[#9aaabd]">#</div>
+                {weekDayLabels.map((label) => <div key={label} className="text-[8px] font-semibold uppercase text-[#7a90a8]">{label.slice(0, 1)}</div>)}
+                {Array.from({ length: 6 }, (_, row) => {
+                    const rowStart = addDays(calendarStart, row * 7);
+                    return [
+                        <div key={`week-${row}`} className="flex items-center justify-center text-[8px] text-[#9aaabd]">{getIsoWeekNumber(rowStart)}</div>,
+                        ...Array.from({ length: 7 }, (_, column) => {
+                            const day = addDays(rowStart, column);
+                            const iso = toIsoDate(day);
+                            const inMonth = day.getMonth() === selected.getMonth();
+                            const selectedDay = iso === selectedDate;
+                            const today = isTodayDate(day);
+                            const inSelectedWeek = view === "week" && day >= weekStart && day <= weekEnd;
+                            return (
+                                <button
+                                    key={iso}
+                                    type="button"
+                                    onClick={() => onSelectDate(iso)}
+                                    className={[
+                                        "mx-[1px] my-[1px] flex h-6 items-center justify-center rounded-md text-[9.5px] font-semibold transition",
+                                        selectedDay ? "bg-[#2f80ed] text-white shadow-sm" : today ? "ring-1 ring-[#20a76b]/[0.55] text-[#0f7448]" : inSelectedWeek ? "bg-[#2f80ed]/[0.10] text-[#1560bc]" : "hover:bg-white/[0.82] text-[#334b66]",
+                                        inMonth ? "" : "opacity-35",
+                                    ].join(" ")}
+                                >{day.getDate()}</button>
+                            );
+                        }),
+                    ];
+                }).flat()}
+            </div>
+            <button type="button" onClick={() => onSelectDate(toIsoDate(new Date()))} className="mt-2 w-full rounded-lg border border-[#20a76b]/[0.24] bg-[#20a76b]/[0.08] px-2 py-1.5 text-[10.5px] font-semibold text-[#0f7448] transition hover:bg-[#20a76b]/[0.13]">Jump to today</button>
+        </div>
+    );
+}
+
+function QuickItemDetails({
+    item,
+    onClose,
     onEdit,
     onDone,
 }: {
-    item: Unit19CalendarItem | null;
-    selectedDate: string;
-    selectedDateItems: Unit19CalendarItem[];
-    onAdd: () => void;
+    item: Unit19CalendarItem;
+    onClose: () => void;
     onEdit: (item: Unit19CalendarItem) => void;
     onDone: (item: Unit19CalendarItem) => void;
 }) {
     return (
-        <div className="space-y-2.5">
-            <div className="rounded-[16px] border border-white/[0.78] bg-white/[0.58] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
-                <div className="mb-2 text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">Selected day</div>
-                <div className="text-[15px] font-semibold text-[#0b1623]">{formatDay(parseLocalDate(selectedDate))}</div>
-                <div className="mt-1 text-[11px] text-[#7a90a8]">{selectedDateItems.length} visible item{selectedDateItems.length === 1 ? "" : "s"}</div>
-                <button
-                    type="button"
-                    onClick={onAdd}
-                    className="mt-3 w-full rounded-xl border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-3 py-2 text-[12px] font-semibold text-[#1560bc] transition hover:-translate-y-0.5 hover:bg-[#2f80ed]/[0.13] active:scale-[0.98]"
-                >
-                    Add item for this day
-                </button>
-            </div>
-
-            <div className="rounded-[16px] border border-white/[0.78] bg-white/[0.58] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
-                <div className="mb-2 text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">Item details</div>
-                {item ? (
-                    <div>
+        <div className="absolute inset-0 z-20">
+            <button
+                type="button"
+                aria-label="Close item details"
+                className="absolute inset-0 cursor-default bg-transparent"
+                onClick={onClose}
+            />
+            <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center px-4">
+                <div className="pointer-events-auto relative z-10 w-full max-w-[560px] rounded-[18px] border border-white/[0.82] bg-white/[0.88] p-4 shadow-[0_24px_70px_rgba(6,16,29,0.24),inset_0_1px_0_rgba(255,255,255,0.96)] backdrop-blur-xl">
+                <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
                         <div className="flex flex-wrap gap-1.5">
                             <span className={["rounded-full border px-2 py-0.5 text-[9.5px] font-semibold", typeClasses(item.type)].join(" ")}>{typeLabels[item.type]}</span>
                             <span className={["rounded-full border px-2 py-0.5 text-[9.5px] font-semibold", priorityClasses(item.priority)].join(" ")}>{priorityLabels[item.priority]}</span>
                             <span className={["rounded-full border px-2 py-0.5 text-[9.5px] font-semibold", statusClasses(item.status, isOverdue(item))].join(" ")}>{isOverdue(item) ? "Overdue" : statusLabels[item.status]}</span>
-                            {item.taskId ? (
-                                <span className="rounded-full border border-[#8a65cc]/[0.24] bg-[#8a65cc]/[0.09] px-2 py-0.5 text-[9.5px] font-semibold text-[#5e38a0]">
-                                    Linked roadmap task
-                                </span>
-                            ) : null}
                         </div>
-                        <h3 className="mt-3 text-[16px] font-semibold leading-tight text-[#0b1623]">{item.title}</h3>
-                        <div className="mt-1 text-[12px] text-[#607993]">{formatDay(parseLocalDate(item.date))}{item.time ? ` · ${item.time}` : " · Any time"}</div>
-                        {item.location ? <div className="mt-1 text-[12px] text-[#607993]">{item.location}</div> : null}
-                        {item.note ? <p className="mt-3 text-[12.5px] leading-5 text-[#4e6880]">{item.note}</p> : null}
-
-                        {item.linkedRecords?.length ? (
-                            <div className="mt-3">
-                                <div className="mb-1.5 text-[9.5px] font-semibold uppercase tracking-[0.14em] text-[#7a90a8]">Related</div>
-                                <div className="space-y-1.5">
-                                    {item.linkedRecords.map((record) => (
-                                        <div key={`${record.kind}-${record.label}`} className="rounded-xl border border-[#ccd9e8] bg-white/[0.58] px-3 py-2 text-[11.5px] text-[#4e6880]">
-                                            <span className="font-semibold text-[#0b1623]">{record.kind}: </span>{record.label}
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        ) : null}
-
-                        <div className="mt-3 flex gap-2">
-                            <button type="button" onClick={() => onEdit(item)} className="rounded-xl border border-[#ccd9e8] bg-white/[0.62] px-3 py-2 text-[12px] font-semibold text-[#4e6880] transition hover:border-[#2f80ed]/[0.32] hover:bg-white/[0.88] hover:text-[#2060cc] active:scale-[0.97]">
-                                Edit
-                            </button>
-                            <button type="button" onClick={() => onDone(item)} className="rounded-xl border border-[#20a76b]/[0.24] bg-[#20a76b]/[0.08] px-3 py-2 text-[12px] font-semibold text-[#0f7448] transition hover:bg-[#20a76b]/[0.13] active:scale-[0.97]">
-                                {item.status === "done" ? "Reopen" : "Done"}
-                            </button>
-                        </div>
+                        <h3 className="mt-2 truncate text-[16px] font-semibold text-[#0b1623]">{item.title}</h3>
+                        <div className="mt-1 text-[11.5px] text-[#607993]">{formatDay(parseLocalDate(item.date))}{item.time ? ` · ${item.time}` : " · Any time"}</div>
+                        {item.note ? <p className="mt-2 line-clamp-2 text-[11.5px] leading-4 text-[#4e6880]">{item.note}</p> : null}
                     </div>
-                ) : (
-                    <div className="text-[12.5px] leading-5 text-[#7a90a8]">No item selected.</div>
-                )}
+                    <button type="button" onClick={onClose} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-[#ccd9e8] bg-white/[0.62] text-[#607993] transition hover:bg-white hover:text-[#2060cc]">×</button>
+                </div>
+                <div className="mt-3 flex justify-end gap-2">
+                    <button type="button" onClick={() => onEdit(item)} className="rounded-xl border border-[#ccd9e8] bg-white/[0.62] px-3 py-1.5 text-[11.5px] font-semibold text-[#4e6880] transition hover:border-[#2f80ed]/[0.32] hover:bg-white hover:text-[#2060cc]">Edit</button>
+                    <button type="button" onClick={() => onDone(item)} className="rounded-xl border border-[#20a76b]/[0.24] bg-[#20a76b]/[0.08] px-3 py-1.5 text-[11.5px] font-semibold text-[#0f7448] transition hover:bg-[#20a76b]/[0.13]">{item.status === "done" ? "Reopen" : "Done"}</button>
+                </div>
+                </div>
             </div>
         </div>
     );
