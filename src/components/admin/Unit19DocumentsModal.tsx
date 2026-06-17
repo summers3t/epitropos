@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Unit19ModalSwitcher, { type Unit19PanelKey } from "@/components/admin/Unit19ModalSwitcher";
+import { useTimedUndoStack } from "@/components/admin/useTimedUndoStack";
 import AdminDatePicker from "@/components/admin/AdminDatePicker";
 import {
     createManagedPropertyDocument,
@@ -58,13 +59,6 @@ type UiDocument = {
 };
 
 type DraftDocument = Omit<UiDocument, "id"> & { id?: string };
-
-type DocumentUndoAction = {
-    action: "Deleted" | "Updated";
-    label: string;
-    restore: () => Promise<void>;
-    commit?: () => Promise<void>;
-};
 
 const statusLabels: Record<ManagedPropertyDocumentStatus, string> = {
     available: "Available",
@@ -231,9 +225,18 @@ export default function Unit19DocumentsModal({ open, onClose, onSwitchPanel, pro
     const [saving, setSaving] = useState(false);
     const [uploadingDocumentId, setUploadingDocumentId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
-    const [undoAction, setUndoAction] = useState<DocumentUndoAction | null>(null);
-    const undoActionRef = useRef<DocumentUndoAction | null>(null);
-    const undoTimerRef = useRef<number | null>(null);
+    const {
+        current: undoAction,
+        pendingCount: undoPendingCount,
+        remainingMs: undoRemainingMs,
+        remainingPercent: undoRemainingPercent,
+        queueUndo: queueTimedUndo,
+        undoLatest,
+    } = useTimedUndoStack<"Deleted" | "Updated">({
+        onError: setError,
+        commitErrorMessage: "Failed to finalize document change",
+        restoreErrorMessage: "Failed to undo document change",
+    });
     const documentRowRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
     const loadDocuments = useCallback(async () => {
@@ -273,43 +276,13 @@ export default function Unit19DocumentsModal({ open, onClose, onSwitchPanel, pro
         };
     }, [loadDocuments, onClose, open]);
 
-    useEffect(() => {
-        return () => {
-            if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
-            const pending = undoActionRef.current;
-            if (pending?.commit) void pending.commit();
-        };
-    }, []);
-
     function queueUndo(
-        action: DocumentUndoAction["action"],
+        action: "Deleted" | "Updated",
         label: string,
         restore: () => Promise<void>,
         commit?: () => Promise<void>,
     ) {
-        if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
-
-        const previous = undoActionRef.current;
-        if (previous?.commit) {
-            void previous.commit().catch((commitError: unknown) => {
-                setError(commitError instanceof Error ? commitError.message : "Failed to finalize document change");
-            });
-        }
-
-        const nextAction = { action, label, restore, commit };
-        undoActionRef.current = nextAction;
-        setUndoAction(nextAction);
-        undoTimerRef.current = window.setTimeout(() => {
-            const pending = undoActionRef.current;
-            undoActionRef.current = null;
-            setUndoAction(null);
-            if (pending?.commit) {
-                void pending.commit().catch(async (commitError: unknown) => {
-                    await pending.restore();
-                    setError(commitError instanceof Error ? commitError.message : "Failed to finalize document deletion");
-                });
-            }
-        }, 5000);
+        queueTimedUndo({ action, label, restore, commit });
     }
 
     const categoryById = useMemo(() => {
@@ -1083,31 +1056,31 @@ export default function Unit19DocumentsModal({ open, onClose, onSwitchPanel, pro
                     />
                 ) : null}
             </div>
-            <style>{`@keyframes shrinkUndo { from { width: 100%; } to { width: 0%; } }`}</style>
             {undoAction ? (
-                <div className="fixed bottom-5 left-1/2 z-[9998] w-[320px] -translate-x-1/2 overflow-hidden rounded-2xl border border-[#d96969]/[0.26] bg-white/[0.92] p-3 shadow-[0_20px_70px_rgba(6,16,29,0.18)] backdrop-blur-2xl">
+                <div
+                    key={undoAction.id}
+                    className="fixed bottom-5 left-1/2 z-[9998] w-[320px] -translate-x-1/2 overflow-hidden rounded-2xl border border-[#d96969]/[0.26] bg-white/[0.92] p-3 shadow-[0_20px_70px_rgba(6,16,29,0.18)] backdrop-blur-2xl"
+                >
                     <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#9d2f2f]">{undoAction.action}</div>
-                    <div className="mt-1 text-[12px] text-[#607993]">{undoAction.label} {undoAction.action.toLowerCase()}. Undo available for 5 seconds.</div>
+                    <div className="mt-1 text-[12px] text-[#607993]">{undoAction.label} {undoAction.action.toLowerCase()}.</div>
                     <div className="mt-2 flex items-center justify-between gap-2">
                         <button
                             type="button"
-                            onClick={() => {
-                                const pending = undoAction;
-                                setUndoAction(null);
-                                undoActionRef.current = null;
-                                if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
-                                void pending.restore().catch((restoreError: unknown) => {
-                                    setError(restoreError instanceof Error ? restoreError.message : "Failed to undo document change");
-                                });
-                            }}
+                            onClick={() => void undoLatest()}
                             className="rounded-xl border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-3 py-1.5 text-[11px] font-semibold text-[#2060cc] transition hover:bg-[#2f80ed]/[0.14]"
                         >
                             Undo
                         </button>
-                        <span className="text-[10px] text-[#7a90a8]">auto-confirms</span>
+                        <span className="text-[10px] text-[#7a90a8]">
+                            {Math.max(1, Math.ceil(undoRemainingMs / 1000))}s
+                            {undoPendingCount > 1 ? ` · ${undoPendingCount} pending` : ""}
+                        </span>
                     </div>
                     <div className="mt-2 h-1 overflow-hidden rounded-full bg-[#d96969]/[0.12]">
-                        <div className="h-full rounded-full bg-[#d96969]/[0.56] animate-[shrinkUndo_5s_linear_forwards]" />
+                        <div
+                            className="h-full rounded-full bg-[#d96969]/[0.56] transition-[width] duration-200 ease-linear"
+                            style={{ width: `${undoRemainingPercent}%` }}
+                        />
                     </div>
                 </div>
             ) : null}
@@ -1134,7 +1107,7 @@ function KpiCard({
     }[tone];
 
     return (
-        <div className={`rounded-[16px] border p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.88)] ${toneClass}`}>
+        <div className={`rounded-[16px] border p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.88)] transition-all duration-300 hover:-translate-y-0.5 hover:scale-[1.015] hover:shadow-[0_18px_44px_rgba(41,73,112,0.13)] ${toneClass}`}>
             <div className="text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#7a90a8]">{label}</div>
             <div className="mt-1 text-[22px] font-semibold tracking-tight">{value}</div>
             <div className="mt-0.5 text-[11px] text-[#7a90a8]">{detail}</div>

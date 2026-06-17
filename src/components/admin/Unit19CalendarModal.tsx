@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import Unit19ModalSwitcher, { type Unit19PanelKey } from "@/components/admin/Unit19ModalSwitcher";
 import AdminDatePicker from "@/components/admin/AdminDatePicker";
+import { useTimedUndoStack } from "@/components/admin/useTimedUndoStack";
 import {
     createManagedPropertyCalendarItem,
     deleteManagedPropertyCalendarItem,
@@ -50,13 +51,6 @@ type Unit19CalendarItem = {
 
 type DraftCalendarItem = Omit<Unit19CalendarItem, "linkedRecords"> & { linkedText: string };
 
-type CalendarUndoAction = {
-    action: "Deleted" | "Updated";
-    label: string;
-    restore: () => Promise<void>;
-    commit?: () => Promise<void>;
-};
-
 const typeLabels: Record<Unit19CalendarItemType, string> = {
     task: "Task",
     deadline: "Deadline",
@@ -82,6 +76,11 @@ const priorityLabels: Record<Unit19CalendarItemPriority, string> = {
 const typeOrder: Unit19CalendarItemType[] = ["task", "deadline", "appointment", "payment", "document_followup", "reminder"];
 const weekDayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const monthLabels = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+function isEditableKeyboardTarget(target: EventTarget | null) {
+    if (!(target instanceof HTMLElement)) return false;
+    return target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT", "BUTTON"].includes(target.tagName);
+}
 
 
 function isWeekend(date: Date) {
@@ -359,12 +358,24 @@ export default function Unit19CalendarModal({
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [undoAction, setUndoAction] = useState<CalendarUndoAction | null>(null);
-    const undoActionRef = useRef<CalendarUndoAction | null>(null);
-    const undoTimerRef = useRef<number | null>(null);
+    const {
+        current: undoAction,
+        pendingCount: undoPendingCount,
+        remainingMs: undoRemainingMs,
+        remainingPercent: undoRemainingPercent,
+        queueUndo: queueTimedUndo,
+        undoLatest,
+    } = useTimedUndoStack<"Deleted" | "Updated">({
+        onError: setError,
+        commitErrorMessage: "Failed to finalize calendar change",
+        restoreErrorMessage: "Failed to undo calendar change",
+    });
     const itemClickTimerRef = useRef<number | null>(null);
     const suppressItemClickRef = useRef(false);
     const dragClickReleaseTimerRef = useRef<number | null>(null);
+    const selectedItemIdRef = useRef<string | null>(null);
+    const draftItemRef = useRef<DraftCalendarItem | null>(null);
+    const deleteItemRef = useRef<(id: string) => void>(() => undefined);
 
     const loadCalendar = useCallback(async () => {
         setLoading(true);
@@ -386,7 +397,20 @@ export default function Unit19CalendarModal({
         if (!open) return;
 
         const handleKeyDown = (event: KeyboardEvent) => {
-            if (event.key === "Escape") onClose();
+            if (event.key === "Escape") {
+                onClose();
+                return;
+            }
+
+            if (
+                event.key === "Delete" &&
+                selectedItemIdRef.current &&
+                !draftItemRef.current &&
+                !isEditableKeyboardTarget(event.target)
+            ) {
+                event.preventDefault();
+                deleteItemRef.current(selectedItemIdRef.current);
+            }
         };
 
         document.addEventListener("keydown", handleKeyDown);
@@ -470,43 +494,18 @@ export default function Unit19CalendarModal({
 
     useEffect(() => {
         return () => {
-            if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
             if (itemClickTimerRef.current) window.clearTimeout(itemClickTimerRef.current);
             if (dragClickReleaseTimerRef.current) window.clearTimeout(dragClickReleaseTimerRef.current);
-            const pending = undoActionRef.current;
-            if (pending?.commit) void pending.commit();
         };
     }, []);
 
     function queueUndo(
-        action: CalendarUndoAction["action"],
+        action: "Deleted" | "Updated",
         label: string,
         restore: () => Promise<void>,
         commit?: () => Promise<void>,
     ) {
-        if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
-
-        const previous = undoActionRef.current;
-        if (previous?.commit) {
-            void previous.commit().catch((commitError: unknown) => {
-                setError(commitError instanceof Error ? commitError.message : "Failed to finalize calendar change");
-            });
-        }
-
-        const nextAction = { action, label, restore, commit };
-        undoActionRef.current = nextAction;
-        setUndoAction(nextAction);
-        undoTimerRef.current = window.setTimeout(() => {
-            const pending = undoActionRef.current;
-            undoActionRef.current = null;
-            setUndoAction(null);
-            if (pending?.commit) {
-                void pending.commit().catch(async (commitError: unknown) => {
-                    await pending.restore();
-                    setError(commitError instanceof Error ? commitError.message : "Failed to finalize calendar deletion");
-                });
-            }
-        }, 5000);
+        queueTimedUndo({ action, label, restore, commit });
     }
 
     async function saveDraft() {
@@ -548,7 +547,7 @@ export default function Unit19CalendarModal({
                 if (exists) return current.map((item) => (item.id === cleanItem.id ? cleanItem : item));
                 return [...current, cleanItem];
             });
-            setSelectedItemId(cleanItem.id);
+            setSelectedItemId(null);
             setDraftItem(null);
 
             if (existingItem) {
@@ -556,7 +555,7 @@ export default function Unit19CalendarModal({
                     const restored = await updateManagedPropertyCalendarItem(cleanItem.id, calendarItemToDbPatch(existingItem));
                     const restoredUi = dbItemToUi(restored);
                     setItems((current) => current.map((item) => (item.id === restoredUi.id ? restoredUi : item)));
-                    setSelectedItemId(restoredUi.id);
+                    setSelectedItemId(null);
                     if (restoredUi.taskId) onCalendarDataChanged?.();
                 });
             }
@@ -782,6 +781,12 @@ export default function Unit19CalendarModal({
         setDraggingItemId(null);
         void loadCalendar();
     }
+
+    selectedItemIdRef.current = selectedItemId;
+    draftItemRef.current = draftItem;
+    deleteItemRef.current = (id: string) => {
+        void deleteItem(id);
+    };
 
     if (!open) return null;
 
@@ -1025,31 +1030,31 @@ export default function Unit19CalendarModal({
                     />
                 ) : null}
             </div>
-            <style>{`@keyframes shrinkUndo { from { width: 100%; } to { width: 0%; } }`}</style>
             {undoAction ? (
-                <div className="fixed bottom-5 left-1/2 z-[9998] w-[320px] -translate-x-1/2 overflow-hidden rounded-2xl border border-[#d96969]/[0.26] bg-white/[0.92] p-3 shadow-[0_20px_70px_rgba(6,16,29,0.18)] backdrop-blur-2xl">
+                <div
+                    key={undoAction.id}
+                    className="fixed bottom-5 left-1/2 z-[9998] w-[320px] -translate-x-1/2 overflow-hidden rounded-2xl border border-[#d96969]/[0.26] bg-white/[0.92] p-3 shadow-[0_20px_70px_rgba(6,16,29,0.18)] backdrop-blur-2xl"
+                >
                     <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#9d2f2f]">{undoAction.action}</div>
-                    <div className="mt-1 text-[12px] text-[#607993]">{undoAction.label} {undoAction.action.toLowerCase()}. Undo available for 5 seconds.</div>
+                    <div className="mt-1 text-[12px] text-[#607993]">{undoAction.label} {undoAction.action.toLowerCase()}.</div>
                     <div className="mt-2 flex items-center justify-between gap-2">
                         <button
                             type="button"
-                            onClick={() => {
-                                const pending = undoAction;
-                                setUndoAction(null);
-                                undoActionRef.current = null;
-                                if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
-                                void pending.restore().catch((restoreError: unknown) => {
-                                    setError(restoreError instanceof Error ? restoreError.message : "Failed to undo calendar change");
-                                });
-                            }}
+                            onClick={() => void undoLatest()}
                             className="rounded-xl border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-3 py-1.5 text-[11px] font-semibold text-[#2060cc] transition hover:bg-[#2f80ed]/[0.14]"
                         >
                             Undo
                         </button>
-                        <span className="text-[10px] text-[#7a90a8]">auto-confirms</span>
+                        <span className="text-[10px] text-[#7a90a8]">
+                            {Math.max(1, Math.ceil(undoRemainingMs / 1000))}s
+                            {undoPendingCount > 1 ? ` · ${undoPendingCount} pending` : ""}
+                        </span>
                     </div>
                     <div className="mt-2 h-1 overflow-hidden rounded-full bg-[#d96969]/[0.12]">
-                        <div className="h-full rounded-full bg-[#d96969]/[0.56] animate-[shrinkUndo_5s_linear_forwards]" />
+                        <div
+                            className="h-full rounded-full bg-[#d96969]/[0.56] transition-[width] duration-200 ease-linear"
+                            style={{ width: `${undoRemainingPercent}%` }}
+                        />
                     </div>
                 </div>
             ) : null}
@@ -1066,7 +1071,7 @@ function StatCard({ label, value, detail, tone = "base" }: { label: string; valu
                 : "border-white/[0.80] bg-white/[0.62] text-[#7a90a8]";
 
     return (
-        <div className={["rounded-[16px] px-3.5 py-2.5 shadow-[0_10px_28px_rgba(41,73,112,0.07)]", toneClass].join(" ")}>
+        <div className={["rounded-[16px] px-3.5 py-2.5 shadow-[0_10px_28px_rgba(41,73,112,0.07)] transition-all duration-300 hover:-translate-y-0.5 hover:scale-[1.015] hover:shadow-[0_18px_44px_rgba(41,73,112,0.13)]", toneClass].join(" ")}>
             <div className="text-[9px] font-semibold uppercase tracking-[0.13em]">{label}</div>
             <div className="mt-1 text-[21px] font-semibold leading-none text-[#0b1623]">{value}</div>
             <div className="mt-1 text-[10px]">{detail}</div>

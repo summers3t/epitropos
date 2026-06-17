@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Unit19ModalSwitcher, { type Unit19PanelKey } from "@/components/admin/Unit19ModalSwitcher";
+import { useTimedUndoStack } from "@/components/admin/useTimedUndoStack";
 import {
     createManagedPropertyExpense,
     deleteManagedPropertyExpense,
@@ -36,13 +37,6 @@ type ExpenseDraft = {
     amount_eur: number;
     amount_bgn: number;
     status: ManagedPropertyExpenseStatus;
-};
-
-type ExpenseUndoAction = {
-    action: "Deleted" | "Updated";
-    label: string;
-    restore: () => Promise<void>;
-    commit?: () => Promise<void>;
 };
 
 const categoryLabels: Record<ManagedPropertyExpenseCategory, string> = {
@@ -200,9 +194,18 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
     const [loading, setLoading] = useState(false);
     const [savingId, setSavingId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
-    const [undoAction, setUndoAction] = useState<ExpenseUndoAction | null>(null);
-    const undoActionRef = useRef<ExpenseUndoAction | null>(null);
-    const undoTimerRef = useRef<number | null>(null);
+    const {
+        current: undoAction,
+        pendingCount: undoPendingCount,
+        remainingMs: undoRemainingMs,
+        remainingPercent: undoRemainingPercent,
+        queueUndo: queueTimedUndo,
+        undoLatest,
+    } = useTimedUndoStack<"Deleted" | "Updated">({
+        onError: setError,
+        commitErrorMessage: "Failed to finalize expense change",
+        restoreErrorMessage: "Failed to undo expense change",
+    });
     const expenseRowRefs = useRef<Record<string, HTMLDivElement | null>>({});
     const [pendingFocusExpenseId, setPendingFocusExpenseId] = useState<string | null>(null);
 
@@ -414,43 +417,13 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
         return () => window.cancelAnimationFrame(frame);
     }, [filteredExpenses, pendingFocusExpenseId]);
 
-    useEffect(() => {
-        return () => {
-            if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
-            const pending = undoActionRef.current;
-            if (pending?.commit) void pending.commit();
-        };
-    }, []);
-
     function queueUndo(
-        action: ExpenseUndoAction["action"],
+        action: "Deleted" | "Updated",
         label: string,
         restore: () => Promise<void>,
         commit?: () => Promise<void>,
     ) {
-        if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
-
-        const previous = undoActionRef.current;
-        if (previous?.commit) {
-            void previous.commit().catch((commitError: unknown) => {
-                setError(commitError instanceof Error ? commitError.message : "Failed to finalize expense change");
-            });
-        }
-
-        const nextAction = { action, label, restore, commit };
-        undoActionRef.current = nextAction;
-        setUndoAction(nextAction);
-        undoTimerRef.current = window.setTimeout(() => {
-            const pending = undoActionRef.current;
-            undoActionRef.current = null;
-            setUndoAction(null);
-            if (pending?.commit) {
-                void pending.commit().catch(async (commitError: unknown) => {
-                    await pending.restore();
-                    setError(commitError instanceof Error ? commitError.message : "Failed to finalize expense deletion");
-                });
-            }
-        }, 5000);
+        queueTimedUndo({ action, label, restore, commit });
     }
 
     function startEdit(expense: ManagedPropertyExpense) {
@@ -677,7 +650,7 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
                                 <div
                                     key={card.label}
                                     className={[
-                                        "rounded-[16px] px-3.5 py-2.5 shadow-[0_10px_28px_rgba(41,73,112,0.07)]",
+                                        "rounded-[16px] px-3.5 py-2.5 shadow-[0_10px_28px_rgba(41,73,112,0.07)] transition-all duration-300 hover:-translate-y-0.5 hover:scale-[1.015] hover:shadow-[0_18px_44px_rgba(41,73,112,0.13)]",
                                         warm
                                             ? "border border-[#cfa090]/[0.24] bg-[#cfa090]/[0.08]"
                                             : "border border-white/[0.80] bg-white/[0.62]",
@@ -981,31 +954,31 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
                     </div>
                 </div>
             </div>
-            <style>{`@keyframes shrinkUndo { from { width: 100%; } to { width: 0%; } }`}</style>
             {undoAction ? (
-                <div className="fixed bottom-5 left-1/2 z-[9998] w-[320px] -translate-x-1/2 overflow-hidden rounded-2xl border border-[#d96969]/[0.26] bg-white/[0.92] p-3 shadow-[0_20px_70px_rgba(6,16,29,0.18)] backdrop-blur-2xl">
+                <div
+                    key={undoAction.id}
+                    className="fixed bottom-5 left-1/2 z-[9998] w-[320px] -translate-x-1/2 overflow-hidden rounded-2xl border border-[#d96969]/[0.26] bg-white/[0.92] p-3 shadow-[0_20px_70px_rgba(6,16,29,0.18)] backdrop-blur-2xl"
+                >
                     <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#9d2f2f]">{undoAction.action}</div>
-                    <div className="mt-1 text-[12px] text-[#607993]">{undoAction.label} {undoAction.action.toLowerCase()}. Undo available for 5 seconds.</div>
+                    <div className="mt-1 text-[12px] text-[#607993]">{undoAction.label} {undoAction.action.toLowerCase()}.</div>
                     <div className="mt-2 flex items-center justify-between gap-2">
                         <button
                             type="button"
-                            onClick={() => {
-                                const pending = undoAction;
-                                setUndoAction(null);
-                                undoActionRef.current = null;
-                                if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
-                                void pending.restore().catch((restoreError: unknown) => {
-                                    setError(restoreError instanceof Error ? restoreError.message : "Failed to undo expense change");
-                                });
-                            }}
+                            onClick={() => void undoLatest()}
                             className="rounded-xl border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-3 py-1.5 text-[11px] font-semibold text-[#2060cc] transition hover:bg-[#2f80ed]/[0.14]"
                         >
                             Undo
                         </button>
-                        <span className="text-[10px] text-[#7a90a8]">auto-confirms</span>
+                        <span className="text-[10px] text-[#7a90a8]">
+                            {Math.max(1, Math.ceil(undoRemainingMs / 1000))}s
+                            {undoPendingCount > 1 ? ` · ${undoPendingCount} pending` : ""}
+                        </span>
                     </div>
                     <div className="mt-2 h-1 overflow-hidden rounded-full bg-[#d96969]/[0.12]">
-                        <div className="h-full rounded-full bg-[#d96969]/[0.56] animate-[shrinkUndo_5s_linear_forwards]" />
+                        <div
+                            className="h-full rounded-full bg-[#d96969]/[0.56] transition-[width] duration-200 ease-linear"
+                            style={{ width: `${undoRemainingPercent}%` }}
+                        />
                     </div>
                 </div>
             ) : null}
