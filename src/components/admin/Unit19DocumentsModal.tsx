@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Unit19ModalSwitcher, { type Unit19PanelKey } from "@/components/admin/Unit19ModalSwitcher";
 import AdminDatePicker from "@/components/admin/AdminDatePicker";
 import {
@@ -33,6 +33,7 @@ type DocumentStatusFilter = "all" | "active" | "critical" | ManagedPropertyDocum
 
 type UiCategory = {
     id: string;
+    stableKey: string;
     name: string;
     description: string;
     sortOrder: number;
@@ -57,6 +58,13 @@ type UiDocument = {
 };
 
 type DraftDocument = Omit<UiDocument, "id"> & { id?: string };
+
+type DocumentUndoAction = {
+    action: "Deleted" | "Updated";
+    label: string;
+    restore: () => Promise<void>;
+    commit?: () => Promise<void>;
+};
 
 const statusLabels: Record<ManagedPropertyDocumentStatus, string> = {
     available: "Available",
@@ -117,14 +125,6 @@ function IconSearch() {
     );
 }
 
-function formatAmount(amount?: number) {
-    if (typeof amount !== "number") return "—";
-    return new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "EUR",
-        maximumFractionDigits: amount % 1 === 0 ? 0 : 2,
-    }).format(amount);
-}
 
 function normalizeText(value: string) {
     return value.trim().toLowerCase();
@@ -144,16 +144,11 @@ function getStatusClasses(status: ManagedPropertyDocumentStatus) {
     return "border-[#d18c3f]/[0.28] bg-[#d18c3f]/[0.09] text-[#955b1e]";
 }
 
-function getPriorityClasses(priority: ManagedPropertyDocumentPriority) {
-    if (priority === "critical") return "border-[#d85b68]/[0.26] bg-[#d85b68]/[0.08] text-[#a73642]";
-    if (priority === "high") return "border-[#a68b4a]/[0.26] bg-[#a68b4a]/[0.09] text-[#7a6228]";
-    if (priority === "medium") return "border-[#9ab0c4]/[0.26] bg-[#9ab0c4]/[0.09] text-[#4e6880]";
-    return "border-[#ccd9e8] bg-white/[0.58] text-[#7a90a8]";
-}
 
 function mapCategory(category: ManagedPropertyDocumentCategory): UiCategory {
     return {
         id: category.id,
+        stableKey: category.stable_key,
         name: category.name,
         description: category.description ?? "",
         sortOrder: category.sort_order,
@@ -177,6 +172,26 @@ function mapDocument(document: ManagedPropertyDocument): UiDocument {
         date: document.document_date ?? "",
         amountEur: typeof document.amount_eur === "number" ? document.amount_eur : undefined,
         tags: Array.isArray(document.tags) ? document.tags : [],
+    };
+}
+
+
+function documentToPatch(document: UiDocument) {
+    return {
+        category_id: document.categoryId,
+        title: document.title,
+        file_name: document.fileName || null,
+        storage_path: document.storagePath || null,
+        source: document.source || null,
+        proves: document.proves || null,
+        control_note: document.controlNote || null,
+        next_action: document.nextAction || null,
+        document_date: document.date || null,
+        amount_eur: typeof document.amountEur === "number" ? document.amountEur : null,
+        status: document.status,
+        priority: document.priority,
+        tags: document.tags,
+        sort_order: document.order,
     };
 }
 
@@ -214,8 +229,11 @@ export default function Unit19DocumentsModal({ open, onClose, onSwitchPanel, pro
     const [saving, setSaving] = useState(false);
     const [uploadingDocumentId, setUploadingDocumentId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [undoAction, setUndoAction] = useState<DocumentUndoAction | null>(null);
+    const undoActionRef = useRef<DocumentUndoAction | null>(null);
+    const undoTimerRef = useRef<number | null>(null);
 
-    async function loadDocuments() {
+    const loadDocuments = useCallback(async () => {
         setLoading(true);
         setError(null);
 
@@ -231,7 +249,7 @@ export default function Unit19DocumentsModal({ open, onClose, onSwitchPanel, pro
         } finally {
             setLoading(false);
         }
-    }
+    }, [propertySlug]);
 
     useEffect(() => {
         if (!open) return;
@@ -248,7 +266,46 @@ export default function Unit19DocumentsModal({ open, onClose, onSwitchPanel, pro
             document.removeEventListener("keydown", handleKeyDown);
             document.body.style.overflow = "";
         };
-    }, [open, onClose, propertySlug]);
+    }, [loadDocuments, onClose, open]);
+
+    useEffect(() => {
+        return () => {
+            if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
+            const pending = undoActionRef.current;
+            if (pending?.commit) void pending.commit();
+        };
+    }, []);
+
+    function queueUndo(
+        action: DocumentUndoAction["action"],
+        label: string,
+        restore: () => Promise<void>,
+        commit?: () => Promise<void>,
+    ) {
+        if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
+
+        const previous = undoActionRef.current;
+        if (previous?.commit) {
+            void previous.commit().catch((commitError: unknown) => {
+                setError(commitError instanceof Error ? commitError.message : "Failed to finalize document change");
+            });
+        }
+
+        const nextAction = { action, label, restore, commit };
+        undoActionRef.current = nextAction;
+        setUndoAction(nextAction);
+        undoTimerRef.current = window.setTimeout(() => {
+            const pending = undoActionRef.current;
+            undoActionRef.current = null;
+            setUndoAction(null);
+            if (pending?.commit) {
+                void pending.commit().catch(async (commitError: unknown) => {
+                    await pending.restore();
+                    setError(commitError instanceof Error ? commitError.message : "Failed to finalize document deletion");
+                });
+            }
+        }, 5000);
+    }
 
     const categoryById = useMemo(() => {
         return new Map(categories.map((category) => [category.id, category]));
@@ -345,6 +402,9 @@ export default function Unit19DocumentsModal({ open, onClose, onSwitchPanel, pro
         setError(null);
 
         try {
+            const originalDocument = editingDocument.id
+                ? documents.find((document) => document.id === editingDocument.id) ?? null
+                : null;
             const payload = {
                 managed_property_id: managedPropertyId,
                 category_id: editingDocument.categoryId || null,
@@ -378,6 +438,14 @@ export default function Unit19DocumentsModal({ open, onClose, onSwitchPanel, pro
                 return [...current, uiDocument];
             });
             setEditingDocument(null);
+
+            if (originalDocument) {
+                queueUndo("Updated", originalDocument.title, async () => {
+                    const restored = await updateManagedPropertyDocument(originalDocument.id, documentToPatch(originalDocument));
+                    const restoredUi = mapDocument(restored);
+                    setDocuments((current) => current.map((document) => (document.id === restoredUi.id ? restoredUi : document)));
+                });
+            }
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to save document");
         } finally {
@@ -387,6 +455,8 @@ export default function Unit19DocumentsModal({ open, onClose, onSwitchPanel, pro
 
     async function patchDocument(id: string, patch: Partial<UiDocument>) {
         setError(null);
+        const originalDocument = documents.find((document) => document.id === id);
+        if (!originalDocument) return;
 
         const dbPatch = {
             category_id: patch.categoryId,
@@ -409,24 +479,38 @@ export default function Unit19DocumentsModal({ open, onClose, onSwitchPanel, pro
             const saved = await updateManagedPropertyDocument(id, dbPatch);
             const uiDocument = mapDocument(saved);
             setDocuments((current) => current.map((document) => (document.id === id ? uiDocument : document)));
+            queueUndo("Updated", originalDocument.title, async () => {
+                const restored = await updateManagedPropertyDocument(originalDocument.id, documentToPatch(originalDocument));
+                const restoredUi = mapDocument(restored);
+                setDocuments((current) => current.map((document) => (document.id === restoredUi.id ? restoredUi : document)));
+            });
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to update document");
         }
     }
 
     async function deleteDocument(id: string) {
-        setSaving(true);
-        setError(null);
+        const deletedDocument = documents.find((document) => document.id === id);
+        if (!deletedDocument) return;
 
-        try {
-            await deleteManagedPropertyDocument(id);
-            setDocuments((current) => current.filter((document) => document.id !== id));
-            setEditingDocument(null);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed to delete document");
-        } finally {
-            setSaving(false);
-        }
+        setError(null);
+        setDocuments((current) => current.filter((document) => document.id !== id));
+        setEditingDocument(null);
+
+        queueUndo(
+            "Deleted",
+            deletedDocument.title,
+            async () => {
+                setDocuments((current) =>
+                    current.some((document) => document.id === deletedDocument.id)
+                        ? current
+                        : [...current, deletedDocument].sort((a, b) => a.order - b.order),
+                );
+            },
+            async () => {
+                await deleteManagedPropertyDocument(id);
+            },
+        );
     }
 
     async function uploadDocumentFile(document: DraftDocument, file: File) {
@@ -529,10 +613,16 @@ export default function Unit19DocumentsModal({ open, onClose, onSwitchPanel, pro
         setError(null);
 
         try {
+            const originalCategory = categories.find((category) => category.id === editingCategoryId);
+            if (!originalCategory) return;
             const saved = await updateManagedPropertyDocumentCategory(editingCategoryId, { name });
             setCategories((current) => current.map((category) => (category.id === saved.id ? mapCategory(saved) : category)));
             setEditingCategoryId(null);
             setEditingCategoryName("");
+            queueUndo("Updated", originalCategory.name, async () => {
+                const restored = await updateManagedPropertyDocumentCategory(originalCategory.id, { name: originalCategory.name });
+                setCategories((current) => current.map((category) => (category.id === restored.id ? mapCategory(restored) : category)));
+            });
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to rename category");
         } finally {
@@ -543,19 +633,35 @@ export default function Unit19DocumentsModal({ open, onClose, onSwitchPanel, pro
     async function deleteCategory(categoryId: string) {
         if (categories.length <= 1) return;
 
-        setSaving(true);
-        setError(null);
+        const deletedCategory = categories.find((category) => category.id === categoryId);
+        if (!deletedCategory) return;
+        const affectedDocuments = documents.filter((document) => document.categoryId === categoryId);
 
-        try {
-            await deleteManagedPropertyDocumentCategory(categoryId);
-            setCategories((current) => current.filter((category) => category.id !== categoryId));
-            setDocuments((current) => current.map((document) => (document.categoryId === categoryId ? { ...document, categoryId: null } : document)));
-            if (categoryFilter === categoryId) setCategoryFilter("all");
-        } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed to delete category");
-        } finally {
-            setSaving(false);
-        }
+        setError(null);
+        setCategories((current) => current.filter((category) => category.id !== categoryId));
+        setDocuments((current) => current.map((document) => (document.categoryId === categoryId ? { ...document, categoryId: null } : document)));
+        if (categoryFilter === categoryId) setCategoryFilter("all");
+
+        queueUndo(
+            "Deleted",
+            deletedCategory.name,
+            async () => {
+                setCategories((current) =>
+                    current.some((category) => category.id === deletedCategory.id)
+                        ? current
+                        : [...current, deletedCategory].sort((a, b) => a.sortOrder - b.sortOrder),
+                );
+                const affectedIds = new Set(affectedDocuments.map((document) => document.id));
+                setDocuments((current) =>
+                    current.map((document) =>
+                        affectedIds.has(document.id) ? { ...document, categoryId: deletedCategory.id } : document,
+                    ),
+                );
+            },
+            async () => {
+                await deleteManagedPropertyDocumentCategory(categoryId);
+            },
+        );
     }
 
     if (!open) return null;
@@ -904,6 +1010,34 @@ export default function Unit19DocumentsModal({ open, onClose, onSwitchPanel, pro
                     />
                 ) : null}
             </div>
+            <style>{`@keyframes shrinkUndo { from { width: 100%; } to { width: 0%; } }`}</style>
+            {undoAction ? (
+                <div className="fixed bottom-5 left-1/2 z-[9998] w-[320px] -translate-x-1/2 overflow-hidden rounded-2xl border border-[#d96969]/[0.26] bg-white/[0.92] p-3 shadow-[0_20px_70px_rgba(6,16,29,0.18)] backdrop-blur-2xl">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#9d2f2f]">{undoAction.action}</div>
+                    <div className="mt-1 text-[12px] text-[#607993]">{undoAction.label} {undoAction.action.toLowerCase()}. Undo available for 5 seconds.</div>
+                    <div className="mt-2 flex items-center justify-between gap-2">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                const pending = undoAction;
+                                setUndoAction(null);
+                                undoActionRef.current = null;
+                                if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
+                                void pending.restore().catch((restoreError: unknown) => {
+                                    setError(restoreError instanceof Error ? restoreError.message : "Failed to undo document change");
+                                });
+                            }}
+                            className="rounded-xl border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-3 py-1.5 text-[11px] font-semibold text-[#2060cc] transition hover:bg-[#2f80ed]/[0.14]"
+                        >
+                            Undo
+                        </button>
+                        <span className="text-[10px] text-[#7a90a8]">auto-confirms</span>
+                    </div>
+                    <div className="mt-2 h-1 overflow-hidden rounded-full bg-[#d96969]/[0.12]">
+                        <div className="h-full rounded-full bg-[#d96969]/[0.56] animate-[shrinkUndo_5s_linear_forwards]" />
+                    </div>
+                </div>
+            ) : null}
         </div>
     );
 }

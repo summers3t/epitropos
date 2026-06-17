@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type DragEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import Unit19ModalSwitcher, { type Unit19PanelKey } from "@/components/admin/Unit19ModalSwitcher";
 import AdminDatePicker from "@/components/admin/AdminDatePicker";
 import {
@@ -49,6 +49,13 @@ type Unit19CalendarItem = {
 };
 
 type DraftCalendarItem = Omit<Unit19CalendarItem, "linkedRecords"> & { linkedText: string };
+
+type CalendarUndoAction = {
+    action: "Deleted" | "Updated";
+    label: string;
+    restore: () => Promise<void>;
+    commit?: () => Promise<void>;
+};
 
 const typeLabels: Record<Unit19CalendarItemType, string> = {
     task: "Task",
@@ -180,9 +187,6 @@ function formatDay(date: Date) {
     return new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "2-digit", month: "short" }).format(date);
 }
 
-function formatShortDay(date: Date) {
-    return new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "2-digit" }).format(date);
-}
 
 function formatMonthTitle(date: Date) {
     return new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric" }).format(date);
@@ -286,6 +290,23 @@ function draftToDbPayload(managedPropertyId: string, item: DraftCalendarItem): M
 }
 
 
+function calendarItemToDbPatch(item: Unit19CalendarItem): ManagedPropertyCalendarItemPatch {
+    return {
+        task_id: item.taskId ?? null,
+        title: item.title,
+        item_date: item.date,
+        item_time: item.time?.trim() || null,
+        type: item.type,
+        priority: item.priority,
+        status: item.status,
+        location: item.location?.trim() || null,
+        note: item.note?.trim() || null,
+        linked_records: item.linkedRecords ?? [],
+        sort_order: item.sortOrder ?? null,
+    };
+}
+
+
 function IconClose() {
     return (
         <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -338,6 +359,9 @@ export default function Unit19CalendarModal({
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [undoAction, setUndoAction] = useState<CalendarUndoAction | null>(null);
+    const undoActionRef = useRef<CalendarUndoAction | null>(null);
+    const undoTimerRef = useRef<number | null>(null);
 
     const loadCalendar = useCallback(async () => {
         setLoading(true);
@@ -439,6 +463,44 @@ export default function Unit19CalendarModal({
         return items.find((item) => item.id === selectedItemId) ?? null;
     }, [items, selectedItemId]);
 
+    useEffect(() => {
+        return () => {
+            if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
+            const pending = undoActionRef.current;
+            if (pending?.commit) void pending.commit();
+        };
+    }, []);
+
+    function queueUndo(
+        action: CalendarUndoAction["action"],
+        label: string,
+        restore: () => Promise<void>,
+        commit?: () => Promise<void>,
+    ) {
+        if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
+
+        const previous = undoActionRef.current;
+        if (previous?.commit) {
+            void previous.commit().catch((commitError: unknown) => {
+                setError(commitError instanceof Error ? commitError.message : "Failed to finalize calendar change");
+            });
+        }
+
+        const nextAction = { action, label, restore, commit };
+        undoActionRef.current = nextAction;
+        setUndoAction(nextAction);
+        undoTimerRef.current = window.setTimeout(() => {
+            const pending = undoActionRef.current;
+            undoActionRef.current = null;
+            setUndoAction(null);
+            if (pending?.commit) {
+                void pending.commit().catch(async (commitError: unknown) => {
+                    await pending.restore();
+                    setError(commitError instanceof Error ? commitError.message : "Failed to finalize calendar deletion");
+                });
+            }
+        }, 5000);
+    }
 
     async function saveDraft() {
         if (!draftItem?.title.trim() || !managedPropertyId) return;
@@ -481,6 +543,17 @@ export default function Unit19CalendarModal({
             });
             setSelectedItemId(cleanItem.id);
             setDraftItem(null);
+
+            if (existingItem) {
+                queueUndo("Updated", existingItem.title, async () => {
+                    const restored = await updateManagedPropertyCalendarItem(cleanItem.id, calendarItemToDbPatch(existingItem));
+                    const restoredUi = dbItemToUi(restored);
+                    setItems((current) => current.map((item) => (item.id === restoredUi.id ? restoredUi : item)));
+                    setSelectedItemId(restoredUi.id);
+                    if (restoredUi.taskId) onCalendarDataChanged?.();
+                });
+            }
+
             if (cleanItem.taskId) onCalendarDataChanged?.();
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to save calendar item");
@@ -560,6 +633,9 @@ export default function Unit19CalendarModal({
                   );
 
         const updates = [...nextTargetDayItems, ...sourceDayItems];
+        const originalItems = updates
+            .map((updatedItem) => items.find((item) => item.id === updatedItem.id))
+            .filter((item): item is Unit19CalendarItem => Boolean(item));
 
         setSaving(true);
         setError(null);
@@ -582,6 +658,15 @@ export default function Unit19CalendarModal({
             );
             setSelectedDate(targetDate);
             setSelectedItemId(itemId);
+            queueUndo("Updated", movedItem.title, async () => {
+                const restoredItems = await Promise.all(
+                    originalItems.map((item) => updateManagedPropertyCalendarItem(item.id, calendarItemToDbPatch(item))),
+                );
+                const restoredMap = new Map(restoredItems.map((item) => [item.id, dbItemToUi(item)]));
+                setItems((current) => current.map((item) => restoredMap.get(item.id) ?? item));
+                setSelectedDate(sourceDate);
+                setSelectedItemId(itemId);
+            });
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to move calendar item");
         } finally {
@@ -599,6 +684,12 @@ export default function Unit19CalendarModal({
             const saved = await updateManagedPropertyCalendarItem(item.id, { status: nextStatus });
             const cleanItem = dbItemToUi(saved);
             setItems((current) => current.map((currentItem) => (currentItem.id === item.id ? cleanItem : currentItem)));
+            queueUndo("Updated", item.title, async () => {
+                const restored = await updateManagedPropertyCalendarItem(item.id, { status: item.status });
+                const restoredUi = dbItemToUi(restored);
+                setItems((current) => current.map((currentItem) => (currentItem.id === item.id ? restoredUi : currentItem)));
+                if (restoredUi.taskId) onCalendarDataChanged?.();
+            });
             if (cleanItem.taskId) onCalendarDataChanged?.();
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to update calendar item");
@@ -608,19 +699,28 @@ export default function Unit19CalendarModal({
     }
 
     async function deleteItem(id: string) {
-        setSaving(true);
-        setError(null);
+        const deletedItem = items.find((item) => item.id === id);
+        if (!deletedItem) return;
 
-        try {
-            await deleteManagedPropertyCalendarItem(id);
-            setItems((current) => current.filter((item) => item.id !== id));
-            if (selectedItemId === id) setSelectedItemId(null);
-            setDraftItem(null);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed to delete calendar item");
-        } finally {
-            setSaving(false);
-        }
+        setError(null);
+        setItems((current) => current.filter((item) => item.id !== id));
+        if (selectedItemId === id) setSelectedItemId(null);
+        setDraftItem(null);
+
+        queueUndo(
+            "Deleted",
+            deletedItem.title,
+            async () => {
+                setItems((current) =>
+                    current.some((item) => item.id === deletedItem.id) ? current : [...current, deletedItem],
+                );
+                setSelectedItemId(deletedItem.id);
+            },
+            async () => {
+                await deleteManagedPropertyCalendarItem(id);
+                if (deletedItem.taskId) onCalendarDataChanged?.();
+            },
+        );
     }
 
     function reloadData() {
@@ -861,6 +961,34 @@ export default function Unit19CalendarModal({
                     />
                 ) : null}
             </div>
+            <style>{`@keyframes shrinkUndo { from { width: 100%; } to { width: 0%; } }`}</style>
+            {undoAction ? (
+                <div className="fixed bottom-5 left-1/2 z-[9998] w-[320px] -translate-x-1/2 overflow-hidden rounded-2xl border border-[#d96969]/[0.26] bg-white/[0.92] p-3 shadow-[0_20px_70px_rgba(6,16,29,0.18)] backdrop-blur-2xl">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#9d2f2f]">{undoAction.action}</div>
+                    <div className="mt-1 text-[12px] text-[#607993]">{undoAction.label} {undoAction.action.toLowerCase()}. Undo available for 5 seconds.</div>
+                    <div className="mt-2 flex items-center justify-between gap-2">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                const pending = undoAction;
+                                setUndoAction(null);
+                                undoActionRef.current = null;
+                                if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
+                                void pending.restore().catch((restoreError: unknown) => {
+                                    setError(restoreError instanceof Error ? restoreError.message : "Failed to undo calendar change");
+                                });
+                            }}
+                            className="rounded-xl border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-3 py-1.5 text-[11px] font-semibold text-[#2060cc] transition hover:bg-[#2f80ed]/[0.14]"
+                        >
+                            Undo
+                        </button>
+                        <span className="text-[10px] text-[#7a90a8]">auto-confirms</span>
+                    </div>
+                    <div className="mt-2 h-1 overflow-hidden rounded-full bg-[#d96969]/[0.12]">
+                        <div className="h-full rounded-full bg-[#d96969]/[0.56] animate-[shrinkUndo_5s_linear_forwards]" />
+                    </div>
+                </div>
+            ) : null}
         </div>
     );
 }
@@ -1358,7 +1486,6 @@ function MiniDateNavigator({
     const selected = parseLocalDate(selectedDate);
     const monthStart = startOfMonth(selected);
     const calendarStart = startOfWeek(monthStart);
-    const days = Array.from({ length: 42 }, (_, index) => addDays(calendarStart, index));
     const weekStart = startOfWeek(selected);
     const weekEnd = addDays(weekStart, 6);
     const currentYear = new Date().getFullYear();
@@ -1380,28 +1507,32 @@ function MiniDateNavigator({
     return (
         <div className="mt-2.5 rounded-[16px] border border-white/[0.78] bg-white/[0.58] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
             <div className="mb-2 text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">Date navigator</div>
-            <div className="mb-2 flex items-center gap-1.5">
+            <div className="mb-2 grid grid-cols-[28px_minmax(96px,1fr)_66px_28px] items-center gap-1.5">
                 <button type="button" onClick={() => moveMonth(-1)} aria-label="Previous month" className="flex h-7 w-7 items-center justify-center rounded-lg border border-[#ccd9e8] bg-white/[0.58] text-[#607993] transition hover:bg-white/[0.88] hover:text-[#2060cc]">‹</button>
-                <div className="relative min-w-0 flex-1">
+                <div className="relative min-w-0">
                     <select
                         value={selected.getMonth()}
                         onChange={(event) => setMonth(Number(event.target.value))}
-                        className="w-full appearance-none rounded-lg border border-[#ccd9e8] bg-white/[0.72] py-1 pl-2 pr-7 text-[11px] font-semibold text-[#0b1623] outline-none focus:border-[#2f80ed]"
+                        className="h-7 w-full appearance-none rounded-lg border border-[#ccd9e8] bg-white/[0.72] pl-2.5 pr-8 text-[10.5px] font-semibold text-[#0b1623] outline-none focus:border-[#2f80ed]"
                     >
                         {monthLabels.map((label, index) => <option key={label} value={index}>{label}</option>)}
                     </select>
-                    <svg
-                        aria-hidden="true"
-                        viewBox="0 0 20 20"
-                        fill="none"
-                        className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#607993]"
-                    >
+                    <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#607993]">
                         <path d="m6 8 4 4 4-4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                 </div>
-                <select value={selected.getFullYear()} onChange={(event) => setYear(Number(event.target.value))} className="w-[72px] rounded-lg border border-[#ccd9e8] bg-white/[0.72] px-1.5 py-1 text-[11px] font-semibold text-[#0b1623] outline-none focus:border-[#2f80ed]">
-                    {years.map((year) => <option key={year} value={year}>{year}</option>)}
-                </select>
+                <div className="relative min-w-0">
+                    <select
+                        value={selected.getFullYear()}
+                        onChange={(event) => setYear(Number(event.target.value))}
+                        className="h-7 w-full appearance-none rounded-lg border border-[#ccd9e8] bg-white/[0.72] pl-2 pr-7 text-[10px] font-semibold text-[#0b1623] outline-none focus:border-[#2f80ed]"
+                    >
+                        {years.map((year) => <option key={year} value={year}>{year}</option>)}
+                    </select>
+                    <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" className="pointer-events-none absolute right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 text-[#607993]">
+                        <path d="m6 8 4 4 4-4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                </div>
                 <button type="button" onClick={() => moveMonth(1)} aria-label="Next month" className="flex h-7 w-7 items-center justify-center rounded-lg border border-[#ccd9e8] bg-white/[0.58] text-[#607993] transition hover:bg-white/[0.88] hover:text-[#2060cc]">›</button>
             </div>
             <div className="grid grid-cols-[20px_repeat(7,minmax(0,1fr))] text-center">

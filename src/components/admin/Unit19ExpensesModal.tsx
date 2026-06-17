@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Unit19ModalSwitcher, { type Unit19PanelKey } from "@/components/admin/Unit19ModalSwitcher";
 import {
     createManagedPropertyExpense,
@@ -36,6 +36,13 @@ type ExpenseDraft = {
     amount_eur: number;
     amount_bgn: number;
     status: ManagedPropertyExpenseStatus;
+};
+
+type ExpenseUndoAction = {
+    action: "Deleted" | "Updated";
+    label: string;
+    restore: () => Promise<void>;
+    commit?: () => Promise<void>;
 };
 
 const categoryLabels: Record<ManagedPropertyExpenseCategory, string> = {
@@ -193,6 +200,9 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
     const [loading, setLoading] = useState(false);
     const [savingId, setSavingId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [undoAction, setUndoAction] = useState<ExpenseUndoAction | null>(null);
+    const undoActionRef = useRef<ExpenseUndoAction | null>(null);
+    const undoTimerRef = useRef<number | null>(null);
 
     useEffect(() => {
         if (!open) return;
@@ -399,6 +409,45 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
         });
     }, [categoryFilter, expenses, query, statusFilter]);
 
+    useEffect(() => {
+        return () => {
+            if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
+            const pending = undoActionRef.current;
+            if (pending?.commit) void pending.commit();
+        };
+    }, []);
+
+    function queueUndo(
+        action: ExpenseUndoAction["action"],
+        label: string,
+        restore: () => Promise<void>,
+        commit?: () => Promise<void>,
+    ) {
+        if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
+
+        const previous = undoActionRef.current;
+        if (previous?.commit) {
+            void previous.commit().catch((commitError: unknown) => {
+                setError(commitError instanceof Error ? commitError.message : "Failed to finalize expense change");
+            });
+        }
+
+        const nextAction = { action, label, restore, commit };
+        undoActionRef.current = nextAction;
+        setUndoAction(nextAction);
+        undoTimerRef.current = window.setTimeout(() => {
+            const pending = undoActionRef.current;
+            undoActionRef.current = null;
+            setUndoAction(null);
+            if (pending?.commit) {
+                void pending.commit().catch(async (commitError: unknown) => {
+                    await pending.restore();
+                    setError(commitError instanceof Error ? commitError.message : "Failed to finalize expense deletion");
+                });
+            }
+        }, 5000);
+    }
+
     function startEdit(expense: ManagedPropertyExpense) {
         setEditingId(expense.id);
         setDrafts((current) => ({ ...current, [expense.id]: toDraft(expense) }));
@@ -443,6 +492,23 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
                 return next;
             });
             setEditingId(null);
+
+            queueUndo("Updated", expense.title, async () => {
+                const restored = await updateManagedPropertyExpense(expense.id, {
+                    title: expense.title,
+                    category: expense.category,
+                    issuer: expense.issuer,
+                    note: expense.note,
+                    amount_eur: expense.amount_eur,
+                    amount_bgn: expense.amount_bgn,
+                    fx_rate: expense.fx_rate,
+                    expense_date: expense.expense_date,
+                    status: expense.status,
+                    source: expense.source,
+                    sort_order: expense.sort_order,
+                });
+                setExpenses((current) => current.map((item) => (item.id === expense.id ? restored : item)));
+            });
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to save expense");
         } finally {
@@ -458,6 +524,10 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
             setError(null);
             const updated = await updateManagedPropertyExpense(expense.id, { status: nextStatus });
             setExpenses((current) => current.map((item) => (item.id === expense.id ? updated : item)));
+            queueUndo("Updated", expense.title, async () => {
+                const restored = await updateManagedPropertyExpense(expense.id, { status: expense.status });
+                setExpenses((current) => current.map((item) => (item.id === expense.id ? restored : item)));
+            });
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to update expense status");
         } finally {
@@ -498,20 +568,29 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
     }
 
     async function deleteExpense(expense: ManagedPropertyExpense) {
-        const confirmed = window.confirm(`Delete expense: ${expense.title}?`);
-        if (!confirmed) return;
+        setError(null);
+        setExpenses((current) => current.filter((item) => item.id !== expense.id));
+        setEditingId((current) => (current === expense.id ? null : current));
+        setDrafts((current) => {
+            const next = { ...current };
+            delete next[expense.id];
+            return next;
+        });
 
-        try {
-            setSavingId(expense.id);
-            setError(null);
-            await deleteManagedPropertyExpense(expense.id);
-            setExpenses((current) => current.filter((item) => item.id !== expense.id));
-            setEditingId((current) => (current === expense.id ? null : current));
-        } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed to delete expense");
-        } finally {
-            setSavingId(null);
-        }
+        queueUndo(
+            "Deleted",
+            expense.title,
+            async () => {
+                setExpenses((current) =>
+                    current.some((item) => item.id === expense.id)
+                        ? current
+                        : [...current, expense].sort((a, b) => a.sort_order - b.sort_order),
+                );
+            },
+            async () => {
+                await deleteManagedPropertyExpense(expense.id);
+            },
+        );
     }
 
     if (!open) return null;
@@ -858,6 +937,34 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
                     </div>
                 </div>
             </div>
+            <style>{`@keyframes shrinkUndo { from { width: 100%; } to { width: 0%; } }`}</style>
+            {undoAction ? (
+                <div className="fixed bottom-5 left-1/2 z-[9998] w-[320px] -translate-x-1/2 overflow-hidden rounded-2xl border border-[#d96969]/[0.26] bg-white/[0.92] p-3 shadow-[0_20px_70px_rgba(6,16,29,0.18)] backdrop-blur-2xl">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#9d2f2f]">{undoAction.action}</div>
+                    <div className="mt-1 text-[12px] text-[#607993]">{undoAction.label} {undoAction.action.toLowerCase()}. Undo available for 5 seconds.</div>
+                    <div className="mt-2 flex items-center justify-between gap-2">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                const pending = undoAction;
+                                setUndoAction(null);
+                                undoActionRef.current = null;
+                                if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
+                                void pending.restore().catch((restoreError: unknown) => {
+                                    setError(restoreError instanceof Error ? restoreError.message : "Failed to undo expense change");
+                                });
+                            }}
+                            className="rounded-xl border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-3 py-1.5 text-[11px] font-semibold text-[#2060cc] transition hover:bg-[#2f80ed]/[0.14]"
+                        >
+                            Undo
+                        </button>
+                        <span className="text-[10px] text-[#7a90a8]">auto-confirms</span>
+                    </div>
+                    <div className="mt-2 h-1 overflow-hidden rounded-full bg-[#d96969]/[0.12]">
+                        <div className="h-full rounded-full bg-[#d96969]/[0.56] animate-[shrinkUndo_5s_linear_forwards]" />
+                    </div>
+                </div>
+            ) : null}
         </div>
     );
 }
