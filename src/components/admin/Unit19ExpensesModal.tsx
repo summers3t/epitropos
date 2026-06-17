@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Unit19ModalSwitcher, { type Unit19PanelKey } from "@/components/admin/Unit19ModalSwitcher";
 import {
     createManagedPropertyExpense,
@@ -204,43 +204,32 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
     const undoActionRef = useRef<ExpenseUndoAction | null>(null);
     const undoTimerRef = useRef<number | null>(null);
     const expenseRowRefs = useRef<Record<string, HTMLDivElement | null>>({});
+    const [pendingFocusExpenseId, setPendingFocusExpenseId] = useState<string | null>(null);
+
+    const loadExpenses = useCallback(async () => {
+        try {
+            setLoading(true);
+            setError(null);
+
+            const property = await getManagedPropertyBySlug(propertySlug);
+            const rows = await getManagedPropertyExpenses(property.id);
+
+            setManagedProperty(property);
+            setExpenses(rows);
+            setEditingId(null);
+            setDrafts({});
+            setPendingFocusExpenseId(null);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to load expenses");
+        } finally {
+            setLoading(false);
+        }
+    }, [propertySlug]);
 
     useEffect(() => {
         if (!open) return;
-
-        let cancelled = false;
-
-        async function loadExpenses() {
-            try {
-                setLoading(true);
-                setError(null);
-
-                const property = await getManagedPropertyBySlug(propertySlug);
-                const rows = await getManagedPropertyExpenses(property.id);
-
-                if (cancelled) return;
-
-                setManagedProperty(property);
-                setExpenses(rows);
-                setEditingId(null);
-                setDrafts({});
-            } catch (err) {
-                if (!cancelled) {
-                    setError(err instanceof Error ? err.message : "Failed to load expenses");
-                }
-            } finally {
-                if (!cancelled) {
-                    setLoading(false);
-                }
-            }
-        }
-
-        loadExpenses();
-
-        return () => {
-            cancelled = true;
-        };
-    }, [open, propertySlug]);
+        void loadExpenses();
+    }, [loadExpenses, open]);
 
     useEffect(() => {
         if (!open) return;
@@ -410,6 +399,21 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
         });
     }, [categoryFilter, expenses, query, statusFilter]);
 
+    const hasActiveFilters = categoryFilter !== "all" || statusFilter !== "all" || query.trim().length > 0;
+
+    useEffect(() => {
+        if (!pendingFocusExpenseId || !filteredExpenses.some((expense) => expense.id === pendingFocusExpenseId)) return;
+
+        const frame = window.requestAnimationFrame(() => {
+            const row = expenseRowRefs.current[pendingFocusExpenseId];
+            row?.scrollIntoView({ behavior: "smooth", block: "center" });
+            row?.querySelector<HTMLInputElement>("input")?.focus();
+            setPendingFocusExpenseId(null);
+        });
+
+        return () => window.cancelAnimationFrame(frame);
+    }, [filteredExpenses, pendingFocusExpenseId]);
+
     useEffect(() => {
         return () => {
             if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
@@ -564,14 +568,7 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
             setQuery("");
             setExpenses((current) => [...current, created]);
             startEdit(created);
-
-            window.requestAnimationFrame(() => {
-                window.requestAnimationFrame(() => {
-                    const row = expenseRowRefs.current[created.id];
-                    row?.scrollIntoView({ behavior: "smooth", block: "center" });
-                    row?.querySelector<HTMLInputElement>("input")?.focus();
-                });
-            });
+            setPendingFocusExpenseId(created.id);
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to create expense");
         } finally {
@@ -633,7 +630,12 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
                         </div>
 
                         <div className="flex flex-wrap items-center justify-end gap-2">
-                            <Unit19ModalSwitcher activePanel="expenses" onSwitchPanel={onSwitchPanel} />
+                            <Unit19ModalSwitcher
+                                activePanel="expenses"
+                                onSwitchPanel={onSwitchPanel}
+                                incomeLabel="Budget"
+                                showRealEstate={propertySlug === "unit-19"}
+                            />
                             <button
                                 type="button"
                                 onClick={addExpense}
@@ -642,6 +644,14 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
                             >
                                 <IconPlus />
                                 Add row
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => void loadExpenses()}
+                                disabled={loading || Boolean(savingId)}
+                                className="rounded-[13px] border border-[#ccd9e8] bg-white/[0.56] px-4 py-2 text-[12px] font-semibold text-[#4e6880] transition hover:-translate-y-0.5 hover:border-[#2f80ed]/[0.28] hover:bg-white/[0.86] hover:text-[#2060cc] active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-45"
+                            >
+                                Reload
                             </button>
                             <button
                                 type="button"
@@ -719,7 +729,21 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
                         </div>
 
                         <div className="mt-2.5 rounded-[16px] border border-white/[0.78] bg-white/[0.58] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
-                            <div className="mb-2 text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">Filters</div>
+                            <div className="mb-2 flex items-center justify-between gap-2">
+                                <div className="text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">Filters</div>
+                                <button
+                                    type="button"
+                                    disabled={!hasActiveFilters}
+                                    onClick={() => {
+                                        setCategoryFilter("all");
+                                        setStatusFilter("all");
+                                        setQuery("");
+                                    }}
+                                    className="rounded-lg border border-[#ccd9e8] bg-white/[0.62] px-2 py-1 text-[10px] font-semibold text-[#607993] transition hover:bg-white hover:text-[#0b1623] disabled:cursor-not-allowed disabled:opacity-40"
+                                >
+                                    Clear
+                                </button>
+                            </div>
                             <div className="space-y-1.5">
                                 <select
                                     value={categoryFilter}
@@ -786,6 +810,11 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
                                                 key={expense.id}
                                                 ref={(node) => {
                                                     expenseRowRefs.current[expense.id] = node;
+                                                }}
+                                                onDoubleClick={(event) => {
+                                                    const target = event.target as HTMLElement;
+                                                    if (editing || target.closest("button, input, select, textarea")) return;
+                                                    startEdit(expense);
                                                 }}
                                                 className={[
                                                     "grid grid-cols-[minmax(250px,1.75fr)_135px_95px_95px_145px] gap-0 px-3.5 py-2 transition hover:bg-white/[0.55]",

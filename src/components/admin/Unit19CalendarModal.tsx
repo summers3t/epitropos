@@ -363,6 +363,8 @@ export default function Unit19CalendarModal({
     const undoActionRef = useRef<CalendarUndoAction | null>(null);
     const undoTimerRef = useRef<number | null>(null);
     const itemClickTimerRef = useRef<number | null>(null);
+    const suppressItemClickRef = useRef(false);
+    const dragClickReleaseTimerRef = useRef<number | null>(null);
 
     const loadCalendar = useCallback(async () => {
         setLoading(true);
@@ -464,10 +466,13 @@ export default function Unit19CalendarModal({
         return items.find((item) => item.id === selectedItemId) ?? null;
     }, [items, selectedItemId]);
 
+    const hasActiveFilters = quickFilter !== "all" || typeFilter !== "all" || query.trim().length > 0;
+
     useEffect(() => {
         return () => {
             if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
             if (itemClickTimerRef.current) window.clearTimeout(itemClickTimerRef.current);
+            if (dragClickReleaseTimerRef.current) window.clearTimeout(dragClickReleaseTimerRef.current);
             const pending = undoActionRef.current;
             if (pending?.commit) void pending.commit();
         };
@@ -576,14 +581,16 @@ export default function Unit19CalendarModal({
     }
 
     function handleItemSelect(item: Unit19CalendarItem) {
+        if (suppressItemClickRef.current || draggingItemId) return;
         if (itemClickTimerRef.current) window.clearTimeout(itemClickTimerRef.current);
         itemClickTimerRef.current = window.setTimeout(() => {
-            setSelectedItemId(item.id);
+            if (!suppressItemClickRef.current) setSelectedItemId(item.id);
             itemClickTimerRef.current = null;
         }, 220);
     }
 
     function handleItemEdit(item: Unit19CalendarItem) {
+        if (suppressItemClickRef.current || draggingItemId) return;
         if (itemClickTimerRef.current) {
             window.clearTimeout(itemClickTimerRef.current);
             itemClickTimerRef.current = null;
@@ -592,14 +599,27 @@ export default function Unit19CalendarModal({
     }
 
     function handleItemDragStart(item: Unit19CalendarItem, event: DragEvent<HTMLDivElement>) {
+        if (itemClickTimerRef.current) {
+            window.clearTimeout(itemClickTimerRef.current);
+            itemClickTimerRef.current = null;
+        }
+        if (dragClickReleaseTimerRef.current) {
+            window.clearTimeout(dragClickReleaseTimerRef.current);
+            dragClickReleaseTimerRef.current = null;
+        }
+        suppressItemClickRef.current = true;
+        setSelectedItemId(null);
         event.dataTransfer.effectAllowed = "move";
         event.dataTransfer.setData("text/plain", item.id);
         setDraggingItemId(item.id);
-        setSelectedItemId(item.id);
     }
 
     function handleItemDragEnd() {
         setDraggingItemId(null);
+        dragClickReleaseTimerRef.current = window.setTimeout(() => {
+            suppressItemClickRef.current = false;
+            dragClickReleaseTimerRef.current = null;
+        }, 120);
     }
 
     async function moveItemToDate(
@@ -843,7 +863,21 @@ export default function Unit19CalendarModal({
                         />
 
                         <div className="mt-2.5 rounded-[16px] border border-white/[0.78] bg-white/[0.58] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
-                            <div className="mb-2 text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">Filters</div>
+                            <div className="mb-2 flex items-center justify-between gap-2">
+                                <div className="text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">Filters</div>
+                                <button
+                                    type="button"
+                                    disabled={!hasActiveFilters}
+                                    onClick={() => {
+                                        setQuickFilter("all");
+                                        setTypeFilter("all");
+                                        setQuery("");
+                                    }}
+                                    className="rounded-lg border border-[#ccd9e8] bg-white/[0.62] px-2 py-1 text-[10px] font-semibold text-[#607993] transition hover:bg-white hover:text-[#0b1623] disabled:cursor-not-allowed disabled:opacity-40"
+                                >
+                                    Clear
+                                </button>
+                            </div>
                             <div className="space-y-1.5">
                                 <select
                                     value={quickFilter}
@@ -1653,7 +1687,12 @@ function CalendarEditor({
     onDelete: () => void;
 }) {
     return (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-[#06101d]/[0.18] p-4 backdrop-blur-[2px]">
+        <div
+            className="absolute inset-0 z-20 flex items-center justify-center bg-[#06101d]/[0.18] p-4 backdrop-blur-[2px]"
+            onMouseDown={(event) => {
+                if (event.target === event.currentTarget) onCancel();
+            }}
+        >
             <div className="w-full max-w-[720px] rounded-[24px] border border-white/[0.78] bg-white/[0.88] p-4 shadow-[0_24px_90px_rgba(6,16,29,0.25),inset_0_1px_0_rgba(255,255,255,0.96)] backdrop-blur-2xl">
                 <div className="mb-3 flex items-start justify-between gap-3">
                     <div>

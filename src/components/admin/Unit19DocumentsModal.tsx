@@ -222,6 +222,8 @@ export default function Unit19DocumentsModal({ open, onClose, onSwitchPanel, pro
     const [statusFilter, setStatusFilter] = useState<DocumentStatusFilter>("all");
     const [query, setQuery] = useState("");
     const [editingDocument, setEditingDocument] = useState<DraftDocument | null>(null);
+    const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
+    const [pendingFocusDocumentId, setPendingFocusDocumentId] = useState<string | null>(null);
     const [categoryDraft, setCategoryDraft] = useState("");
     const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
     const [editingCategoryName, setEditingCategoryName] = useState("");
@@ -245,6 +247,8 @@ export default function Unit19DocumentsModal({ open, onClose, onSwitchPanel, pro
             setManagedPropertyId(property.id);
             setCategories(result.categories.map(mapCategory));
             setDocuments(result.documents.map(mapDocument));
+            setSelectedDocumentId(null);
+            setPendingFocusDocumentId(null);
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to load documents");
         } finally {
@@ -346,6 +350,20 @@ export default function Unit19DocumentsModal({ open, onClose, onSwitchPanel, pro
         });
     }, [categoryById, categoryFilter, query, sortedDocuments, statusFilter]);
 
+    const hasActiveFilters = categoryFilter !== "all" || statusFilter !== "all" || query.trim().length > 0;
+
+    useEffect(() => {
+        if (!pendingFocusDocumentId || !filteredDocuments.some((document) => document.id === pendingFocusDocumentId)) return;
+
+        const frame = window.requestAnimationFrame(() => {
+            documentRowRefs.current[pendingFocusDocumentId]?.scrollIntoView({ behavior: "smooth", block: "center" });
+            setSelectedDocumentId(pendingFocusDocumentId);
+            setPendingFocusDocumentId(null);
+        });
+
+        return () => window.cancelAnimationFrame(frame);
+    }, [filteredDocuments, pendingFocusDocumentId]);
+
     const stats = useMemo(() => {
         return {
             total: documents.length,
@@ -439,16 +457,13 @@ export default function Unit19DocumentsModal({ open, onClose, onSwitchPanel, pro
                 return [...current, uiDocument];
             });
             setEditingDocument(null);
+            setSelectedDocumentId(uiDocument.id);
 
             if (!originalDocument) {
                 setCategoryFilter("all");
                 setStatusFilter("all");
                 setQuery("");
-                window.requestAnimationFrame(() => {
-                    window.requestAnimationFrame(() => {
-                        documentRowRefs.current[uiDocument.id]?.scrollIntoView({ behavior: "smooth", block: "center" });
-                    });
-                });
+                setPendingFocusDocumentId(uiDocument.id);
             }
 
             if (originalDocument) {
@@ -772,7 +787,21 @@ export default function Unit19DocumentsModal({ open, onClose, onSwitchPanel, pro
                         </div>
 
                         <div className="mt-2.5 rounded-[16px] border border-white/[0.78] bg-white/[0.58] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
-                            <div className="mb-2 flex items-center justify-between gap-2"><div className="text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">Filters</div><button type="button" onClick={() => { setCategoryFilter("all"); setStatusFilter("all"); setQuery(""); }} className="rounded-lg border border-[#ccd9e8] bg-white/[0.62] px-2 py-1 text-[10px] font-semibold text-[#607993] transition hover:bg-white hover:text-[#0b1623]">Clear</button></div>
+                            <div className="mb-2 flex items-center justify-between gap-2">
+                                <div className="text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">Filters</div>
+                                <button
+                                    type="button"
+                                    disabled={!hasActiveFilters}
+                                    onClick={() => {
+                                        setCategoryFilter("all");
+                                        setStatusFilter("all");
+                                        setQuery("");
+                                    }}
+                                    className="rounded-lg border border-[#ccd9e8] bg-white/[0.62] px-2 py-1 text-[10px] font-semibold text-[#607993] transition hover:bg-white hover:text-[#0b1623] disabled:cursor-not-allowed disabled:opacity-40"
+                                >
+                                    Clear
+                                </button>
+                            </div>
                             <div className="space-y-1.5">
                                 <select
                                     value={categoryFilter}
@@ -864,15 +893,29 @@ export default function Unit19DocumentsModal({ open, onClose, onSwitchPanel, pro
                                         ref={(node) => {
                                             documentRowRefs.current[document.id] = node;
                                         }}
-                                        className="grid grid-cols-[52px_minmax(0,1.4fr)_160px_120px_120px] items-center border-b border-[#d8e8f6]/[0.72] px-4 py-2.5 text-[13px] transition hover:bg-white/[0.62]"
+                                        role="button"
+                                        tabIndex={0}
+                                        onClick={() => setSelectedDocumentId(document.id)}
+                                        onDoubleClick={(event) => {
+                                            const target = event.target as HTMLElement;
+                                            if (target.closest("button")) return;
+                                            setEditingDocument(document);
+                                        }}
+                                        onKeyDown={(event) => {
+                                            if (event.key === "Enter") setSelectedDocumentId(document.id);
+                                        }}
+                                        className={[
+                                            "grid grid-cols-[52px_minmax(0,1.4fr)_160px_120px_120px] items-center border-b border-[#d8e8f6]/[0.72] px-4 py-2.5 text-[13px] transition hover:bg-white/[0.62]",
+                                            selectedDocumentId === document.id ? "bg-[#2f80ed]/[0.07] ring-1 ring-inset ring-[#2f80ed]/[0.18]" : "",
+                                        ].join(" ")}
                                     >
                                         <div className="text-[#7a90a8]">#{document.order}</div>
-                                        <button type="button" onClick={() => setEditingDocument(document)} className="min-w-0 text-left">
+                                        <div className="min-w-0 text-left">
                                             <div className="truncate font-semibold text-[#0b1623]">{document.title}</div>
                                             <div className="mt-0.5 truncate text-[11.5px] text-[#7a90a8]">
                                                 {document.fileName || document.source || document.proves || "No source"}
                                             </div>
-                                        </button>
+                                        </div>
                                         <div className="truncate text-[#4e6880]">{categoryById.get(document.categoryId ?? "")?.name ?? "—"}</div>
                                         <div>
                                             <span className={`inline-flex rounded-full border px-2 py-1 text-[10.5px] font-semibold ${getStatusClasses(document.status)}`}>
@@ -882,18 +925,22 @@ export default function Unit19DocumentsModal({ open, onClose, onSwitchPanel, pro
                                         <div className="flex gap-1.5">
                                             <button
                                                 type="button"
-                                                onClick={() => setEditingDocument(document)}
+                                                onClick={(event) => {
+                                                    event.stopPropagation();
+                                                    setEditingDocument(document);
+                                                }}
                                                 className="rounded-lg border border-[#ccd9e8] bg-white/[0.64] px-2 py-1 text-[11px] font-semibold text-[#4e6880] transition hover:bg-white"
                                             >
                                                 Edit
                                             </button>
                                             <button
                                                 type="button"
-                                                onClick={() =>
+                                                onClick={(event) => {
+                                                    event.stopPropagation();
                                                     void patchDocument(document.id, {
                                                         status: document.status === "available" ? "watchlist" : "available",
-                                                    })
-                                                }
+                                                    });
+                                                }}
                                                 className="rounded-lg border border-[#ccd9e8] bg-white/[0.64] px-2 py-1 text-[11px] font-semibold text-[#4e6880] transition hover:bg-white"
                                             >
                                                 {document.status === "available" ? "Watch" : "Done"}
