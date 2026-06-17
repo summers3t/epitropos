@@ -878,7 +878,7 @@ export default function Unit19DocumentsModal({ open, onClose, onSwitchPanel, pro
                         </div>
 
                         <div className="h-[calc(100%-32px)] overflow-hidden rounded-[18px] border border-white/[0.78] bg-white/[0.48] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
-                            <div className="grid grid-cols-[52px_minmax(0,1.4fr)_160px_120px_120px] border-b border-[#d8e8f6]/[0.86] px-4 py-2 text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#7a90a8]">
+                            <div className="grid grid-cols-[52px_minmax(0,1.4fr)_160px_120px_180px] border-b border-[#d8e8f6]/[0.86] px-4 py-2 text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#7a90a8]">
                                 <div>#</div>
                                 <div>Document</div>
                                 <div>Category</div>
@@ -905,7 +905,7 @@ export default function Unit19DocumentsModal({ open, onClose, onSwitchPanel, pro
                                             if (event.key === "Enter") setSelectedDocumentId(document.id);
                                         }}
                                         className={[
-                                            "grid grid-cols-[52px_minmax(0,1.4fr)_160px_120px_120px] items-center border-b border-[#d8e8f6]/[0.72] px-4 py-2.5 text-[13px] transition hover:bg-white/[0.62]",
+                                            "grid grid-cols-[52px_minmax(0,1.4fr)_160px_120px_180px] items-center border-b border-[#d8e8f6]/[0.72] px-4 py-2.5 text-[13px] transition hover:bg-white/[0.62]",
                                             selectedDocumentId === document.id ? "bg-[#2f80ed]/[0.07] ring-1 ring-inset ring-[#2f80ed]/[0.18]" : "",
                                         ].join(" ")}
                                     >
@@ -944,6 +944,17 @@ export default function Unit19DocumentsModal({ open, onClose, onSwitchPanel, pro
                                                 className="rounded-lg border border-[#ccd9e8] bg-white/[0.64] px-2 py-1 text-[11px] font-semibold text-[#4e6880] transition hover:bg-white"
                                             >
                                                 {document.status === "available" ? "Watch" : "Done"}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={(event) => {
+                                                    event.stopPropagation();
+                                                    void deleteDocument(document.id);
+                                                }}
+                                                disabled={saving}
+                                                className="rounded-lg border border-[#d96969]/[0.26] bg-[#d96969]/[0.07] px-2 py-1 text-[11px] font-semibold text-[#9d2f2f] transition hover:bg-[#d96969]/[0.13] disabled:cursor-not-allowed disabled:opacity-50"
+                                            >
+                                                Delete
                                             </button>
                                         </div>
                                     </div>

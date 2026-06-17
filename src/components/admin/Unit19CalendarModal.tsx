@@ -627,6 +627,7 @@ export default function Unit19CalendarModal({
         date: string,
         targetItemId?: string,
         placement: "before" | "after" | "end" = "end",
+        targetTime?: string | null,
     ) {
         const movedItem = items.find((currentItem) => currentItem.id === itemId);
         if (!movedItem) {
@@ -651,7 +652,11 @@ export default function Unit19CalendarModal({
                   )
                 : targetDayItems.length;
 
-        const movedForTargetDate = { ...movedItem, date: targetDate };
+        const movedForTargetDate: Unit19CalendarItem = {
+            ...movedItem,
+            date: targetDate,
+            ...(targetTime !== undefined ? { time: targetTime ?? undefined } : {}),
+        };
         const nextTargetDayItems = [
             ...targetDayItems.slice(0, insertIndex),
             movedForTargetDate,
@@ -681,12 +686,18 @@ export default function Unit19CalendarModal({
 
         try {
             const savedItems = await Promise.all(
-                updates.map((item) =>
-                    updateManagedPropertyCalendarItem(item.id, {
+                updates.map((item) => {
+                    const patch: ManagedPropertyCalendarItemPatch = {
                         item_date: item.date,
                         sort_order: item.sortOrder,
-                    }),
-                ),
+                    };
+
+                    if (item.id === itemId && targetTime !== undefined) {
+                        patch.item_time = targetTime || null;
+                    }
+
+                    return updateManagedPropertyCalendarItem(item.id, patch);
+                }),
             );
 
             const savedUiItems = savedItems.map(dbItemToUi);
@@ -696,7 +707,7 @@ export default function Unit19CalendarModal({
                 current.map((currentItem) => savedMap.get(currentItem.id) ?? currentItem),
             );
             setSelectedDate(targetDate);
-            setSelectedItemId(itemId);
+            setSelectedItemId(null);
             queueUndo("Updated", movedItem.title, async () => {
                 const restoredItems = await Promise.all(
                     originalItems.map((item) => updateManagedPropertyCalendarItem(item.id, calendarItemToDbPatch(item))),
@@ -704,7 +715,7 @@ export default function Unit19CalendarModal({
                 const restoredMap = new Map(restoredItems.map((item) => [item.id, dbItemToUi(item)]));
                 setItems((current) => current.map((item) => restoredMap.get(item.id) ?? item));
                 setSelectedDate(sourceDate);
-                setSelectedItemId(itemId);
+                setSelectedItemId(null);
             });
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to move calendar item");
@@ -1175,7 +1186,7 @@ function CalendarRow({
             </button>
             <button type="button" onClick={onSelect} className="text-left">
                 <div className="text-[12px] font-semibold text-[#0b1623]">{formatDay(parseLocalDate(item.date))}</div>
-                <div className="mt-0.5 text-[10.5px] text-[#7a90a8]">{item.time || "Any time"}</div>
+                <div className="mt-0.5 text-[10.5px] text-[#7a90a8]">{item.time || "All day"}</div>
             </button>
             <button type="button" onClick={onSelect} className="min-w-0 text-left">
                 <div className="truncate text-[13px] font-semibold leading-tight text-[#0b1623]">{item.title}</div>
@@ -1217,7 +1228,13 @@ function WeekView({
     onSelectItem: (item: Unit19CalendarItem) => void;
     onEditItem: (item: Unit19CalendarItem) => void;
     onAddItem: (date: string, time?: string) => void;
-    onMoveItem: (itemId: string, date: string, targetItemId?: string, placement?: "before" | "after" | "end") => void;
+    onMoveItem: (
+        itemId: string,
+        date: string,
+        targetItemId?: string,
+        placement?: "before" | "after" | "end",
+        targetTime?: string | null,
+    ) => void;
     onDragStart: (item: Unit19CalendarItem, event: DragEvent<HTMLDivElement>) => void;
     onDragEnd: () => void;
 }) {
@@ -1275,7 +1292,20 @@ function WeekView({
                             const dayIso = toIsoDate(day);
                             const allDayItems = sortCalendarItemsForDay(items.filter((item) => item.date === dayIso && !item.time));
                             return (
-                                <div key={dayIso} className="min-h-[46px] border-r border-[#d8e8f6]/[0.82] p-1.5 last:border-r-0" onDoubleClick={() => onAddItem(dayIso)}>
+                                <div
+                                    key={dayIso}
+                                    className="min-h-[46px] border-r border-[#d8e8f6]/[0.82] p-1.5 transition last:border-r-0 hover:bg-[#2f80ed]/[0.045]"
+                                    onDoubleClick={() => onAddItem(dayIso)}
+                                    onDragOver={(event) => {
+                                        event.preventDefault();
+                                        event.dataTransfer.dropEffect = "move";
+                                    }}
+                                    onDrop={(event) => {
+                                        event.preventDefault();
+                                        const itemId = event.dataTransfer.getData("text/plain");
+                                        if (itemId) void onMoveItem(itemId, dayIso, undefined, "end", null);
+                                    }}
+                                >
                                     <div className="space-y-1">
                                         {allDayItems.slice(0, 2).map((item) => (
                                             <CalendarSlotItem key={item.id} item={item} draggingItemId={draggingItemId} onSelectItem={onSelectItem} onEditItem={onEditItem} onDragStart={onDragStart} onDragEnd={onDragEnd} />
@@ -1301,7 +1331,11 @@ function WeekView({
                                         onClick={() => onSelectDate(dayIso)}
                                         onDoubleClick={() => onAddItem(dayIso, slotTime)}
                                         onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "move"; }}
-                                        onDrop={(event) => { event.preventDefault(); const itemId = event.dataTransfer.getData("text/plain"); if (itemId) void onMoveItem(itemId, dayIso); }}
+                                        onDrop={(event) => {
+                                            event.preventDefault();
+                                            const itemId = event.dataTransfer.getData("text/plain");
+                                            if (itemId) void onMoveItem(itemId, dayIso, undefined, "end", slotTime);
+                                        }}
                                         className={[
                                             "min-h-[56px] border-r border-[#d8e8f6]/[0.82] p-1.5 transition last:border-r-0 hover:bg-[#2f80ed]/[0.045]",
                                             selectedDate === dayIso ? "bg-[#2f80ed]/[0.025]" : isWeekend(day) ? "bg-[#cfa090]/[0.025]" : "",
@@ -1378,7 +1412,13 @@ function MonthView({
     onSelectItem: (item: Unit19CalendarItem) => void;
     onEditItem: (item: Unit19CalendarItem) => void;
     onAddItem: (date: string) => void;
-    onMoveItem: (itemId: string, date: string, targetItemId?: string, placement?: "before" | "after" | "end") => void;
+    onMoveItem: (
+        itemId: string,
+        date: string,
+        targetItemId?: string,
+        placement?: "before" | "after" | "end",
+        targetTime?: string | null,
+    ) => void;
     onDragStart: (item: Unit19CalendarItem, event: DragEvent<HTMLDivElement>) => void;
     onDragEnd: () => void;
 }) {
@@ -1656,7 +1696,7 @@ function QuickItemDetails({
                             <span className={["rounded-full border px-2 py-0.5 text-[9.5px] font-semibold", statusClasses(item.status, isOverdue(item))].join(" ")}>{isOverdue(item) ? "Overdue" : statusLabels[item.status]}</span>
                         </div>
                         <h3 className="mt-2 truncate text-[16px] font-semibold text-[#0b1623]">{item.title}</h3>
-                        <div className="mt-1 text-[11.5px] text-[#607993]">{formatDay(parseLocalDate(item.date))}{item.time ? ` · ${item.time}` : " · Any time"}</div>
+                        <div className="mt-1 text-[11.5px] text-[#607993]">{formatDay(parseLocalDate(item.date))}{item.time ? ` · ${item.time}` : " · All day"}</div>
                         {item.note ? <p className="mt-2 line-clamp-2 text-[11.5px] leading-4 text-[#4e6880]">{item.note}</p> : null}
                     </div>
                     <button type="button" onClick={onClose} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-[#ccd9e8] bg-white/[0.62] text-[#607993] transition hover:bg-white hover:text-[#2060cc]">×</button>
@@ -1715,10 +1755,27 @@ function CalendarEditor({
                         <AdminDatePicker value={item.date} onChange={(date) => onChange({ ...item, date })} />
                     </label>
 
-                    <label>
-                        <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.12em] text-[#7a90a8]">Time optional</span>
-                        <input type="time" value={item.time ?? ""} onChange={(event) => onChange({ ...item, time: event.target.value })} className="w-full rounded-xl border border-[#ccd9e8] bg-white/[0.82] px-3 py-2 text-[13px] text-[#0b1623] outline-none focus:border-[#2f80ed]" />
-                    </label>
+                    <div>
+                        <div className="mb-1 flex items-center justify-between gap-2">
+                            <span className="block text-[10px] font-semibold uppercase tracking-[0.12em] text-[#7a90a8]">Time</span>
+                            <label className="flex cursor-pointer items-center gap-1.5 text-[10.5px] font-semibold text-[#4e6880]">
+                                <input
+                                    type="checkbox"
+                                    checked={!item.time}
+                                    onChange={(event) => onChange({ ...item, time: event.target.checked ? "" : "09:00" })}
+                                    className="h-3.5 w-3.5 rounded border-[#ccd9e8] accent-[#2f80ed]"
+                                />
+                                All day
+                            </label>
+                        </div>
+                        <input
+                            type="time"
+                            value={item.time ?? ""}
+                            disabled={!item.time}
+                            onChange={(event) => onChange({ ...item, time: event.target.value })}
+                            className="w-full rounded-xl border border-[#ccd9e8] bg-white/[0.82] px-3 py-2 text-[13px] text-[#0b1623] outline-none focus:border-[#2f80ed] disabled:cursor-not-allowed disabled:bg-white/[0.46] disabled:text-[#9ab0c4]"
+                        />
+                    </div>
 
                     <label>
                         <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.12em] text-[#7a90a8]">Type</span>
