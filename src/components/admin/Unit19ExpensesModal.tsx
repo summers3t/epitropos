@@ -203,6 +203,7 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
     const [undoAction, setUndoAction] = useState<ExpenseUndoAction | null>(null);
     const undoActionRef = useRef<ExpenseUndoAction | null>(null);
     const undoTimerRef = useRef<number | null>(null);
+    const expenseRowRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
     useEffect(() => {
         if (!open) return;
@@ -558,8 +559,19 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
                 sort_order: maxSortOrder + 1,
             });
 
+            setCategoryFilter("all");
+            setStatusFilter("active");
+            setQuery("");
             setExpenses((current) => [...current, created]);
             startEdit(created);
+
+            window.requestAnimationFrame(() => {
+                window.requestAnimationFrame(() => {
+                    const row = expenseRowRefs.current[created.id];
+                    row?.scrollIntoView({ behavior: "smooth", block: "center" });
+                    row?.querySelector<HTMLInputElement>("input")?.focus();
+                });
+            });
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to create expense");
         } finally {
@@ -772,6 +784,9 @@ export default function Unit19ExpensesModal({ open, onClose, onSwitchPanel, prop
                                         return (
                                             <div
                                                 key={expense.id}
+                                                ref={(node) => {
+                                                    expenseRowRefs.current[expense.id] = node;
+                                                }}
                                                 className={[
                                                     "grid grid-cols-[minmax(250px,1.75fr)_135px_95px_95px_145px] gap-0 px-3.5 py-2 transition hover:bg-white/[0.55]",
                                                     expense.status === "excluded" ? "opacity-55" : "",

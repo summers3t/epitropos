@@ -232,6 +232,7 @@ export default function Unit19DocumentsModal({ open, onClose, onSwitchPanel, pro
     const [undoAction, setUndoAction] = useState<DocumentUndoAction | null>(null);
     const undoActionRef = useRef<DocumentUndoAction | null>(null);
     const undoTimerRef = useRef<number | null>(null);
+    const documentRowRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
     const loadDocuments = useCallback(async () => {
         setLoading(true);
@@ -438,6 +439,17 @@ export default function Unit19DocumentsModal({ open, onClose, onSwitchPanel, pro
                 return [...current, uiDocument];
             });
             setEditingDocument(null);
+
+            if (!originalDocument) {
+                setCategoryFilter("all");
+                setStatusFilter("all");
+                setQuery("");
+                window.requestAnimationFrame(() => {
+                    window.requestAnimationFrame(() => {
+                        documentRowRefs.current[uiDocument.id]?.scrollIntoView({ behavior: "smooth", block: "center" });
+                    });
+                });
+            }
 
             if (originalDocument) {
                 queueUndo("Updated", originalDocument.title, async () => {
@@ -849,6 +861,9 @@ export default function Unit19DocumentsModal({ open, onClose, onSwitchPanel, pro
                                 {filteredDocuments.map((document) => (
                                     <div
                                         key={document.id}
+                                        ref={(node) => {
+                                            documentRowRefs.current[document.id] = node;
+                                        }}
                                         className="grid grid-cols-[52px_minmax(0,1.4fr)_160px_120px_120px] items-center border-b border-[#d8e8f6]/[0.72] px-4 py-2.5 text-[13px] transition hover:bg-white/[0.62]"
                                     >
                                         <div className="text-[#7a90a8]">#{document.order}</div>
@@ -1115,6 +1130,7 @@ function DocumentEditor({
                     <div className="grid gap-3 md:grid-cols-2">
                         <Field label="Title">
                             <input
+                                autoFocus={!document.id}
                                 value={document.title}
                                 onChange={(event) => onChange({ ...document, title: event.target.value })}
                                 className="w-full rounded-xl border border-[#ccd9e8] bg-white/[0.82] px-3 py-2 text-[13px] text-[#0b1623] outline-none focus:border-[#2f80ed]"

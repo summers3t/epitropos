@@ -362,6 +362,7 @@ export default function Unit19CalendarModal({
     const [undoAction, setUndoAction] = useState<CalendarUndoAction | null>(null);
     const undoActionRef = useRef<CalendarUndoAction | null>(null);
     const undoTimerRef = useRef<number | null>(null);
+    const itemClickTimerRef = useRef<number | null>(null);
 
     const loadCalendar = useCallback(async () => {
         setLoading(true);
@@ -466,6 +467,7 @@ export default function Unit19CalendarModal({
     useEffect(() => {
         return () => {
             if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
+            if (itemClickTimerRef.current) window.clearTimeout(itemClickTimerRef.current);
             const pending = undoActionRef.current;
             if (pending?.commit) void pending.commit();
         };
@@ -563,6 +565,7 @@ export default function Unit19CalendarModal({
     }
 
     function startEdit(item: Unit19CalendarItem) {
+        setSelectedItemId(null);
         setDraftItem({
             ...item,
             time: item.time ?? "",
@@ -570,6 +573,22 @@ export default function Unit19CalendarModal({
             location: item.location ?? "",
             linkedText: linkedRecordsToText(item.linkedRecords),
         });
+    }
+
+    function handleItemSelect(item: Unit19CalendarItem) {
+        if (itemClickTimerRef.current) window.clearTimeout(itemClickTimerRef.current);
+        itemClickTimerRef.current = window.setTimeout(() => {
+            setSelectedItemId(item.id);
+            itemClickTimerRef.current = null;
+        }, 220);
+    }
+
+    function handleItemEdit(item: Unit19CalendarItem) {
+        if (itemClickTimerRef.current) {
+            window.clearTimeout(itemClickTimerRef.current);
+            itemClickTimerRef.current = null;
+        }
+        startEdit(item);
     }
 
     function handleItemDragStart(item: Unit19CalendarItem, event: DragEvent<HTMLDivElement>) {
@@ -902,8 +921,8 @@ export default function Unit19CalendarModal({
                             <AgendaView
                                 items={filteredItems}
                                 selectedItemId={selectedItem?.id ?? null}
-                                onSelect={(item) => setSelectedItemId(item.id)}
-                                onEdit={startEdit}
+                                onSelect={handleItemSelect}
+                                onEdit={handleItemEdit}
                                 onDone={markDone}
                             />
                         ) : null}
@@ -914,8 +933,8 @@ export default function Unit19CalendarModal({
                                 selectedDate={selectedDate}
                                 draggingItemId={draggingItemId}
                                 onSelectDate={setSelectedDate}
-                                onSelectItem={(item) => setSelectedItemId(item.id)}
-                                onEditItem={startEdit}
+                                onSelectItem={handleItemSelect}
+                                onEditItem={handleItemEdit}
                                 onAddItem={(date, time) => setDraftItem(blankItem(date, time))}
                                 onMoveItem={moveItemToDate}
                                 onDragStart={handleItemDragStart}
@@ -929,8 +948,8 @@ export default function Unit19CalendarModal({
                                 selectedDate={selectedDate}
                                 draggingItemId={draggingItemId}
                                 onSelectDate={setSelectedDate}
-                                onSelectItem={(item) => setSelectedItemId(item.id)}
-                                onEditItem={startEdit}
+                                onSelectItem={handleItemSelect}
+                                onEditItem={handleItemEdit}
                                 onAddItem={(date) => setDraftItem(blankItem(date))}
                                 onMoveItem={moveItemToDate}
                                 onDragStart={handleItemDragStart}
@@ -1506,14 +1525,19 @@ function MiniDateNavigator({
 
     return (
         <div className="mt-2.5 rounded-[16px] border border-white/[0.78] bg-white/[0.58] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
-            <div className="mb-2 text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">Date navigator</div>
-            <div className="mb-2 grid grid-cols-[28px_minmax(96px,1fr)_66px_28px] items-center gap-1.5">
-                <button type="button" onClick={() => moveMonth(-1)} aria-label="Previous month" className="flex h-7 w-7 items-center justify-center rounded-lg border border-[#ccd9e8] bg-white/[0.58] text-[#607993] transition hover:bg-white/[0.88] hover:text-[#2060cc]">‹</button>
+            <div className="mb-2 flex items-center justify-between gap-2">
+                <div className="text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">Date navigator</div>
+                <div className="flex shrink-0 items-center gap-1">
+                    <button type="button" onClick={() => moveMonth(-1)} aria-label="Previous month" className="flex h-7 w-7 items-center justify-center rounded-lg border border-[#ccd9e8] bg-white/[0.58] text-[#607993] transition hover:-translate-y-0.5 hover:bg-white/[0.88] hover:text-[#2060cc] active:scale-[0.96]">‹</button>
+                    <button type="button" onClick={() => moveMonth(1)} aria-label="Next month" className="flex h-7 w-7 items-center justify-center rounded-lg border border-[#ccd9e8] bg-white/[0.58] text-[#607993] transition hover:-translate-y-0.5 hover:bg-white/[0.88] hover:text-[#2060cc] active:scale-[0.96]">›</button>
+                </div>
+            </div>
+            <div className="mb-2 grid grid-cols-[minmax(0,1fr)_76px] items-center gap-1.5">
                 <div className="relative min-w-0">
                     <select
                         value={selected.getMonth()}
                         onChange={(event) => setMonth(Number(event.target.value))}
-                        className="h-7 w-full appearance-none rounded-lg border border-[#ccd9e8] bg-white/[0.72] pl-2.5 pr-8 text-[10.5px] font-semibold text-[#0b1623] outline-none focus:border-[#2f80ed]"
+                        className="h-8 w-full appearance-none rounded-lg border border-[#ccd9e8] bg-white/[0.72] pl-2.5 pr-8 text-[10.5px] font-semibold text-[#0b1623] outline-none transition focus:border-[#2f80ed] focus:ring-2 focus:ring-[#2f80ed]/[0.10]"
                     >
                         {monthLabels.map((label, index) => <option key={label} value={index}>{label}</option>)}
                     </select>
@@ -1525,7 +1549,7 @@ function MiniDateNavigator({
                     <select
                         value={selected.getFullYear()}
                         onChange={(event) => setYear(Number(event.target.value))}
-                        className="h-7 w-full appearance-none rounded-lg border border-[#ccd9e8] bg-white/[0.72] pl-2 pr-7 text-[10px] font-semibold text-[#0b1623] outline-none focus:border-[#2f80ed]"
+                        className="h-8 w-full appearance-none rounded-lg border border-[#ccd9e8] bg-white/[0.72] pl-2 pr-7 text-[10px] font-semibold text-[#0b1623] outline-none transition focus:border-[#2f80ed] focus:ring-2 focus:ring-[#2f80ed]/[0.10]"
                     >
                         {years.map((year) => <option key={year} value={year}>{year}</option>)}
                     </select>
@@ -1533,7 +1557,6 @@ function MiniDateNavigator({
                         <path d="m6 8 4 4 4-4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                 </div>
-                <button type="button" onClick={() => moveMonth(1)} aria-label="Next month" className="flex h-7 w-7 items-center justify-center rounded-lg border border-[#ccd9e8] bg-white/[0.58] text-[#607993] transition hover:bg-white/[0.88] hover:text-[#2060cc]">›</button>
             </div>
             <div className="grid grid-cols-[20px_repeat(7,minmax(0,1fr))] text-center">
                 <div className="text-[8px] font-semibold text-[#9aaabd]">#</div>
