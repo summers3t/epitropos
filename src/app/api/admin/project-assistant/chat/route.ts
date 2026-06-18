@@ -4,7 +4,12 @@ import {
     assertProjectAssistantAccess,
     buildProjectAssistantContext,
 } from "@/lib/admin/projectAssistantContext.server";
+import { selectProjectAssistantContext } from "@/lib/admin/projectAssistantContextSelection";
 import { buildProjectAssistantInstructions } from "@/lib/admin/projectAssistantPrompt";
+import {
+    requestTropoCompletion,
+    TropoProviderError,
+} from "@/lib/admin/tropoAiProvider.server";
 
 type ChatRole = "user" | "assistant";
 
@@ -13,25 +18,15 @@ type ChatMessage = {
     content: string;
 };
 
-type OpenAIResponsePayload = {
-    output?: Array<{
-        type?: string;
-        content?: Array<{
-            type?: string;
-            text?: string;
-            refusal?: string;
-        }>;
-    }>;
-    error?: {
-        message?: string;
-    };
-};
+const MAX_HISTORY_MESSAGES = 10;
+const MAX_MESSAGE_CHARACTERS = 2400;
+const MAX_HISTORY_CHARACTERS = 5000;
 
 function normalizeMessages(value: unknown): ChatMessage[] {
     if (!Array.isArray(value)) return [];
 
-    return value
-        .slice(-16)
+    const validMessages = value
+        .slice(-MAX_HISTORY_MESSAGES)
         .map((item) => {
             if (typeof item !== "object" || item === null) return null;
 
@@ -43,30 +38,27 @@ function normalizeMessages(value: unknown): ChatMessage[] {
 
             return {
                 role,
-                content: content.slice(0, 6000),
+                content: content.slice(0, MAX_MESSAGE_CHARACTERS),
             } satisfies ChatMessage;
         })
         .filter((message): message is ChatMessage => message !== null);
-}
 
-function extractResponseText(payload: OpenAIResponsePayload) {
-    const parts: string[] = [];
+    const selected: ChatMessage[] = [];
+    let characterCount = 0;
 
-    for (const item of payload.output ?? []) {
-        if (item.type !== "message") continue;
+    for (let index = validMessages.length - 1; index >= 0; index -= 1) {
+        const message = validMessages[index];
+        if (!message) continue;
 
-        for (const content of item.content ?? []) {
-            if (content.type === "output_text" && content.text) {
-                parts.push(content.text);
-            }
+        const remainingCharacters = MAX_HISTORY_CHARACTERS - characterCount;
+        if (remainingCharacters <= 0) break;
 
-            if (content.type === "refusal" && content.refusal) {
-                parts.push(content.refusal);
-            }
-        }
+        const content = message.content.slice(-remainingCharacters);
+        selected.unshift({ ...message, content });
+        characterCount += content.length;
     }
 
-    return parts.join("\n\n").trim();
+    return selected;
 }
 
 export async function POST(request: Request) {
@@ -95,7 +87,9 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Invalid project slug" }, { status: 400 });
     }
 
-    if (messages.length === 0 || messages[messages.length - 1]?.role !== "user") {
+    const latestMessage = messages[messages.length - 1];
+
+    if (!latestMessage || latestMessage.role !== "user") {
         return NextResponse.json({ error: "A user message is required" }, { status: 400 });
     }
 
@@ -105,67 +99,23 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Project access denied" }, { status: 403 });
     }
 
-    const apiKey = process.env.OPENAI_API_KEY;
-
-    if (!apiKey) {
-        return NextResponse.json(
-            {
-                error:
-                    "Tropo is installed, but OPENAI_API_KEY is not configured on this environment.",
-            },
-            { status: 503 },
-        );
-    }
-
     try {
-        const projectContext = await buildProjectAssistantContext(supabase, projectSlug);
-        const model = process.env.OPENAI_PROJECT_ASSISTANT_MODEL?.trim() || "gpt-5.4-mini";
-
-        const openAIResponse = await fetch("https://api.openai.com/v1/responses", {
-            method: "POST",
-            headers: {
-                Authorization: `Bearer ${apiKey}`,
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                model,
-                instructions: buildProjectAssistantInstructions(projectContext),
-                input: messages.map((message) => ({
-                    role: message.role,
-                    content: message.content,
-                })),
-                reasoning: { effort: "low" },
-                max_output_tokens: 1400,
-                store: false,
-            }),
-            cache: "no-store",
+        const fullProjectContext = await buildProjectAssistantContext(supabase, projectSlug);
+        const selectedProjectContext = selectProjectAssistantContext(
+            fullProjectContext,
+            latestMessage.content,
+        );
+        const completion = await requestTropoCompletion({
+            instructions: buildProjectAssistantInstructions(selectedProjectContext),
+            messages,
         });
 
-        const payload = (await openAIResponse.json()) as OpenAIResponsePayload;
-
-        if (!openAIResponse.ok) {
-            const providerMessage = payload.error?.message;
-            return NextResponse.json(
-                {
-                    error: providerMessage
-                        ? `OpenAI request failed: ${providerMessage}`
-                        : "OpenAI request failed",
-                },
-                { status: openAIResponse.status },
-            );
-        }
-
-        const reply = extractResponseText(payload);
-
-        if (!reply) {
-            return NextResponse.json(
-                { error: "Tropo returned an empty response" },
-                { status: 502 },
-            );
-        }
-
         return NextResponse.json(
-            { reply, model },
+            {
+                reply: completion.reply,
+                model: completion.model,
+                provider: completion.provider,
+            },
             {
                 status: 200,
                 headers: {
@@ -174,6 +124,23 @@ export async function POST(request: Request) {
             },
         );
     } catch (error) {
+        if (error instanceof TropoProviderError) {
+            return NextResponse.json(
+                {
+                    error: error.message,
+                    provider: error.provider,
+                    retryAfterSeconds: error.retryAfterSeconds,
+                },
+                {
+                    status: error.status,
+                    headers:
+                        error.retryAfterSeconds === null
+                            ? undefined
+                            : { "Retry-After": String(Math.ceil(error.retryAfterSeconds)) },
+                },
+            );
+        }
+
         return NextResponse.json(
             {
                 error:
