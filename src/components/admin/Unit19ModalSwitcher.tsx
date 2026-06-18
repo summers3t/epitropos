@@ -1,9 +1,9 @@
 "use client";
 
-export type Unit19PanelKey = "realEstate" | "expenses" | "documents" | "income" | "calendar";
+export type Unit19PanelKey = "realEstate" | "expenses" | "documents" | "income" | "calendar" | "tropo";
 
 type Props = {
-    activePanel: Unit19PanelKey;
+    activePanel?: Unit19PanelKey | null;
     onSwitchPanel?: (panel: Unit19PanelKey) => void;
     incomeLabel?: string;
     showRealEstate?: boolean;
@@ -40,9 +40,15 @@ const panels: Array<{ key: Unit19PanelKey; label: string; className: string; act
         className: "border-[#8a65cc]/[0.24] bg-[#8a65cc]/[0.07] text-[#5e38a0] hover:border-[#8a65cc]/[0.38] hover:bg-[#8a65cc]/[0.13]",
         activeClassName: "border-[#8a65cc]/[0.40] bg-[#8a65cc]/[0.15] text-[#0f1c2e] shadow-[0_10px_24px_rgba(138,101,204,0.14)]",
     },
+    {
+        key: "tropo",
+        label: "Tropo",
+        className: "border-[#9c63d8]/[0.25] bg-[#9c63d8]/[0.08] text-[#6c3ca7] hover:border-[#9c63d8]/[0.40] hover:bg-[#9c63d8]/[0.14]",
+        activeClassName: "border-[#9c63d8]/[0.42] bg-[#9c63d8]/[0.16] text-[#0f1c2e] shadow-[0_10px_24px_rgba(125,83,188,0.16)]",
+    },
 ];
 
-export default function Unit19ModalSwitcher({ activePanel, onSwitchPanel, incomeLabel = "Budget", showRealEstate = false }: Props) {
+export default function Unit19ModalSwitcher({ activePanel = null, onSwitchPanel, incomeLabel = "Budget", showRealEstate = false }: Props) {
     if (!onSwitchPanel) return null;
 
     return (

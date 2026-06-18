@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AdminDatePicker from "@/components/admin/AdminDatePicker";
 import {
-    unit19FocusNotes,
     unit19KeyMetrics,
     unit19RoadmapStages,
 } from "@/lib/admin/unit19RoadmapData";
@@ -29,7 +28,8 @@ import Unit19ExpensesModal from "@/components/admin/Unit19ExpensesModal";
 import Unit19DocumentsModal from "@/components/admin/Unit19DocumentsModal";
 import Unit19IncomeModal from "@/components/admin/Unit19IncomeModal";
 import Unit19CalendarModal from "@/components/admin/Unit19CalendarModal";
-import type { Unit19PanelKey } from "@/components/admin/Unit19ModalSwitcher";
+import ProjectTropoModal, { type ProjectTropoSnapshot } from "@/components/admin/ProjectTropoModal";
+import Unit19ModalSwitcher, { type Unit19PanelKey } from "@/components/admin/Unit19ModalSwitcher";
 
 type FilterMode = "all" | "current" | "upcoming" | "completed";
 type FocusStatus = Exclude<FilterMode, "all">;
@@ -42,7 +42,6 @@ type PendingDeletionRecord = {
 };
 
 const BACKGROUND_IMAGE = "/images/unit19-roadmap-bg.jpg";
-const FOOTER_IMAGE = "/images/unit19-roadmap-footer.jpg";
 const PROPERTY_SLUG = "unit-19";
 
 type Unit19RoadmapTask = ManagedPropertyRoadmapTask;
@@ -191,20 +190,6 @@ const IconCollapse = ({ c = "w-3.5 h-3.5" }: { c?: string }) => (
         <path d="M21 8l-5-5" />
         <path d="M3 16l5 5" />
         <path d="M21 16l-5 5" />
-    </svg>
-);
-
-const IconExternal = ({ c = "w-3.5 h-3.5" }: { c?: string }) => (
-    <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-        <polyline points="15 3 21 3 21 9" />
-        <line x1="10" y1="14" x2="21" y2="3" />
-    </svg>
-);
-
-const IconBulb = ({ c = "w-4 h-4" }: { c?: string }) => (
-    <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M9 18h6M10 22h4M12 2a7 7 0 0 1 7 7c0 2.5-1.3 4.7-3.3 5.9L15 17H9l-.7-2.1A7 7 0 0 1 5 9a7 7 0 0 1 7-7z" />
     </svg>
 );
 
@@ -372,6 +357,7 @@ export default function Unit19RoadmapWorkspace({
     const [documentsOpen, setDocumentsOpen] = useState(false);
     const [incomeOpen, setIncomeOpen] = useState(false);
     const [calendarOpen, setCalendarOpen] = useState(false);
+    const [tropoOpen, setTropoOpen] = useState(false);
     const pendingDeletionRef = useRef<PendingDeletionRecord | null>(null);
     const [pendingDeletionLabel, setPendingDeletionLabel] = useState<string | null>(null);
     const rearrangingTasks = rearrangeMode && expandedStageIds.size > 0;
@@ -382,6 +368,7 @@ export default function Unit19RoadmapWorkspace({
         setDocumentsOpen(panel === "documents");
         setIncomeOpen(panel === "income");
         setCalendarOpen(panel === "calendar");
+        setTropoOpen(panel === "tropo");
     }, []);
 
     const showRealEstatePanel = projectSlug === "unit-19";
@@ -540,6 +527,30 @@ export default function Unit19RoadmapWorkspace({
     }, [projectLabel, projectSlug, stages, taskTotals.active]);
 
     const progressPercent = Math.round((taskTotals.done / Math.max(taskTotals.total, 1)) * 100);
+
+    const tropoSnapshot = useMemo<ProjectTropoSnapshot>(() => {
+        const today = toIsoDate(new Date());
+        const allTasks = stages.flatMap((stage) => stage.tasks);
+        const openTasks = allTasks.filter((task) => !["done", "dropped"].includes(task.status));
+        const nextDatedTask = openTasks
+            .filter((task) => task.due_date && task.due_date >= today)
+            .sort((a, b) => String(a.due_date).localeCompare(String(b.due_date)))[0];
+        const currentStage =
+            stages.find((stage) => stage.status === "current") ??
+            stages.find((stage) => stage.tasks.some((task) => task.status === "in_progress")) ??
+            stages[0];
+
+        return {
+            progressPercent,
+            totalStages: stages.length,
+            currentStageTitle: currentStage?.title ?? "Roadmap setup",
+            doneTasks: taskTotals.done,
+            activeTasks: taskTotals.active,
+            totalTasks: taskTotals.total,
+            overdueTasks: openTasks.filter((task) => task.due_date && task.due_date < today).length,
+            nextDueDate: nextDatedTask?.due_date ?? null,
+        };
+    }, [progressPercent, stages, taskTotals.active, taskTotals.done, taskTotals.total]);
 
     function replaceTaskInState(task: Unit19RoadmapTask) {
         setStages((current) =>
@@ -1171,14 +1182,25 @@ export default function Unit19RoadmapWorkspace({
                         <div className="pointer-events-none absolute right-10 top-8 h-56 w-56 rounded-full bg-[#2f80ed]/[0.05] blur-3xl" />
 
                         <div className="relative p-7 md:p-9">
-                            <div className="mb-5 flex flex-wrap items-center gap-2">
-                                <span className="rounded-full border border-[#2f80ed]/[0.22] bg-[#2f80ed]/[0.09] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#2060cc]">
-                                    {heroBadge}
-                                </span>
-                                <span className="text-[#b8c9d8]">/</span>
-                                <span className="rounded-full border border-black/[0.08] bg-white/[0.52] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#7a90a8]">
-                                    Private Workspace
-                                </span>
+                            <div className="mb-5 flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <span className="rounded-full border border-[#2f80ed]/[0.22] bg-[#2f80ed]/[0.09] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#2060cc]">
+                                        {heroBadge}
+                                    </span>
+                                    <span className="text-[#b8c9d8]">/</span>
+                                    <span className="rounded-full border border-black/[0.08] bg-white/[0.52] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#7a90a8]">
+                                        Private Workspace
+                                    </span>
+                                </div>
+
+                                <div className="max-w-full overflow-x-auto rounded-[15px] xl:max-w-[720px]">
+                                    <Unit19ModalSwitcher
+                                        activePanel={null}
+                                        onSwitchPanel={switchPanel}
+                                        incomeLabel="Budget"
+                                        showRealEstate={showRealEstatePanel}
+                                    />
+                                </div>
                             </div>
 
                             <h1 className="font-display text-[38px] font-normal leading-[0.98] tracking-[-0.025em] text-[#0b1623] md:text-[54px]">
@@ -1268,50 +1290,6 @@ export default function Unit19RoadmapWorkspace({
                                         </button>
                                     );
                                 })}
-
-                                <span className="mx-1 hidden h-7 w-px bg-[#ccd9e8]/80 sm:block" />
-
-                                {showRealEstatePanel ? (
-                                    <button
-                                        type="button"
-                                        onClick={() => switchPanel("realEstate")}
-                                        className="relative overflow-hidden rounded-[12px] border border-[#0f2a47]/[0.22] bg-[#0f2a47]/[0.08] px-3 py-2 text-[11px] font-semibold whitespace-nowrap text-[#0f2a47] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-[#0f2a47]/[0.36] hover:bg-[#0f2a47]/[0.13] hover:text-[#0f1c2e] hover:shadow-[0_12px_30px_rgba(15,42,71,0.14)] active:scale-[0.96]"
-                                    >
-                                        Property
-                                    </button>
-                                ) : null}
-
-                                <button
-                                    type="button"
-                                    onClick={() => switchPanel("expenses")}
-                                    className="relative overflow-hidden rounded-[12px] border border-[#a68b4a]/[0.28] bg-[#a68b4a]/[0.10] px-3 py-2 text-[11px] font-semibold whitespace-nowrap text-[#7a6228] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-[#a68b4a]/[0.42] hover:bg-[#a68b4a]/[0.16] hover:text-[#0f1c2e] hover:shadow-[0_12px_30px_rgba(166,139,74,0.18)] active:scale-[0.96]"
-                                >
-                                    Expenses
-                                </button>
-
-                                <button
-                                    type="button"
-                                    onClick={() => switchPanel("documents")}
-                                    className="relative overflow-hidden rounded-[12px] border border-[#2f80ed]/[0.26] bg-[#2f80ed]/[0.09] px-3 py-2 text-[11px] font-semibold whitespace-nowrap text-[#1560bc] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-[#2f80ed]/[0.40] hover:bg-[#2f80ed]/[0.14] hover:text-[#0f1c2e] hover:shadow-[0_12px_30px_rgba(47,128,237,0.16)] active:scale-[0.96]"
-                                >
-                                    Documents
-                                </button>
-
-                                <button
-                                    type="button"
-                                    onClick={() => switchPanel("income")}
-                                    className="relative overflow-hidden rounded-[12px] border border-[#20a76b]/[0.24] bg-[#20a76b]/[0.08] px-3 py-2 text-[11px] font-semibold whitespace-nowrap text-[#0f7448] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-[#20a76b]/[0.34] hover:bg-[#20a76b]/[0.13] hover:text-[#0f1c2e] hover:shadow-[0_12px_30px_rgba(32,167,107,0.14)] active:scale-[0.96]"
-                                >
-                                    Budget
-                                </button>
-
-                                <button
-                                    type="button"
-                                    onClick={() => switchPanel("calendar")}
-                                    className="relative overflow-hidden rounded-[12px] border border-[#8a65cc]/[0.24] bg-[#8a65cc]/[0.08] px-3 py-2 text-[11px] font-semibold whitespace-nowrap text-[#5e38a0] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-[#8a65cc]/[0.34] hover:bg-[#8a65cc]/[0.13] hover:text-[#0f1c2e] hover:shadow-[0_12px_30px_rgba(138,101,204,0.14)] active:scale-[0.96]"
-                                >
-                                    Calendar
-                                </button>
                             </div>
                         </div>
 
@@ -1857,79 +1835,6 @@ export default function Unit19RoadmapWorkspace({
                         </div>
                     </section>
 
-                    <section className="relative overflow-hidden rounded-[26px] border border-white/[0.80] bg-white/[0.58] shadow-[0_20px_70px_rgba(41,73,112,0.09),inset_0_1px_0_rgba(255,255,255,0.97)] backdrop-blur-2xl">
-                        <div
-                            className="pointer-events-none absolute inset-0 bg-[length:100%_auto] bg-center bg-no-repeat opacity-[0.51] saturate-[1.68] contrast-[1.58]"
-                            style={{ backgroundImage: `url('${FOOTER_IMAGE}')` }}
-                        />
-                        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-white/[0.76] via-white/[0.78] to-white/[0.46]" />
-                        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/[0.52] via-transparent to-white/[0.66]" />
-                        <div className="pointer-events-none absolute left-0 top-0 h-full w-[62%] bg-white/[0.36] backdrop-blur-[2px]" />
-
-                        <div className="relative grid gap-5 p-6 xl:grid-cols-[1fr_1fr_1fr_320px] xl:gap-0">
-                            <div className="col-span-full mb-1 flex items-center gap-2 xl:hidden">
-                                <IconBulb c="h-4 w-4 text-[#2060cc]" />
-                                <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">Notes & Tips</span>
-                            </div>
-
-                            <div className="xl:border-r xl:border-[#d8e8f6]/70 xl:pr-5">
-                                <div className="mb-1 hidden items-center gap-2 xl:flex">
-                                    <IconBulb c="h-4 w-4 text-[#2060cc]" />
-                                    <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">Notes & Tips</span>
-                                </div>
-                                <div className="mb-1 text-[12.5px] font-semibold text-[#0b1623]">Keep your documents organized</div>
-                                <p className="text-[12px] leading-[1.6] text-[#7a90a8]">{unit19FocusNotes[0]}</p>
-                            </div>
-
-                            <div className="xl:border-r xl:border-[#d8e8f6]/70 xl:px-5">
-                                <div className="mb-1 text-[12.5px] font-semibold text-[#0b1623]">Track everything in real time</div>
-                                <p className="text-[12px] leading-[1.6] text-[#7a90a8]">{unit19FocusNotes[1]}</p>
-                            </div>
-
-                            <div className="xl:border-r xl:border-[#d8e8f6]/70 xl:px-5">
-                                <div className="mb-1 text-[12.5px] font-semibold text-[#0b1623]">Stay ahead of risks</div>
-                                <p className="text-[12px] leading-[1.6] text-[#7a90a8]">{unit19FocusNotes[2]}</p>
-                            </div>
-
-                            <div className="xl:pl-5">
-                                <div className="mb-2 flex items-center gap-1.5">
-                                    <div className="h-1.5 w-1.5 rounded-full bg-[#2060cc]" />
-                                    <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#2060cc]">AI Workspace</span>
-                                </div>
-                                <p className="mb-3 text-[12px] leading-[1.6] text-[#4e6880]">
-                                    Use the project chat as the working layer for decisions, summaries and next-step planning.
-                                </p>
-                                <div className="space-y-2">
-                                    <a
-                                        href="https://chat.openai.com/"
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="flex items-center justify-between rounded-[11px] border border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.08] px-3.5 py-2.5 text-[12px] font-semibold text-[#1560bc] transition hover:-translate-y-0.5 hover:bg-[#2f80ed]/[0.13] active:scale-[0.98]"
-                                    >
-                                        <span>Open ChatGPT</span>
-                                        <IconExternal />
-                                    </a>
-                                    <button
-                                        type="button"
-                                        disabled
-                                        className="flex w-full cursor-not-allowed items-center justify-between rounded-[11px] border border-[#ccd9e8] bg-white/[0.52] px-3.5 py-2.5 text-left text-[12px] text-[#9ab0c4]"
-                                    >
-                                        <span>Export roadmap context</span>
-                                        <span className="rounded-full border border-[#ccd9e8] px-1.5 py-0.5 text-[9px] uppercase tracking-[0.12em] text-[#9ab0c4]">Soon</span>
-                                    </button>
-                                    <button
-                                        type="button"
-                                        disabled
-                                        className="flex w-full cursor-not-allowed items-center justify-between rounded-[11px] border border-[#ccd9e8] bg-white/[0.52] px-3.5 py-2.5 text-left text-[12px] text-[#9ab0c4]"
-                                    >
-                                        <span>Epitropos AI Assistant</span>
-                                        <span className="rounded-full border border-[#ccd9e8] px-1.5 py-0.5 text-[9px] uppercase tracking-[0.12em] text-[#9ab0c4]">Planned</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-
                     <Unit19RealEstateModal
                         propertySlug={projectSlug}
                         projectLabel={projectLabel}
@@ -1977,6 +1882,16 @@ export default function Unit19RoadmapWorkspace({
                             void loadRoadmap();
                         }}
                         onSwitchPanel={switchPanel}
+                    />
+
+                    <ProjectTropoModal
+                        propertySlug={projectSlug}
+                        projectLabel={projectLabel}
+                        open={tropoOpen}
+                        onClose={() => setTropoOpen(false)}
+                        onSwitchPanel={switchPanel}
+                        showRealEstate={showRealEstatePanel}
+                        snapshot={tropoSnapshot}
                     />
                 </main>
             </div>
