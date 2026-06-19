@@ -1,3 +1,9 @@
+import {
+    parseTropoAssistantTurn,
+    TROPO_ASSISTANT_TURN_JSON_SCHEMA,
+    type TropoAssistantTurn,
+} from "@/lib/admin/tropoActionSchemas";
+
 type TropoChatMessage = {
     role: "user" | "assistant";
     content: string;
@@ -25,6 +31,7 @@ export type TropoCompletionResult = {
     reply: string;
     provider: TropoProviderName;
     model: string;
+    proposedActions: TropoAssistantTurn["proposed_actions"];
 };
 
 export class TropoProviderError extends Error {
@@ -54,6 +61,20 @@ type ProviderConfig = {
     endpoint: string;
     model: string;
 };
+
+type ProviderRequestOptions = {
+    useStructuredFormat: boolean;
+};
+
+type ProviderSuccessResponse = {
+    text: string;
+};
+
+type ProviderStructuredFormatRetryResponse = {
+    shouldRetryWithoutStructuredFormat: true;
+};
+
+type ProviderResponse = ProviderSuccessResponse | ProviderStructuredFormatRetryResponse;
 
 function normalizeProvider(value: string | undefined): TropoProviderName {
     const normalized = value?.trim().toLowerCase() || "groq";
@@ -152,11 +173,27 @@ function providerLabel(provider: TropoProviderName) {
     return provider === "groq" ? "Groq" : "OpenAI";
 }
 
-export async function requestTropoCompletion(args: {
-    instructions: string;
-    messages: TropoChatMessage[];
-}): Promise<TropoCompletionResult> {
-    const config = readProviderConfig();
+function isStructuredFormatRejection(status: number, providerMessage: string | undefined) {
+    if (status !== 400 && status !== 422) return false;
+    const message = providerMessage?.toLowerCase() ?? "";
+    return (
+        message.includes("schema") ||
+        message.includes("structured") ||
+        message.includes("format") ||
+        message.includes("text") ||
+        message.includes("unsupported") ||
+        message.includes("invalid")
+    );
+}
+
+async function callProvider(
+    config: ProviderConfig,
+    args: {
+        instructions: string;
+        messages: TropoChatMessage[];
+    },
+    options: ProviderRequestOptions,
+): Promise<ProviderResponse> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 70_000);
 
@@ -168,10 +205,21 @@ export async function requestTropoCompletion(args: {
             content: message.content,
         })),
         reasoning: { effort: "low" },
-        max_output_tokens: 900,
+        max_output_tokens: 1200,
     };
 
-    // Groq's Responses API currently rejects the OpenAI `store` field.
+    if (options.useStructuredFormat) {
+        requestBody.text = {
+            format: {
+                type: "json_schema",
+                name: "tropo_assistant_turn",
+                schema: TROPO_ASSISTANT_TURN_JSON_SCHEMA,
+                strict: true,
+            },
+        };
+    }
+
+    // Groq's Responses API rejects OpenAI's `store` field.
     if (config.provider === "openai") {
         requestBody.store = false;
     }
@@ -204,6 +252,10 @@ export async function requestTropoCompletion(args: {
             const providerMessage = payload.error?.message?.trim();
             const label = providerLabel(config.provider);
 
+            if (options.useStructuredFormat && isStructuredFormatRejection(response.status, providerMessage)) {
+                return { shouldRetryWithoutStructuredFormat: true as const };
+            }
+
             if (response.status === 429) {
                 const retryText =
                     retryAfterSeconds === null
@@ -220,7 +272,7 @@ export async function requestTropoCompletion(args: {
             throw new TropoProviderError(
                 providerMessage
                     ? `${label} request failed: ${providerMessage}`
-                    : `${label} request failed with status ${response.status}.`,
+                    : `${label} request failed`,
                 {
                     status: response.status,
                     provider: config.provider,
@@ -228,39 +280,30 @@ export async function requestTropoCompletion(args: {
             );
         }
 
-        const reply = extractResponseText(payload);
+        const text = extractResponseText(payload);
 
-        if (!reply) {
-            throw new TropoProviderError("Tropo returned an empty response.", {
+        if (!text) {
+            throw new TropoProviderError(`${providerLabel(config.provider)} returned an empty response`, {
                 status: 502,
                 provider: config.provider,
             });
         }
 
-        return {
-            reply,
-            provider: config.provider,
-            model: config.model,
-        };
+        return { text };
     } catch (error) {
-        if (error instanceof TropoProviderError) {
-            throw error;
-        }
+        if (error instanceof TropoProviderError) throw error;
 
         if (error instanceof Error && error.name === "AbortError") {
-            throw new TropoProviderError(
-                `${providerLabel(config.provider)} did not respond within 70 seconds.`,
-                {
-                    status: 504,
-                    provider: config.provider,
-                },
-            );
+            throw new TropoProviderError(`${providerLabel(config.provider)} request timed out`, {
+                status: 504,
+                provider: config.provider,
+            });
         }
 
         throw new TropoProviderError(
             error instanceof Error
                 ? `${providerLabel(config.provider)} request failed: ${error.message}`
-                : `${providerLabel(config.provider)} request failed.`,
+                : `${providerLabel(config.provider)} request failed`,
             {
                 status: 502,
                 provider: config.provider,
@@ -269,4 +312,33 @@ export async function requestTropoCompletion(args: {
     } finally {
         clearTimeout(timeoutId);
     }
+}
+
+export async function requestTropoCompletion(args: {
+    instructions: string;
+    messages: TropoChatMessage[];
+}): Promise<TropoCompletionResult> {
+    const config = readProviderConfig();
+    let response = await callProvider(config, args, { useStructuredFormat: true });
+
+    if ("shouldRetryWithoutStructuredFormat" in response) {
+        response = await callProvider(config, args, { useStructuredFormat: false });
+    }
+
+    if (!("text" in response) || typeof response.text !== "string" || !response.text.trim()) {
+        throw new TropoProviderError(`${providerLabel(config.provider)} did not return a usable response`, {
+            status: 502,
+            provider: config.provider,
+        });
+    }
+
+    const responseText = response.text;
+    const parsed = parseTropoAssistantTurn(responseText);
+
+    return {
+        reply: parsed.reply,
+        proposedActions: parsed.proposed_actions,
+        provider: config.provider,
+        model: config.model,
+    };
 }

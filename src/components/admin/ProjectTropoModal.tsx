@@ -4,6 +4,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Unit19ModalSwitcher, {
     type Unit19PanelKey,
 } from "@/components/admin/Unit19ModalSwitcher";
+import {
+    getTropoActionTypeLabel,
+    validateTropoAction,
+    type TropoProposedAction,
+} from "@/lib/admin/tropoActionSchemas";
 
 export type ProjectTropoSnapshot = {
     progressPercent: number;
@@ -20,16 +25,34 @@ type Props = {
     open: boolean;
     onClose: () => void;
     onSwitchPanel?: (panel: Unit19PanelKey) => void;
+    onActionExecuted?: () => void;
     propertySlug: string;
     projectLabel: string;
     showRealEstate?: boolean;
     snapshot: ProjectTropoSnapshot;
 };
 
+type TropoActionCardState = {
+    id: string;
+    action: TropoProposedAction;
+    status: "proposed" | "editing" | "executing" | "executed" | "rejected" | "error";
+    editText: string;
+    error: string | null;
+    resultMessage: string | null;
+};
+
 type TropoMessage = {
     id: string;
     role: "user" | "assistant";
     content: string;
+    actions?: TropoActionCardState[];
+};
+
+type ExecuteResponse = {
+    result?: {
+        message?: string;
+    };
+    error?: string;
 };
 
 const QUICK_PROMPTS = [
@@ -50,6 +73,30 @@ function formatDisplayDate(value: string | null) {
     const [year, month, day] = value.split("-");
     if (!year || !month || !day) return value;
     return `${day}.${month}.${year}`;
+}
+
+function actionToEditText(action: TropoProposedAction) {
+    return JSON.stringify(action, null, 2);
+}
+
+function summarizePayload(payload: TropoProposedAction["payload"]) {
+    return Object.entries(payload)
+        .filter(([, value]) => value !== undefined)
+        .map(([key, value]) => ({
+            key,
+            value: value === null ? "—" : String(value),
+        }));
+}
+
+function createActionCards(actions: TropoProposedAction[]): TropoActionCardState[] {
+    return actions.map((action) => ({
+        id: action.id,
+        action,
+        status: "proposed",
+        editText: actionToEditText(action),
+        error: null,
+        resultMessage: null,
+    }));
 }
 
 function IconClose() {
@@ -100,11 +147,28 @@ function IconContext() {
     );
 }
 
+function IconCheck() {
+    return (
+        <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+            <path d="m20 6-11 11-5-5" />
+        </svg>
+    );
+}
+
+function IconEdit() {
+    return (
+        <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 20h9" />
+            <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+        </svg>
+    );
+}
+
 function welcomeMessage(projectLabel: string): TropoMessage {
     return {
         id: "welcome",
         role: "assistant",
-        content: `Аз съм Tropo — личният асистент за ${projectLabel}. Чета живите структурирани данни на проекта и мога да обобщавам напредъка, сроковете, рисковете, документите, бюджета и следващите действия. Тази версия е read-only: мога да предложа точна промяна, но още не я записвам автоматично.`,
+        content: `Аз съм Tropo — личният асистент за ${projectLabel}. Чета живите структурирани данни на проекта и мога да обобщавам напредъка, сроковете, рисковете, документите, бюджета и следващите действия. Вече мога да подготвям безопасни действия за задачи и календар, но записвам само след изрично одобрение.`,
     };
 }
 
@@ -112,6 +176,7 @@ export default function ProjectTropoModal({
     open,
     onClose,
     onSwitchPanel,
+    onActionExecuted,
     propertySlug,
     projectLabel,
     showRealEstate = false,
@@ -161,6 +226,25 @@ export default function ProjectTropoModal({
         scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
     }, [loading, messages, open]);
 
+    function updateActionCard(
+        messageId: string,
+        actionId: string,
+        patch: Partial<TropoActionCardState>,
+    ) {
+        setMessages((current) =>
+            current.map((message) => {
+                if (message.id !== messageId || !message.actions) return message;
+
+                return {
+                    ...message,
+                    actions: message.actions.map((card) =>
+                        card.id === actionId ? { ...card, ...patch } : card,
+                    ),
+                };
+            }),
+        );
+    }
+
     async function sendMessage(contentOverride?: string) {
         const content = (contentOverride ?? draft).trim();
         if (!content || loading) return;
@@ -192,20 +276,24 @@ export default function ProjectTropoModal({
                 }),
             });
 
-            const payload = (await response.json()) as { reply?: string; error?: string };
+            const payload = (await response.json()) as {
+                reply?: string;
+                proposedActions?: TropoProposedAction[];
+                error?: string;
+            };
 
             if (!response.ok || !payload.reply) {
                 throw new Error(payload.error || "Tropo did not return a response");
             }
 
-            setMessages((current) => [
-                ...current,
-                {
-                    id: createMessageId(),
-                    role: "assistant",
-                    content: payload.reply as string,
-                },
-            ]);
+            const assistantMessage: TropoMessage = {
+                id: createMessageId(),
+                role: "assistant",
+                content: payload.reply,
+                actions: createActionCards(payload.proposedActions ?? []),
+            };
+
+            setMessages((current) => [...current, assistantMessage]);
         } catch (requestError) {
             setError(
                 requestError instanceof Error
@@ -216,6 +304,98 @@ export default function ProjectTropoModal({
             setLoading(false);
             window.setTimeout(() => inputRef.current?.focus(), 50);
         }
+    }
+
+    async function approveAction(messageId: string, card: TropoActionCardState) {
+        let actionToExecute = card.action;
+
+        if (card.status === "editing") {
+            try {
+                const parsed = JSON.parse(card.editText) as unknown;
+                const validation = validateTropoAction(parsed);
+
+                if (!validation.ok) {
+                    updateActionCard(messageId, card.id, { error: validation.error });
+                    return;
+                }
+
+                actionToExecute = validation.action;
+            } catch (parseError) {
+                updateActionCard(messageId, card.id, {
+                    error: parseError instanceof Error ? parseError.message : "Invalid action JSON",
+                });
+                return;
+            }
+        }
+
+        updateActionCard(messageId, card.id, {
+            action: actionToExecute,
+            editText: actionToEditText(actionToExecute),
+            status: "executing",
+            error: null,
+            resultMessage: null,
+        });
+
+        try {
+            const response = await fetch("/api/admin/project-assistant/execute", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    projectSlug: propertySlug,
+                    action: actionToExecute,
+                }),
+            });
+
+            const payload = (await response.json()) as ExecuteResponse;
+
+            if (!response.ok || !payload.result) {
+                throw new Error(payload.error || "Failed to execute Tropo action");
+            }
+
+            updateActionCard(messageId, card.id, {
+                status: "executed",
+                error: null,
+                resultMessage: payload.result.message ?? "Action executed",
+            });
+            onActionExecuted?.();
+        } catch (executeError) {
+            updateActionCard(messageId, card.id, {
+                status: "error",
+                error: executeError instanceof Error ? executeError.message : "Failed to execute action",
+            });
+        } finally {
+            window.setTimeout(() => inputRef.current?.focus(), 50);
+        }
+    }
+
+    function rejectAction(messageId: string, card: TropoActionCardState) {
+        updateActionCard(messageId, card.id, {
+            status: "rejected",
+            error: null,
+            resultMessage: "Rejected",
+        });
+    }
+
+    function startEditAction(messageId: string, card: TropoActionCardState) {
+        updateActionCard(messageId, card.id, {
+            status: "editing",
+            editText: actionToEditText(card.action),
+            error: null,
+        });
+    }
+
+    function cancelEditAction(messageId: string, card: TropoActionCardState) {
+        updateActionCard(messageId, card.id, {
+            status: "proposed",
+            editText: actionToEditText(card.action),
+            error: null,
+        });
+    }
+
+    function changeActionEditText(messageId: string, actionId: string, editText: string) {
+        updateActionCard(messageId, actionId, { editText, error: null });
     }
 
     function clearConversation() {
@@ -251,7 +431,7 @@ export default function ProjectTropoModal({
                                 {projectLabel} Assistant
                             </h2>
                             <p className="mt-0.5 text-[11px] text-[#6f849d]">
-                                Live project context · read-only phase · explicit approval before future writes
+                                Live project context · proposed actions · approval before write
                             </p>
                         </div>
 
@@ -351,7 +531,7 @@ export default function ProjectTropoModal({
                         </div>
 
                         <div className="mt-2.5 rounded-[15px] border border-[#d8b95f]/[0.26] bg-[#d8b95f]/[0.08] px-3 py-2.5 text-[10.5px] leading-[1.5] text-[#725b16]">
-                            Sensitive credentials, AFM, IBAN, account numbers and direct contact details are excluded from the AI context.
+                            Safe writes are limited to Roadmap tasks and Calendar items. Delete, budget, document, expense and property writes are still locked.
                         </div>
                     </aside>
 
@@ -368,7 +548,7 @@ export default function ProjectTropoModal({
                                     >
                                         <div
                                             className={[
-                                                "max-w-[88%] rounded-[18px] border px-4 py-3 text-[12.5px] leading-[1.65] shadow-[0_12px_34px_rgba(41,73,112,0.07)] whitespace-pre-wrap sm:max-w-[78%]",
+                                                "max-w-[92%] rounded-[18px] border px-4 py-3 text-[12.5px] leading-[1.65] shadow-[0_12px_34px_rgba(41,73,112,0.07)] whitespace-pre-wrap sm:max-w-[82%]",
                                                 message.role === "user"
                                                     ? "border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.10] text-[#183e70]"
                                                     : "border-white/[0.84] bg-white/[0.72] text-[#24384e]",
@@ -381,6 +561,125 @@ export default function ProjectTropoModal({
                                                 </div>
                                             ) : null}
                                             {message.content}
+
+                                            {message.actions && message.actions.length > 0 ? (
+                                                <div className="mt-4 space-y-3 whitespace-normal">
+                                                    {message.actions.map((card) => {
+                                                        const payloadSummary = summarizePayload(card.action.payload);
+                                                        const locked = card.status === "executing" || card.status === "executed" || card.status === "rejected";
+
+                                                        return (
+                                                            <div
+                                                                key={card.id}
+                                                                className="rounded-[16px] border border-[#9c63d8]/[0.22] bg-[#f8f4ff]/[0.82] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.88)]"
+                                                            >
+                                                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                                                    <div>
+                                                                        <div className="inline-flex items-center gap-1.5 rounded-full border border-[#9c63d8]/[0.22] bg-white/[0.55] px-2.5 py-1 text-[8.5px] font-semibold uppercase tracking-[0.12em] text-[#6c3ca7]">
+                                                                            Proposed action · {getTropoActionTypeLabel(card.action.type)}
+                                                                        </div>
+                                                                        <div className="mt-2 text-[13px] font-semibold text-[#17263a]">{card.action.label}</div>
+                                                                        {card.action.reason ? (
+                                                                            <div className="mt-1 text-[10.5px] leading-[1.45] text-[#6f849d]">{card.action.reason}</div>
+                                                                        ) : null}
+                                                                    </div>
+                                                                    <div className={[
+                                                                        "rounded-full px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.10em]",
+                                                                        card.status === "executed"
+                                                                            ? "bg-[#1f9d64]/[0.12] text-[#157247]"
+                                                                            : card.status === "rejected"
+                                                                                ? "bg-[#8ca0b4]/[0.14] text-[#64798f]"
+                                                                                : card.status === "error"
+                                                                                    ? "bg-[#d96969]/[0.12] text-[#9d2f2f]"
+                                                                                    : "bg-[#2f80ed]/[0.10] text-[#2060cc]",
+                                                                    ].join(" ")}>{card.status}</div>
+                                                                </div>
+
+                                                                {card.status === "editing" ? (
+                                                                    <textarea
+                                                                        value={card.editText}
+                                                                        onChange={(event) => changeActionEditText(message.id, card.id, event.target.value)}
+                                                                        rows={10}
+                                                                        className="mt-3 w-full resize-y rounded-[13px] border border-[#d8e2ef] bg-white/[0.82] px-3 py-2 font-mono text-[11px] leading-[1.55] text-[#17263a] outline-none transition focus:border-[#9c63d8]/[0.42] focus:ring-2 focus:ring-[#9c63d8]/[0.12]"
+                                                                    />
+                                                                ) : (
+                                                                    <div className="mt-3 grid gap-1.5 sm:grid-cols-2">
+                                                                        {payloadSummary.map(({ key, value }) => (
+                                                                            <div key={key} className="rounded-[10px] border border-white/[0.74] bg-white/[0.56] px-2.5 py-1.5">
+                                                                                <div className="text-[8.5px] font-semibold uppercase tracking-[0.10em] text-[#8ca0b4]">{key}</div>
+                                                                                <div className="mt-0.5 break-words text-[10.5px] font-medium text-[#24384e]">{value}</div>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+
+                                                                {card.error ? (
+                                                                    <div className="mt-2 rounded-[11px] border border-[#d96969]/[0.24] bg-[#d96969]/[0.08] px-3 py-2 text-[10.5px] font-medium text-[#9d2f2f]">
+                                                                        {card.error}
+                                                                    </div>
+                                                                ) : null}
+
+                                                                {card.resultMessage ? (
+                                                                    <div className="mt-2 rounded-[11px] border border-[#1f9d64]/[0.20] bg-[#1f9d64]/[0.08] px-3 py-2 text-[10.5px] font-medium text-[#157247]">
+                                                                        {card.resultMessage}
+                                                                    </div>
+                                                                ) : null}
+
+                                                                <div className="mt-3 flex flex-wrap justify-end gap-2">
+                                                                    {card.status === "editing" ? (
+                                                                        <>
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => cancelEditAction(message.id, card)}
+                                                                                className="rounded-[11px] border border-[#ccd9e8] bg-white/[0.58] px-3 py-1.5 text-[10.5px] font-semibold text-[#607993] transition hover:-translate-y-0.5 hover:bg-white/[0.90] active:scale-[0.97]"
+                                                                            >
+                                                                                Cancel edit
+                                                                            </button>
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => void approveAction(message.id, card)}
+                                                                                className="inline-flex items-center gap-1.5 rounded-[11px] border border-[#1f9d64]/[0.22] bg-[#1f9d64] px-3 py-1.5 text-[10.5px] font-semibold text-white shadow-[0_10px_22px_rgba(31,157,100,0.18)] transition hover:-translate-y-0.5 active:scale-[0.97]"
+                                                                            >
+                                                                                <IconCheck />
+                                                                                Approve edited
+                                                                            </button>
+                                                                        </>
+                                                                    ) : (
+                                                                        <>
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => rejectAction(message.id, card)}
+                                                                                disabled={locked}
+                                                                                className="rounded-[11px] border border-[#ccd9e8] bg-white/[0.58] px-3 py-1.5 text-[10.5px] font-semibold text-[#607993] transition hover:-translate-y-0.5 hover:bg-white/[0.90] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-45"
+                                                                            >
+                                                                                Reject
+                                                                            </button>
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => startEditAction(message.id, card)}
+                                                                                disabled={locked}
+                                                                                className="inline-flex items-center gap-1.5 rounded-[11px] border border-[#9c63d8]/[0.22] bg-white/[0.58] px-3 py-1.5 text-[10.5px] font-semibold text-[#6c3ca7] transition hover:-translate-y-0.5 hover:bg-white/[0.90] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-45"
+                                                                            >
+                                                                                <IconEdit />
+                                                                                Edit
+                                                                            </button>
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => void approveAction(message.id, card)}
+                                                                                disabled={locked}
+                                                                                className="inline-flex items-center gap-1.5 rounded-[11px] border border-[#1f9d64]/[0.22] bg-[#1f9d64] px-3 py-1.5 text-[10.5px] font-semibold text-white shadow-[0_10px_22px_rgba(31,157,100,0.18)] transition hover:-translate-y-0.5 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-45"
+                                                                            >
+                                                                                <IconCheck />
+                                                                                Approve
+                                                                            </button>
+                                                                        </>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            ) : null}
                                         </div>
                                     </div>
                                 ))}
@@ -442,7 +741,7 @@ export default function ProjectTropoModal({
                                 </div>
                                 <div className="mt-1.5 flex items-center justify-between gap-3 px-1 text-[9.5px] text-[#8ca0b4]">
                                     <span>Enter to send · Shift+Enter for new line</span>
-                                    <span>Read-only assistant phase</span>
+                                    <span>Approve before write</span>
                                 </div>
                             </div>
                         </div>

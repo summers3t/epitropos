@@ -113,6 +113,7 @@ export async function POST(request: Request) {
         return NextResponse.json(
             {
                 reply: completion.reply,
+                proposedActions: completion.proposedActions,
                 model: completion.model,
                 provider: completion.provider,
             },

@@ -1890,6 +1890,9 @@ export default function Unit19RoadmapWorkspace({
                         open={tropoOpen}
                         onClose={() => setTropoOpen(false)}
                         onSwitchPanel={switchPanel}
+                        onActionExecuted={() => {
+                            void loadRoadmap();
+                        }}
                         showRealEstate={showRealEstatePanel}
                         snapshot={tropoSnapshot}
                     />
