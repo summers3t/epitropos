@@ -116,6 +116,7 @@ export async function POST(request: Request) {
                 proposedActions: completion.proposedActions,
                 model: completion.model,
                 provider: completion.provider,
+                usage: completion.usage,
             },
             {
                 status: 200,
@@ -131,6 +132,7 @@ export async function POST(request: Request) {
                     error: error.message,
                     provider: error.provider,
                     retryAfterSeconds: error.retryAfterSeconds,
+                    usage: error.usage,
                 },
                 {
                     status: error.status,

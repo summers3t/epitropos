@@ -21,6 +21,21 @@ export type ProjectTropoSnapshot = {
     nextDueDate: string | null;
 };
 
+export type ProjectTropoResolverTask = {
+    id: string;
+    title: string;
+    status: string;
+    priority: string;
+    dueDate: string | null;
+};
+
+export type ProjectTropoResolverStage = {
+    id: string;
+    title: string;
+    status: string;
+    tasks: ProjectTropoResolverTask[];
+};
+
 type Props = {
     open: boolean;
     onClose: () => void;
@@ -30,7 +45,10 @@ type Props = {
     projectLabel: string;
     showRealEstate?: boolean;
     snapshot: ProjectTropoSnapshot;
+    resolverStages: ProjectTropoResolverStage[];
 };
+
+type TaskFilterMode = "active" | "all";
 
 type TropoActionCardState = {
     id: string;
@@ -39,6 +57,10 @@ type TropoActionCardState = {
     editText: string;
     error: string | null;
     resultMessage: string | null;
+    selectedStageId: string;
+    selectedTaskId: string;
+    taskFilter: TaskFilterMode;
+    linkTask: boolean;
 };
 
 type TropoMessage = {
@@ -48,10 +70,35 @@ type TropoMessage = {
     actions?: TropoActionCardState[];
 };
 
+type ProviderUsagePayload = {
+    requestsLimit?: string | null;
+    requestsRemaining?: string | null;
+    requestsReset?: string | null;
+    tokensLimit?: string | null;
+    tokensRemaining?: string | null;
+    tokensReset?: string | null;
+    retryAfterSeconds?: number | null;
+};
+
+type ProviderUsageState = ProviderUsagePayload & {
+    provider?: string;
+    model?: string;
+};
+
 type ExecuteResponse = {
     result?: {
         message?: string;
     };
+    error?: string;
+};
+
+type ChatResponse = {
+    reply?: string;
+    proposedActions?: TropoProposedAction[];
+    provider?: string;
+    model?: string;
+    usage?: ProviderUsagePayload | null;
+    retryAfterSeconds?: number | null;
     error?: string;
 };
 
@@ -63,6 +110,8 @@ const QUICK_PROMPTS = [
     "Как стоим с бюджета?",
     "Кои документи липсват?",
 ];
+
+const ACTIVE_TASK_STATUSES = new Set(["open", "pending", "scheduled", "in_progress", "watch", "blocked"]);
 
 function createMessageId() {
     return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -79,24 +128,169 @@ function actionToEditText(action: TropoProposedAction) {
     return JSON.stringify(action, null, 2);
 }
 
+function findStageForTask(stages: ProjectTropoResolverStage[], taskId: string | null | undefined) {
+    if (!taskId) return null;
+    return stages.find((stage) => stage.tasks.some((task) => task.id === taskId)) ?? null;
+}
+
+function getDefaultStageId(stages: ProjectTropoResolverStage[]) {
+    return (
+        stages.find((stage) => stage.status === "current")?.id ??
+        stages.find((stage) => stage.tasks.some((task) => task.status === "in_progress"))?.id ??
+        stages[0]?.id ??
+        ""
+    );
+}
+
+function getActionStageId(action: TropoProposedAction) {
+    if (action.type === "create_task" || action.type === "update_task") {
+        return action.payload.stage_id ?? "";
+    }
+
+    return "";
+}
+
+function getActionTaskId(action: TropoProposedAction) {
+    if (
+        action.type === "update_task" ||
+        action.type === "set_task_status" ||
+        action.type === "schedule_task" ||
+        action.type === "create_calendar_item" ||
+        action.type === "update_calendar_item"
+    ) {
+        return action.payload.task_id ?? "";
+    }
+
+    return "";
+}
+
+function createActionCards(
+    actions: TropoProposedAction[],
+    stages: ProjectTropoResolverStage[],
+): TropoActionCardState[] {
+    return actions.map((action) => {
+        const actionTaskId = getActionTaskId(action);
+        const taskStage = findStageForTask(stages, actionTaskId);
+        const explicitStageId = getActionStageId(action);
+        const selectedStageId =
+            action.type === "create_task" && !explicitStageId
+                ? ""
+                : explicitStageId || taskStage?.id || getDefaultStageId(stages);
+
+        return {
+            id: action.id,
+            action,
+            status: "proposed",
+            editText: actionToEditText(action),
+            error: null,
+            resultMessage: null,
+            selectedStageId,
+            selectedTaskId: actionTaskId,
+            taskFilter: "active",
+            linkTask: Boolean(actionTaskId),
+        };
+    });
+}
+
 function summarizePayload(payload: TropoProposedAction["payload"]) {
     return Object.entries(payload)
         .filter(([, value]) => value !== undefined)
         .map(([key, value]) => ({
             key,
-            value: value === null ? "—" : String(value),
+            value: value === null || value === "" ? "—" : String(value),
         }));
 }
 
-function createActionCards(actions: TropoProposedAction[]): TropoActionCardState[] {
-    return actions.map((action) => ({
-        id: action.id,
-        action,
-        status: "proposed",
-        editText: actionToEditText(action),
-        error: null,
-        resultMessage: null,
-    }));
+function selectableTasks(
+    stages: ProjectTropoResolverStage[],
+    stageId: string,
+    filter: TaskFilterMode,
+) {
+    const stage = stages.find((item) => item.id === stageId);
+    if (!stage) return [];
+
+    if (filter === "all") return stage.tasks;
+    return stage.tasks.filter((task) => ACTIVE_TASK_STATUSES.has(task.status));
+}
+
+function normalizeAssistantText(value: string) {
+    return value
+        .replace(/\s+(\d{1,2})\.\s+/g, "\n$1. ")
+        .replace(/\s+([-•])\s+/g, "\n$1 ")
+        .replace(/\s+(Completed|Current|Next|Risks|Blocked|Documents|Budget|Следващо|Рискове|Текущо|Завършено|Документи|Бюджет):/gi, "\n$1:")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
+}
+
+function renderAssistantContent(content: string) {
+    const normalized = normalizeAssistantText(content);
+    const lines = normalized.split("\n").map((line) => line.trim()).filter(Boolean);
+
+    return (
+        <div className="space-y-2 whitespace-normal">
+            {lines.map((line, index) => {
+                const numbered = line.match(/^(\d{1,2})\.\s+(.+)$/);
+                if (numbered) {
+                    return (
+                        <div key={`${index}-${line}`} className="flex gap-2 rounded-[12px] border border-[#d8e2ef]/[0.72] bg-white/[0.46] px-2.5 py-2">
+                            <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#6c8fd8]/[0.13] text-[9.5px] font-semibold text-[#315fa8]">
+                                {numbered[1]}
+                            </span>
+                            <span className="min-w-0 flex-1 text-[12px] leading-[1.55] text-[#24384e]">{numbered[2]}</span>
+                        </div>
+                    );
+                }
+
+                const bullet = line.match(/^[-•]\s+(.+)$/);
+                if (bullet) {
+                    return (
+                        <div key={`${index}-${line}`} className="flex gap-2 pl-1">
+                            <span className="mt-2 h-1.5 w-1.5 rounded-full bg-[#8a65cc]" />
+                            <span className="min-w-0 flex-1 text-[12px] leading-[1.6] text-[#24384e]">{bullet[1]}</span>
+                        </div>
+                    );
+                }
+
+                if (line.endsWith(":") && line.length <= 72) {
+                    return (
+                        <div key={`${index}-${line}`} className="pt-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#6c3ca7]">
+                            {line}
+                        </div>
+                    );
+                }
+
+                return (
+                    <p key={`${index}-${line}`} className="text-[12.5px] leading-[1.65] text-[#24384e]">
+                        {line}
+                    </p>
+                );
+            })}
+        </div>
+    );
+}
+
+function usageValue(value: string | null | undefined) {
+    return value && value.trim() ? value : "not reported";
+}
+
+function applyUsagePayload(
+    payload: ChatResponse,
+    fallbackProvider?: string,
+    fallbackModel?: string,
+): ProviderUsageState | null {
+    if (!payload.usage && !payload.retryAfterSeconds && !payload.provider && !payload.model) return null;
+
+    return {
+        provider: payload.provider ?? fallbackProvider,
+        model: payload.model ?? fallbackModel,
+        requestsLimit: payload.usage?.requestsLimit ?? null,
+        requestsRemaining: payload.usage?.requestsRemaining ?? null,
+        requestsReset: payload.usage?.requestsReset ?? null,
+        tokensLimit: payload.usage?.tokensLimit ?? null,
+        tokensRemaining: payload.usage?.tokensRemaining ?? null,
+        tokensReset: payload.usage?.tokensReset ?? null,
+        retryAfterSeconds: payload.retryAfterSeconds ?? payload.usage?.retryAfterSeconds ?? null,
+    };
 }
 
 function IconClose() {
@@ -181,11 +375,13 @@ export default function ProjectTropoModal({
     projectLabel,
     showRealEstate = false,
     snapshot,
+    resolverStages,
 }: Props) {
     const [messages, setMessages] = useState<TropoMessage[]>(() => [welcomeMessage(projectLabel)]);
     const [draft, setDraft] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [usageStatus, setUsageStatus] = useState<ProviderUsageState | null>(null);
     const scrollRef = useRef<HTMLDivElement | null>(null);
     const inputRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -198,6 +394,7 @@ export default function ProjectTropoModal({
         setMessages([welcomeMessage(projectLabel)]);
         setDraft("");
         setError(null);
+        setUsageStatus(null);
     }, [projectLabel, propertySlug]);
 
     useEffect(() => {
@@ -276,11 +473,9 @@ export default function ProjectTropoModal({
                 }),
             });
 
-            const payload = (await response.json()) as {
-                reply?: string;
-                proposedActions?: TropoProposedAction[];
-                error?: string;
-            };
+            const payload = (await response.json()) as ChatResponse;
+            const nextUsage = applyUsagePayload(payload, usageStatus?.provider, usageStatus?.model);
+            if (nextUsage) setUsageStatus(nextUsage);
 
             if (!response.ok || !payload.reply) {
                 throw new Error(payload.error || "Tropo did not return a response");
@@ -290,7 +485,7 @@ export default function ProjectTropoModal({
                 id: createMessageId(),
                 role: "assistant",
                 content: payload.reply,
-                actions: createActionCards(payload.proposedActions ?? []),
+                actions: createActionCards(payload.proposedActions ?? [], resolverStages),
             };
 
             setMessages((current) => [...current, assistantMessage]);
@@ -306,26 +501,73 @@ export default function ProjectTropoModal({
         }
     }
 
+    function parseCardAction(card: TropoActionCardState) {
+        if (card.status !== "editing") return card.action;
+
+        const parsed = JSON.parse(card.editText) as unknown;
+        const validation = validateTropoAction(parsed, { allowUnresolved: true });
+
+        if (!validation.ok) {
+            throw new Error(validation.error);
+        }
+
+        return validation.action;
+    }
+
+    function resolveActionForExecution(card: TropoActionCardState) {
+        const action = parseCardAction(card);
+
+        if (action.type === "create_task") {
+            const stageId = card.selectedStageId || action.payload.stage_id;
+            if (!stageId) throw new Error("Избери етап, преди да одобриш задачата.");
+            return { ...action, payload: { ...action.payload, stage_id: stageId } };
+        }
+
+        if (action.type === "update_task") {
+            const taskId = card.selectedTaskId || action.payload.task_id;
+            if (!taskId) throw new Error("Избери задача, преди да одобриш редакцията.");
+            return { ...action, payload: { ...action.payload, task_id: taskId } };
+        }
+
+        if (action.type === "set_task_status") {
+            const taskId = card.selectedTaskId || action.payload.task_id;
+            if (!taskId) throw new Error("Избери задача, преди да одобриш статуса.");
+            return { ...action, payload: { ...action.payload, task_id: taskId } };
+        }
+
+        if (action.type === "schedule_task") {
+            const taskId = card.selectedTaskId || action.payload.task_id;
+            if (!taskId) throw new Error("Избери задача, преди да я насрочиш.");
+            return { ...action, payload: { ...action.payload, task_id: taskId } };
+        }
+
+        if (action.type === "create_calendar_item") {
+            const taskId = card.linkTask ? card.selectedTaskId || action.payload.task_id : null;
+            if (card.linkTask && !taskId) throw new Error("Избери задача или остави събитието като standalone calendar item.");
+            return { ...action, payload: { ...action.payload, task_id: taskId } };
+        }
+
+        return action;
+    }
+
     async function approveAction(messageId: string, card: TropoActionCardState) {
-        let actionToExecute = card.action;
+        let actionToExecute: TropoProposedAction;
 
-        if (card.status === "editing") {
-            try {
-                const parsed = JSON.parse(card.editText) as unknown;
-                const validation = validateTropoAction(parsed);
+        try {
+            const resolvedAction = resolveActionForExecution(card);
+            const validation = validateTropoAction(resolvedAction);
 
-                if (!validation.ok) {
-                    updateActionCard(messageId, card.id, { error: validation.error });
-                    return;
-                }
-
-                actionToExecute = validation.action;
-            } catch (parseError) {
-                updateActionCard(messageId, card.id, {
-                    error: parseError instanceof Error ? parseError.message : "Invalid action JSON",
-                });
+            if (!validation.ok) {
+                updateActionCard(messageId, card.id, { error: validation.error });
                 return;
             }
+
+            actionToExecute = validation.action;
+        } catch (parseError) {
+            updateActionCard(messageId, card.id, {
+                error: parseError instanceof Error ? parseError.message : "Invalid action setup",
+            });
+            return;
         }
 
         updateActionCard(messageId, card.id, {
@@ -396,6 +638,16 @@ export default function ProjectTropoModal({
 
     function changeActionEditText(messageId: string, actionId: string, editText: string) {
         updateActionCard(messageId, actionId, { editText, error: null });
+    }
+
+    function changeActionStage(messageId: string, card: TropoActionCardState, stageId: string) {
+        const nextTasks = selectableTasks(resolverStages, stageId, card.taskFilter);
+        const taskStillAvailable = nextTasks.some((task) => task.id === card.selectedTaskId);
+        updateActionCard(messageId, card.id, {
+            selectedStageId: stageId,
+            selectedTaskId: taskStillAvailable ? card.selectedTaskId : "",
+            error: null,
+        });
     }
 
     function clearConversation() {
@@ -472,42 +724,36 @@ export default function ProjectTropoModal({
 
                             <div className="space-y-2.5">
                                 <div className="rounded-[13px] border border-[#9c63d8]/[0.15] bg-[#9c63d8]/[0.06] p-3">
-                                    <div className="flex items-end justify-between gap-3">
+                                    <div className="flex items-end justify-between gap-2">
                                         <div>
-                                            <div className="text-[9px] font-semibold uppercase tracking-[0.13em] text-[#7a90a8]">Progress</div>
-                                            <div className="mt-1 text-[24px] font-semibold leading-none text-[#0b1623]">{snapshot.progressPercent}%</div>
+                                            <div className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[#8a90a8]">Progress</div>
+                                            <div className="mt-1 text-[22px] font-semibold text-[#0b1623]">{snapshot.progressPercent}%</div>
                                         </div>
-                                        <div className="text-right text-[10px] text-[#7a90a8]">{progressLabel}</div>
+                                        <div className="text-right text-[10px] font-medium text-[#6f849d]">{progressLabel}</div>
                                     </div>
-                                    <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-[#d8e8f6]">
-                                        <div
-                                            className="h-full rounded-full bg-gradient-to-r from-[#8a65cc] to-[#5c98f2] transition-all duration-700"
-                                            style={{ width: `${snapshot.progressPercent}%` }}
-                                        />
+                                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/[0.72]">
+                                        <div className="h-full rounded-full bg-gradient-to-r from-[#8a65cc] to-[#5d8fe8]" style={{ width: `${snapshot.progressPercent}%` }} />
                                     </div>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-2">
-                                    <div className="rounded-[13px] border border-white/[0.82] bg-white/[0.66] p-2.5">
-                                        <div className="text-[9px] font-semibold uppercase tracking-[0.12em] text-[#7a90a8]">Active</div>
-                                        <div className="mt-1 text-[20px] font-semibold leading-none text-[#0b1623]">{snapshot.activeTasks}</div>
+                                    <div className="rounded-[12px] border border-white/[0.76] bg-white/[0.52] p-2.5">
+                                        <div className="text-[8.5px] font-semibold uppercase tracking-[0.12em] text-[#8a90a8]">Active</div>
+                                        <div className="mt-1 text-[18px] font-semibold text-[#0b1623]">{snapshot.activeTasks}</div>
                                     </div>
-                                    <div className="rounded-[13px] border border-white/[0.82] bg-white/[0.66] p-2.5">
-                                        <div className="text-[9px] font-semibold uppercase tracking-[0.12em] text-[#7a90a8]">Overdue</div>
-                                        <div className={[
-                                            "mt-1 text-[20px] font-semibold leading-none",
-                                            snapshot.overdueTasks > 0 ? "text-[#a33e3e]" : "text-[#0b1623]",
-                                        ].join(" ")}>{snapshot.overdueTasks}</div>
+                                    <div className="rounded-[12px] border border-white/[0.76] bg-white/[0.52] p-2.5">
+                                        <div className="text-[8.5px] font-semibold uppercase tracking-[0.12em] text-[#8a90a8]">Overdue</div>
+                                        <div className="mt-1 text-[18px] font-semibold text-[#b75050]">{snapshot.overdueTasks}</div>
                                     </div>
                                 </div>
 
-                                <div className="rounded-[13px] border border-white/[0.82] bg-white/[0.66] p-3">
-                                    <div className="text-[9px] font-semibold uppercase tracking-[0.12em] text-[#7a90a8]">Current stage</div>
-                                    <div className="mt-1 text-[12px] font-semibold leading-[1.35] text-[#0b1623]">{snapshot.currentStageTitle}</div>
+                                <div className="rounded-[12px] border border-white/[0.76] bg-white/[0.52] p-2.5">
+                                    <div className="text-[8.5px] font-semibold uppercase tracking-[0.12em] text-[#8a90a8]">Current stage</div>
+                                    <div className="mt-1 text-[12px] font-semibold text-[#0b1623]">{snapshot.currentStageTitle}</div>
                                 </div>
 
-                                <div className="rounded-[13px] border border-white/[0.82] bg-white/[0.66] p-3">
-                                    <div className="text-[9px] font-semibold uppercase tracking-[0.12em] text-[#7a90a8]">Next dated task</div>
+                                <div className="rounded-[12px] border border-white/[0.76] bg-white/[0.52] p-2.5">
+                                    <div className="text-[8.5px] font-semibold uppercase tracking-[0.12em] text-[#8a90a8]">Next dated task</div>
                                     <div className="mt-1 text-[12px] font-semibold text-[#0b1623]">{formatDisplayDate(snapshot.nextDueDate)}</div>
                                 </div>
                             </div>
@@ -530,6 +776,26 @@ export default function ProjectTropoModal({
                             </div>
                         </div>
 
+                        <div className="mt-2.5 rounded-[17px] border border-white/[0.80] bg-white/[0.54] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                            <div className="mb-2 text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#6c3ca7]">Provider limits</div>
+                            {usageStatus ? (
+                                <div className="space-y-1.5 text-[10.5px] leading-[1.45] text-[#607993]">
+                                    <div className="flex justify-between gap-2"><span>Provider</span><span className="font-semibold text-[#24384e]">{usageStatus.provider ?? "—"}</span></div>
+                                    <div className="flex justify-between gap-2"><span>Tokens</span><span className="font-semibold text-[#24384e]">{usageValue(usageStatus.tokensRemaining)} / {usageValue(usageStatus.tokensLimit)}</span></div>
+                                    <div className="flex justify-between gap-2"><span>Requests</span><span className="font-semibold text-[#24384e]">{usageValue(usageStatus.requestsRemaining)} / {usageValue(usageStatus.requestsLimit)}</span></div>
+                                    {usageStatus.retryAfterSeconds ? (
+                                        <div className="rounded-[10px] border border-[#d8b95f]/[0.24] bg-[#d8b95f]/[0.09] px-2 py-1.5 text-[#725b16]">
+                                            Wait about {Math.ceil(usageStatus.retryAfterSeconds)}s before retrying.
+                                        </div>
+                                    ) : null}
+                                </div>
+                            ) : (
+                                <div className="text-[10.5px] leading-[1.45] text-[#7b8fa3]">
+                                    Exact remaining tokens appear here when the provider returns rate-limit headers.
+                                </div>
+                            )}
+                        </div>
+
                         <div className="mt-2.5 rounded-[15px] border border-[#d8b95f]/[0.26] bg-[#d8b95f]/[0.08] px-3 py-2.5 text-[10.5px] leading-[1.5] text-[#725b16]">
                             Safe writes are limited to Roadmap tasks and Calendar items. Delete, budget, document, expense and property writes are still locked.
                         </div>
@@ -548,9 +814,9 @@ export default function ProjectTropoModal({
                                     >
                                         <div
                                             className={[
-                                                "max-w-[92%] rounded-[18px] border px-4 py-3 text-[12.5px] leading-[1.65] shadow-[0_12px_34px_rgba(41,73,112,0.07)] whitespace-pre-wrap sm:max-w-[82%]",
+                                                "max-w-[92%] rounded-[18px] border px-4 py-3 shadow-[0_12px_34px_rgba(41,73,112,0.07)] sm:max-w-[82%]",
                                                 message.role === "user"
-                                                    ? "border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.10] text-[#183e70]"
+                                                    ? "border-[#2f80ed]/[0.24] bg-[#2f80ed]/[0.10] text-[#183e70] whitespace-pre-wrap text-[12.5px] leading-[1.65]"
                                                     : "border-white/[0.84] bg-white/[0.72] text-[#24384e]",
                                             ].join(" ")}
                                         >
@@ -560,13 +826,20 @@ export default function ProjectTropoModal({
                                                     Tropo
                                                 </div>
                                             ) : null}
-                                            {message.content}
+                                            {message.role === "assistant" ? renderAssistantContent(message.content) : message.content}
 
                                             {message.actions && message.actions.length > 0 ? (
                                                 <div className="mt-4 space-y-3 whitespace-normal">
                                                     {message.actions.map((card) => {
                                                         const payloadSummary = summarizePayload(card.action.payload);
                                                         const locked = card.status === "executing" || card.status === "executed" || card.status === "rejected";
+                                                        const taskOptions = selectableTasks(resolverStages, card.selectedStageId, card.taskFilter);
+                                                        const showStageResolver = card.action.type === "create_task" || card.action.type === "update_task";
+                                                        const showTaskResolver =
+                                                            card.action.type === "update_task" ||
+                                                            card.action.type === "set_task_status" ||
+                                                            card.action.type === "schedule_task" ||
+                                                            (card.action.type === "create_calendar_item" && card.linkTask);
 
                                                         return (
                                                             <div
@@ -594,6 +867,87 @@ export default function ProjectTropoModal({
                                                                                     : "bg-[#2f80ed]/[0.10] text-[#2060cc]",
                                                                     ].join(" ")}>{card.status}</div>
                                                                 </div>
+
+                                                                {card.action.type === "create_calendar_item" ? (
+                                                                    <div className="mt-3 rounded-[13px] border border-white/[0.74] bg-white/[0.48] p-2.5">
+                                                                        <div className="mb-2 text-[8.5px] font-semibold uppercase tracking-[0.10em] text-[#8ca0b4]">Calendar link</div>
+                                                                        <div className="flex flex-wrap gap-2">
+                                                                            <button
+                                                                                type="button"
+                                                                                disabled={locked}
+                                                                                onClick={() => updateActionCard(message.id, card.id, { linkTask: false, selectedTaskId: "", error: null })}
+                                                                                className={[
+                                                                                    "rounded-[11px] border px-3 py-1.5 text-[10.5px] font-semibold transition active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-45",
+                                                                                    !card.linkTask ? "border-[#2f80ed]/[0.28] bg-[#2f80ed]/[0.10] text-[#2060cc]" : "border-[#d8e2ef] bg-white/[0.56] text-[#607993]",
+                                                                                ].join(" ")}
+                                                                            >
+                                                                                Standalone calendar item
+                                                                            </button>
+                                                                            <button
+                                                                                type="button"
+                                                                                disabled={locked}
+                                                                                onClick={() => updateActionCard(message.id, card.id, { linkTask: true, error: null })}
+                                                                                className={[
+                                                                                    "rounded-[11px] border px-3 py-1.5 text-[10.5px] font-semibold transition active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-45",
+                                                                                    card.linkTask ? "border-[#2f80ed]/[0.28] bg-[#2f80ed]/[0.10] text-[#2060cc]" : "border-[#d8e2ef] bg-white/[0.56] text-[#607993]",
+                                                                                ].join(" ")}
+                                                                            >
+                                                                                Link to task
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                ) : null}
+
+                                                                {(showStageResolver || showTaskResolver) && resolverStages.length > 0 ? (
+                                                                    <div className="mt-3 rounded-[13px] border border-[#d8e2ef]/[0.78] bg-white/[0.56] p-2.5">
+                                                                        <div className="mb-2 text-[8.5px] font-semibold uppercase tracking-[0.10em] text-[#8ca0b4]">Resolve by title, not database ID</div>
+                                                                        <div className="grid gap-2 md:grid-cols-2">
+                                                                            <label className="block">
+                                                                                <span className="mb-1 block text-[9px] font-semibold uppercase tracking-[0.10em] text-[#8ca0b4]">Stage</span>
+                                                                                <select
+                                                                                    value={card.selectedStageId}
+                                                                                    disabled={locked}
+                                                                                    onChange={(event) => changeActionStage(message.id, card, event.target.value)}
+                                                                                    className="w-full rounded-[11px] border border-[#d8e2ef] bg-white/[0.82] px-2.5 py-2 text-[11px] font-medium text-[#24384e] outline-none focus:border-[#9c63d8]/[0.42]"
+                                                                                >
+                                                                                    <option value="">Select stage…</option>
+                                                                                    {resolverStages.map((stage) => (
+                                                                                        <option key={stage.id} value={stage.id}>{stage.title}</option>
+                                                                                    ))}
+                                                                                </select>
+                                                                            </label>
+
+                                                                            {showTaskResolver ? (
+                                                                                <label className="block">
+                                                                                    <span className="mb-1 flex items-center justify-between gap-2 text-[9px] font-semibold uppercase tracking-[0.10em] text-[#8ca0b4]">
+                                                                                        <span>Task</span>
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            disabled={locked}
+                                                                                            onClick={() => updateActionCard(message.id, card.id, { taskFilter: card.taskFilter === "active" ? "all" : "active", selectedTaskId: "", error: null })}
+                                                                                            className="rounded-full border border-[#d8e2ef] bg-white/[0.58] px-2 py-0.5 text-[8.5px] normal-case tracking-normal text-[#607993] disabled:cursor-not-allowed disabled:opacity-45"
+                                                                                        >
+                                                                                            {card.taskFilter === "active" ? "Active only" : "All tasks"}
+                                                                                        </button>
+                                                                                    </span>
+                                                                                    <select
+                                                                                        value={card.selectedTaskId}
+                                                                                        disabled={locked || !card.selectedStageId}
+                                                                                        onChange={(event) => updateActionCard(message.id, card.id, { selectedTaskId: event.target.value, error: null })}
+                                                                                        className="w-full rounded-[11px] border border-[#d8e2ef] bg-white/[0.82] px-2.5 py-2 text-[11px] font-medium text-[#24384e] outline-none focus:border-[#9c63d8]/[0.42] disabled:opacity-50"
+                                                                                    >
+                                                                                        <option value="">Select task…</option>
+                                                                                        {taskOptions.map((task) => (
+                                                                                            <option key={task.id} value={task.id}>
+                                                                                                {task.title} · {task.status}{task.dueDate ? ` · ${formatDisplayDate(task.dueDate)}` : ""}
+                                                                                            </option>
+                                                                                        ))}
+                                                                                    </select>
+                                                                                </label>
+                                                                            ) : null}
+                                                                        </div>
+                                                                    </div>
+                                                                ) : null}
 
                                                                 {card.status === "editing" ? (
                                                                     <textarea
@@ -661,7 +1015,7 @@ export default function ProjectTropoModal({
                                                                                 className="inline-flex items-center gap-1.5 rounded-[11px] border border-[#9c63d8]/[0.22] bg-white/[0.58] px-3 py-1.5 text-[10.5px] font-semibold text-[#6c3ca7] transition hover:-translate-y-0.5 hover:bg-white/[0.90] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-45"
                                                                             >
                                                                                 <IconEdit />
-                                                                                Edit
+                                                                                Edit JSON
                                                                             </button>
                                                                             <button
                                                                                 type="button"

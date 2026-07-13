@@ -28,7 +28,10 @@ import Unit19ExpensesModal from "@/components/admin/Unit19ExpensesModal";
 import Unit19DocumentsModal from "@/components/admin/Unit19DocumentsModal";
 import Unit19IncomeModal from "@/components/admin/Unit19IncomeModal";
 import Unit19CalendarModal from "@/components/admin/Unit19CalendarModal";
-import ProjectTropoModal, { type ProjectTropoSnapshot } from "@/components/admin/ProjectTropoModal";
+import ProjectTropoModal, {
+    type ProjectTropoResolverStage,
+    type ProjectTropoSnapshot,
+} from "@/components/admin/ProjectTropoModal";
 import Unit19ModalSwitcher, { type Unit19PanelKey } from "@/components/admin/Unit19ModalSwitcher";
 
 type FilterMode = "all" | "current" | "upcoming" | "completed";
@@ -551,6 +554,21 @@ export default function Unit19RoadmapWorkspace({
             nextDueDate: nextDatedTask?.due_date ?? null,
         };
     }, [progressPercent, stages, taskTotals.active, taskTotals.done, taskTotals.total]);
+
+    const tropoResolverStages = useMemo<ProjectTropoResolverStage[]>(() =>
+        stages.map((stage) => ({
+            id: stage.dbStageId,
+            title: `${stage.number} · ${stage.title}`,
+            status: stage.status,
+            tasks: stage.tasks.map((task) => ({
+                id: task.id,
+                title: task.title,
+                status: task.status,
+                priority: task.priority,
+                dueDate: task.due_date,
+            })),
+        })),
+    [stages]);
 
     function replaceTaskInState(task: Unit19RoadmapTask) {
         setStages((current) =>
@@ -1895,6 +1913,7 @@ export default function Unit19RoadmapWorkspace({
                         }}
                         showRealEstate={showRealEstatePanel}
                         snapshot={tropoSnapshot}
+                        resolverStages={tropoResolverStages}
                     />
                 </main>
             </div>

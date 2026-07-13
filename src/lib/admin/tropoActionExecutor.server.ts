@@ -196,15 +196,21 @@ export async function executeTropoAction(args: {
 
     if (action.type === "create_task") {
         const payload = action.payload;
-        await requireStage(supabase, projectId, payload.stage_id);
-        const sortOrder = await nextTaskSortOrder(supabase, projectId, payload.stage_id);
+        const stageId = payload.stage_id;
+
+        if (!stageId) {
+            throw new Error("Select a roadmap stage before approving this task.");
+        }
+
+        await requireStage(supabase, projectId, stageId);
+        const sortOrder = await nextTaskSortOrder(supabase, projectId, stageId);
         const status = payload.status ?? "open";
 
         const { data, error } = await supabase
             .from("managed_property_tasks")
             .insert({
                 managed_property_id: projectId,
-                stage_id: payload.stage_id,
+                stage_id: stageId,
                 stable_key: null,
                 title: payload.title,
                 note: payload.note ?? null,
@@ -225,13 +231,19 @@ export async function executeTropoAction(args: {
             actionId: action.id,
             actionType: action.type,
             message: `Task created: ${payload.title}`,
-            records: { taskId: String(createdTask.id), stageId: payload.stage_id },
+            records: { taskId: String(createdTask.id), stageId },
         };
     }
 
     if (action.type === "update_task") {
         const payload = action.payload;
-        const task = await requireTask(supabase, projectId, payload.task_id);
+        const taskId = payload.task_id;
+
+        if (!taskId) {
+            throw new Error("Select a roadmap task before approving this update.");
+        }
+
+        const task = await requireTask(supabase, projectId, taskId);
 
         if (payload.stage_id) {
             await requireStage(supabase, projectId, payload.stage_id);
@@ -251,7 +263,7 @@ export async function executeTropoAction(args: {
         const { data, error } = await supabase
             .from("managed_property_tasks")
             .update(patch)
-            .eq("id", payload.task_id)
+            .eq("id", taskId)
             .eq("managed_property_id", projectId)
             .select("id, title, calendar_item_id, status")
             .single();
@@ -266,14 +278,20 @@ export async function executeTropoAction(args: {
         return {
             actionId: action.id,
             actionType: action.type,
-            message: `Task updated: ${String(updatedTask.title ?? payload.task_id)}`,
-            records: { taskId: payload.task_id, stageId: payload.stage_id ?? String(task.stage_id ?? "") },
+            message: `Task updated: ${String(updatedTask.title ?? taskId)}`,
+            records: { taskId, stageId: payload.stage_id ?? String(task.stage_id ?? "") },
         };
     }
 
     if (action.type === "set_task_status") {
         const payload = action.payload;
-        const task = await requireTask(supabase, projectId, payload.task_id);
+        const taskId = payload.task_id;
+
+        if (!taskId) {
+            throw new Error("Select a roadmap task before approving this status change.");
+        }
+
+        const task = await requireTask(supabase, projectId, taskId);
 
         const { data, error } = await supabase
             .from("managed_property_tasks")
@@ -281,7 +299,7 @@ export async function executeTropoAction(args: {
                 status: payload.status,
                 completed_at: payload.status === "done" ? todayIsoTimestamp() : null,
             })
-            .eq("id", payload.task_id)
+            .eq("id", taskId)
             .eq("managed_property_id", projectId)
             .select("id, title, calendar_item_id")
             .single();
@@ -293,18 +311,24 @@ export async function executeTropoAction(args: {
         return {
             actionId: action.id,
             actionType: action.type,
-            message: `Task marked ${payload.status}: ${String(updatedTask.title ?? payload.task_id)}`,
-            records: { taskId: payload.task_id, stageId: String(task.stage_id ?? "") },
+            message: `Task marked ${payload.status}: ${String(updatedTask.title ?? taskId)}`,
+            records: { taskId, stageId: String(task.stage_id ?? "") },
         };
     }
 
     if (action.type === "schedule_task") {
         const payload = action.payload;
-        const task = await requireTask(supabase, projectId, payload.task_id);
+        const taskId = payload.task_id;
+
+        if (!taskId) {
+            throw new Error("Select a roadmap task before approving this schedule action.");
+        }
+
+        const task = await requireTask(supabase, projectId, taskId);
         const existingCalendarItemId = typeof task.calendar_item_id === "string" ? task.calendar_item_id : null;
         const calendarPayload = {
             managed_property_id: projectId,
-            task_id: payload.task_id,
+            task_id: taskId,
             title: String(task.title ?? "Scheduled task"),
             item_date: payload.item_date,
             item_time: payload.item_time ?? null,
@@ -342,7 +366,7 @@ export async function executeTropoAction(args: {
                 due_date: payload.item_date,
                 status: task.status === "done" ? "done" : "scheduled",
             })
-            .eq("id", payload.task_id)
+            .eq("id", taskId)
             .eq("managed_property_id", projectId);
 
         throwQueryError("Failed to link scheduled task", taskError);
@@ -350,8 +374,8 @@ export async function executeTropoAction(args: {
         return {
             actionId: action.id,
             actionType: action.type,
-            message: `Task scheduled: ${String(task.title ?? payload.task_id)}`,
-            records: { taskId: payload.task_id, calendarItemId, stageId: String(task.stage_id ?? "") },
+            message: `Task scheduled: ${String(task.title ?? taskId)}`,
+            records: { taskId, calendarItemId, stageId: String(task.stage_id ?? "") },
         };
     }
 

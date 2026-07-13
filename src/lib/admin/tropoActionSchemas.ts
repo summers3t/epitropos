@@ -30,7 +30,7 @@ export type TropoActionType =
     | "update_calendar_item";
 
 export type TropoCreateTaskPayload = {
-    stage_id: string;
+    stage_id: string | null;
     title: string;
     note?: string | null;
     status?: TropoRoadmapTaskStatus;
@@ -39,7 +39,7 @@ export type TropoCreateTaskPayload = {
 };
 
 export type TropoUpdateTaskPayload = {
-    task_id: string;
+    task_id: string | null;
     stage_id?: string | null;
     title?: string;
     note?: string | null;
@@ -49,12 +49,12 @@ export type TropoUpdateTaskPayload = {
 };
 
 export type TropoSetTaskStatusPayload = {
-    task_id: string;
+    task_id: string | null;
     status: "done" | "open";
 };
 
 export type TropoScheduleTaskPayload = {
-    task_id: string;
+    task_id: string | null;
     item_date: string;
     item_time?: string | null;
 };
@@ -106,6 +106,10 @@ export type TropoAssistantTurn = {
 type ValidationResult =
     | { ok: true; action: TropoProposedAction }
     | { ok: false; error: string };
+
+type ValidateTropoActionOptions = {
+    allowUnresolved?: boolean;
+};
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -327,7 +331,7 @@ function baseAction(value: Record<string, unknown>) {
     } as const;
 }
 
-export function validateTropoAction(value: unknown): ValidationResult {
+export function validateTropoAction(value: unknown, options: ValidateTropoActionOptions = {}): ValidationResult {
     if (!isRecord(value)) return { ok: false, error: "Action must be an object" };
 
     const base = baseAction(value);
@@ -343,7 +347,9 @@ export function validateTropoAction(value: unknown): ValidationResult {
         const status = payload.status ?? "open";
         const priority = payload.priority ?? "normal";
 
-        if (!isUuid(stageId)) return { ok: false, error: "create_task.stage_id must be a valid stage id" };
+        if (!isUuid(stageId) && !(options.allowUnresolved && !stageId)) {
+            return { ok: false, error: "create_task.stage_id must be a valid stage id" };
+        }
         if (!title) return { ok: false, error: "create_task.title is required" };
         if (dueDate === undefined) return { ok: false, error: "create_task.due_date must be YYYY-MM-DD or null" };
         if (!isTaskStatus(status)) return { ok: false, error: "create_task.status is invalid" };
@@ -357,7 +363,7 @@ export function validateTropoAction(value: unknown): ValidationResult {
                 label: base.label,
                 reason: base.reason,
                 payload: {
-                    stage_id: stageId,
+                    stage_id: isUuid(stageId) ? stageId : null,
                     title,
                     note: normalizeOptionalText(payload.note, 1200),
                     status,
@@ -377,13 +383,15 @@ export function validateTropoAction(value: unknown): ValidationResult {
         const title = normalizeOptionalText(payload.title, 180);
         const note = normalizeOptionalText(payload.note, 1200);
 
-        if (!isUuid(taskId)) return { ok: false, error: "update_task.task_id must be a valid task id" };
+        if (!isUuid(taskId) && !(options.allowUnresolved && !taskId)) {
+            return { ok: false, error: "update_task.task_id must be a valid task id" };
+        }
         if (stageId !== null && !isUuid(stageId)) return { ok: false, error: "update_task.stage_id must be a valid stage id or null" };
         if (dueDate === undefined) return { ok: false, error: "update_task.due_date must be YYYY-MM-DD or null" };
         if (status !== undefined && status !== null && !isTaskStatus(status)) return { ok: false, error: "update_task.status is invalid" };
         if (priority !== undefined && priority !== null && !isTaskPriority(priority)) return { ok: false, error: "update_task.priority is invalid" };
 
-        const normalizedPayload: TropoUpdateTaskPayload = { task_id: taskId };
+        const normalizedPayload: TropoUpdateTaskPayload = { task_id: isUuid(taskId) ? taskId : null };
         if (stageId !== null) normalizedPayload.stage_id = stageId;
         if (title !== null) normalizedPayload.title = title;
         if ("note" in payload) normalizedPayload.note = note;
@@ -402,10 +410,12 @@ export function validateTropoAction(value: unknown): ValidationResult {
         const taskId = normalizeId(payload.task_id);
         const status = payload.status;
 
-        if (!isUuid(taskId)) return { ok: false, error: "set_task_status.task_id must be a valid task id" };
+        if (!isUuid(taskId) && !(options.allowUnresolved && !taskId)) {
+            return { ok: false, error: "set_task_status.task_id must be a valid task id" };
+        }
         if (status !== "done" && status !== "open") return { ok: false, error: "set_task_status.status must be done or open" };
 
-        return { ok: true, action: { id: base.id, type: "set_task_status", label: base.label, reason: base.reason, payload: { task_id: taskId, status } } };
+        return { ok: true, action: { id: base.id, type: "set_task_status", label: base.label, reason: base.reason, payload: { task_id: isUuid(taskId) ? taskId : null, status } } };
     }
 
     if (base.type === "schedule_task") {
@@ -413,11 +423,13 @@ export function validateTropoAction(value: unknown): ValidationResult {
         const itemDate = normalizeDateOrNull(payload.item_date);
         const itemTime = normalizeTimeOrNull(payload.item_time);
 
-        if (!isUuid(taskId)) return { ok: false, error: "schedule_task.task_id must be a valid task id" };
+        if (!isUuid(taskId) && !(options.allowUnresolved && !taskId)) {
+            return { ok: false, error: "schedule_task.task_id must be a valid task id" };
+        }
         if (!itemDate) return { ok: false, error: "schedule_task.item_date must be YYYY-MM-DD" };
         if (itemTime === undefined || !isTimeOrNull(payload.item_time)) return { ok: false, error: "schedule_task.item_time must be HH:MM or null" };
 
-        return { ok: true, action: { id: base.id, type: "schedule_task", label: base.label, reason: base.reason, payload: { task_id: taskId, item_date: itemDate, item_time: itemTime } } };
+        return { ok: true, action: { id: base.id, type: "schedule_task", label: base.label, reason: base.reason, payload: { task_id: isUuid(taskId) ? taskId : null, item_date: itemDate, item_time: itemTime } } };
     }
 
     if (base.type === "create_calendar_item") {
@@ -502,7 +514,7 @@ export function normalizeTropoActions(value: unknown): TropoProposedAction[] {
     const actions: TropoProposedAction[] = [];
 
     for (const item of value) {
-        const result = validateTropoAction(item);
+        const result = validateTropoAction(item, { allowUnresolved: true });
         if (result.ok) actions.push(result.action);
         if (actions.length >= 3) break;
     }

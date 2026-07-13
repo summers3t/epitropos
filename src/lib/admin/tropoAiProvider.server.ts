@@ -27,17 +27,29 @@ type ResponsesPayload = {
 
 export type TropoProviderName = "groq" | "openai";
 
+export type TropoProviderUsage = {
+    requestsLimit: string | null;
+    requestsRemaining: string | null;
+    requestsReset: string | null;
+    tokensLimit: string | null;
+    tokensRemaining: string | null;
+    tokensReset: string | null;
+    retryAfterSeconds: number | null;
+};
+
 export type TropoCompletionResult = {
     reply: string;
     provider: TropoProviderName;
     model: string;
     proposedActions: TropoAssistantTurn["proposed_actions"];
+    usage: TropoProviderUsage;
 };
 
 export class TropoProviderError extends Error {
     status: number;
     provider: TropoProviderName | "configuration";
     retryAfterSeconds: number | null;
+    usage: TropoProviderUsage | null;
 
     constructor(
         message: string,
@@ -45,6 +57,7 @@ export class TropoProviderError extends Error {
             status: number;
             provider: TropoProviderName | "configuration";
             retryAfterSeconds?: number | null;
+            usage?: TropoProviderUsage | null;
         },
     ) {
         super(message);
@@ -52,6 +65,7 @@ export class TropoProviderError extends Error {
         this.status = options.status;
         this.provider = options.provider;
         this.retryAfterSeconds = options.retryAfterSeconds ?? null;
+        this.usage = options.usage ?? null;
     }
 }
 
@@ -68,6 +82,7 @@ type ProviderRequestOptions = {
 
 type ProviderSuccessResponse = {
     text: string;
+    usage: TropoProviderUsage;
 };
 
 type ProviderStructuredFormatRetryResponse = {
@@ -169,6 +184,30 @@ function parseRetryAfter(value: string | null) {
     return Number.isFinite(seconds) && seconds >= 0 ? seconds : null;
 }
 
+function readRateLimitUsage(headers: Headers, retryAfterSeconds: number | null = null): TropoProviderUsage {
+    return {
+        requestsLimit: headers.get("x-ratelimit-limit-requests"),
+        requestsRemaining: headers.get("x-ratelimit-remaining-requests"),
+        requestsReset: headers.get("x-ratelimit-reset-requests"),
+        tokensLimit: headers.get("x-ratelimit-limit-tokens"),
+        tokensRemaining: headers.get("x-ratelimit-remaining-tokens"),
+        tokensReset: headers.get("x-ratelimit-reset-tokens"),
+        retryAfterSeconds,
+    };
+}
+
+function emptyRateLimitUsage(): TropoProviderUsage {
+    return {
+        requestsLimit: null,
+        requestsRemaining: null,
+        requestsReset: null,
+        tokensLimit: null,
+        tokensRemaining: null,
+        tokensReset: null,
+        retryAfterSeconds: null,
+    };
+}
+
 function providerLabel(provider: TropoProviderName) {
     return provider === "groq" ? "Groq" : "OpenAI";
 }
@@ -249,6 +288,7 @@ async function callProvider(
 
         if (!response.ok) {
             const retryAfterSeconds = parseRetryAfter(response.headers.get("retry-after"));
+            const usage = readRateLimitUsage(response.headers, retryAfterSeconds);
             const providerMessage = payload.error?.message?.trim();
             const label = providerLabel(config.provider);
 
@@ -266,6 +306,7 @@ async function callProvider(
                     status: 429,
                     provider: config.provider,
                     retryAfterSeconds,
+                    usage,
                 });
             }
 
@@ -276,6 +317,7 @@ async function callProvider(
                 {
                     status: response.status,
                     provider: config.provider,
+                    usage,
                 },
             );
         }
@@ -289,7 +331,7 @@ async function callProvider(
             });
         }
 
-        return { text };
+        return { text, usage: readRateLimitUsage(response.headers) };
     } catch (error) {
         if (error instanceof TropoProviderError) throw error;
 
@@ -340,5 +382,6 @@ export async function requestTropoCompletion(args: {
         proposedActions: parsed.proposed_actions,
         provider: config.provider,
         model: config.model,
+        usage: response.usage ?? emptyRateLimitUsage(),
     };
 }
