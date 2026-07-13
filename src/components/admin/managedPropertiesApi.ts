@@ -2066,9 +2066,7 @@ export async function deleteManagedPropertyGalleryItem(item: ManagedPropertyGall
     }
 }
 
-export async function createManagedPropertyAssetSignedUrls(
-    storagePaths: string[],
-): Promise<Record<string, string>> {
+export async function createManagedPropertyAssetSignedUrls(storagePaths: string[]) {
     const uniquePaths = [...new Set(storagePaths.filter(Boolean))];
     if (uniquePaths.length === 0) return {} as Record<string, string>;
 
