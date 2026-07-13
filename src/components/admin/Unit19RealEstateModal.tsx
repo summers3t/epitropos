@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import AdminDatePicker from "@/components/admin/AdminDatePicker";
+import ManagedPropertyAssetsPanel from "@/components/admin/ManagedPropertyAssetsPanel";
 import Unit19ModalSwitcher, { type Unit19PanelKey } from "@/components/admin/Unit19ModalSwitcher";
 import {
     createManagedPropertyExpense,
@@ -258,7 +259,7 @@ function isSameDraft<T>(left: T, right: T) {
     return JSON.stringify(left) === JSON.stringify(right);
 }
 
-type PropertySectionKey = "overview" | "services" | "costs" | "people";
+type PropertySectionKey = "overview" | "services" | "costs" | "people" | "inventory" | "gallery";
 type AddressLanguage = "en" | "local";
 
 type Unit19CreditConfig = {
@@ -652,7 +653,8 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
         deleteUndoTimerRef.current = window.setTimeout(() => setDeleteUndo(null), 5000);
     }
 
-    async function removeCost(cost: ManagedPropertyRealEstateCost, _options?: { skipConfirm?: boolean }) {
+    async function removeCost(cost: ManagedPropertyRealEstateCost, options?: { skipConfirm?: boolean }) {
+        void options;
         setSaving(true);
         setError(null);
 
@@ -764,7 +766,8 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
         }
     }
 
-    async function removeService(service: ManagedPropertyServiceAccount, _options?: { skipConfirm?: boolean }) {
+    async function removeService(service: ManagedPropertyServiceAccount, options?: { skipConfirm?: boolean }) {
+        void options;
         setSaving(true);
         setError(null);
 
@@ -861,7 +864,8 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
         }
     }
 
-    async function removeContact(contact: ManagedPropertyRealEstateContact, _options?: { skipConfirm?: boolean }) {
+    async function removeContact(contact: ManagedPropertyRealEstateContact, options?: { skipConfirm?: boolean }) {
+        void options;
         setSaving(true);
         setError(null);
 
@@ -1065,6 +1069,8 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
         { key: "services", label: "Utilities and services", helper: `${servicesReady}/${Math.max(services.length, 1)} active records` },
         { key: "costs", label: "Acquisition costs", helper: formatEur(transactionCosts) },
         { key: "people", label: "People", helper: `${contacts.length} contacts` },
+        { key: "inventory", label: "Furniture & Appliances", helper: "Inventory, photos and warranties" },
+        { key: "gallery", label: "Gallery", helper: "Interior and exterior photo archive" },
     ];
 
     const addressValue = addressLanguage === "en" ? profileDraft.address_en : profileDraft.address_local;
@@ -1370,6 +1376,22 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
         if (activeSection === "services") return renderServices();
         if (activeSection === "costs") return renderCosts();
         if (activeSection === "people") return renderPeople();
+        if (activeSection === "inventory" || activeSection === "gallery") {
+            if (!managedProperty) {
+                return (
+                    <div className="rounded-[20px] border border-white/[0.80] bg-white/[0.58] p-6 text-[12px] font-semibold text-[#607993]">
+                        Property record is not available.
+                    </div>
+                );
+            }
+
+            return (
+                <ManagedPropertyAssetsPanel
+                    managedPropertyId={managedProperty.id}
+                    section={activeSection}
+                />
+            );
+        }
         return renderOverview();
     };
 
