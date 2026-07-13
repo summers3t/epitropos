@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import AdminDatePicker from "@/components/admin/AdminDatePicker";
-import ManagedPropertyAssetsPanel from "@/components/admin/ManagedPropertyAssetsPanel";
+import ManagedPropertyAssetsPanel, { type ManagedPropertyAssetsSummary } from "@/components/admin/ManagedPropertyAssetsPanel";
 import Unit19ModalSwitcher, { type Unit19PanelKey } from "@/components/admin/Unit19ModalSwitcher";
 import {
     createManagedPropertyExpense,
@@ -14,6 +14,7 @@ import {
     deleteManagedPropertyRealEstateContact,
     deleteManagedPropertyRealEstateCost,
     deleteManagedPropertyServiceAccount,
+    getManagedPropertyAssets,
     getManagedPropertyBySlug,
     getManagedPropertyExpenses,
     getManagedPropertyIncome,
@@ -378,6 +379,7 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
     const [costs, setCosts] = useState<ManagedPropertyRealEstateCost[]>([]);
     const [services, setServices] = useState<ManagedPropertyServiceAccount[]>([]);
     const [contacts, setContacts] = useState<ManagedPropertyRealEstateContact[]>([]);
+    const [assetSummary, setAssetSummary] = useState<ManagedPropertyAssetsSummary>({ inventoryItems: 0, galleryItems: 0, activeWarranties: 0, warrantyDocuments: 0 });
     const [expenses, setExpenses] = useState<ManagedPropertyExpense[]>([]);
     const [costDrafts, setCostDrafts] = useState<Record<string, CostDraft>>({});
     const [serviceDrafts, setServiceDrafts] = useState<Record<string, ServiceDraft>>({});
@@ -448,10 +450,11 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
         try {
             const property = await getManagedPropertyBySlug(propertySlug);
             const currentYear = new Date().getFullYear();
-            const [bundle, propertyExpenses, incomeBundle] = await Promise.all([
+            const [bundle, propertyExpenses, incomeBundle, assetsBundle] = await Promise.all([
                 getManagedPropertyRealEstate(property.id),
                 getManagedPropertyExpenses(property.id),
                 getManagedPropertyIncome(property.id, currentYear),
+                getManagedPropertyAssets(property.id),
             ]);
 
             setManagedProperty(property);
@@ -462,6 +465,17 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
             setServices(bundle.serviceAccounts);
             setContacts(bundle.contacts);
             setExpenses(propertyExpenses);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            setAssetSummary({
+                inventoryItems: assetsBundle.inventoryItems.length,
+                galleryItems: assetsBundle.galleryItems.length,
+                activeWarranties: assetsBundle.inventoryItems.filter((item) => {
+                    if (!item.warranty_until) return false;
+                    return new Date(`${item.warranty_until}T00:00:00`).getTime() >= today.getTime();
+                }).length,
+                warrantyDocuments: assetsBundle.inventoryAttachments.filter((attachment) => attachment.attachment_type === "warranty_card").length,
+            });
             setCostDrafts(Object.fromEntries(bundle.costs.map((cost) => [cost.id, costToDraft(cost)])));
             setServiceDrafts(Object.fromEntries(bundle.serviceAccounts.map((service) => [service.id, serviceToDraft(service)])));
             setContactDrafts(Object.fromEntries(bundle.contacts.map((contact) => [contact.id, contactToDraft(contact)])));
@@ -1069,8 +1083,20 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
         { key: "services", label: "Utilities and services", helper: `${servicesReady}/${Math.max(services.length, 1)} active records` },
         { key: "costs", label: "Acquisition costs", helper: formatEur(transactionCosts) },
         { key: "people", label: "People", helper: `${contacts.length} contacts` },
-        { key: "inventory", label: "Furniture & Appliances", helper: "Inventory, photos and warranties" },
-        { key: "gallery", label: "Gallery", helper: "Interior and exterior photo archive" },
+        {
+            key: "inventory",
+            label: "Furniture & Appliances",
+            helper: assetSummary.inventoryItems > 0
+                ? `${assetSummary.inventoryItems} items · ${assetSummary.activeWarranties} active warranties`
+                : "Inventory, photos and warranties",
+        },
+        {
+            key: "gallery",
+            label: "Gallery",
+            helper: assetSummary.galleryItems > 0
+                ? `${assetSummary.galleryItems} photos`
+                : "Interior and exterior photo archive",
+        },
     ];
 
     const addressValue = addressLanguage === "en" ? profileDraft.address_en : profileDraft.address_local;
@@ -1389,6 +1415,7 @@ export default function Unit19RealEstateModal({ open, onClose, onSwitchPanel, pr
                 <ManagedPropertyAssetsPanel
                     managedPropertyId={managedProperty.id}
                     section={activeSection}
+                    onSummaryChange={setAssetSummary}
                 />
             );
         }
