@@ -538,85 +538,90 @@ function MediaViewer({
                 role="dialog"
                 aria-modal="true"
                 aria-label={activeItem.title}
-                className="fixed inset-0 isolate overflow-hidden bg-[#050a12]"
+                className="fixed inset-0 flex items-center justify-center overflow-hidden bg-[#07101d]/[0.50] p-3 backdrop-blur-[18px] sm:p-4"
                 style={{ zIndex: 2147483000 }}
+                onMouseDown={(event) => {
+                    if (event.target === event.currentTarget) onClose();
+                }}
             >
-                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_16%,rgba(84,124,170,0.22),transparent_42%),linear-gradient(180deg,rgba(4,9,16,0.90),rgba(3,7,13,0.98))]" />
-
-                <div className="absolute inset-x-0 top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-white/[0.10] bg-[#07101c]/[0.78] px-4 text-white backdrop-blur-xl sm:px-5">
-                    <div className="min-w-0">
-                        <div className="truncate text-[12px] font-semibold">{activeItem.title}</div>
-                        <div className="mt-0.5 truncate text-[9.5px] text-white/[0.58]">
-                            {activeItem.subtitle || `${Math.max(1, activeIndex + 1)} of ${items.length}`}
-                        </div>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                        {topActions}
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            aria-label="Close viewer"
-                            className="flex h-10 w-10 items-center justify-center rounded-full border border-white/[0.18] bg-white/[0.08] text-white transition hover:scale-[1.04] hover:bg-white/[0.16] active:scale-[0.97]"
-                        >
-                            <IconClose />
-                        </button>
-                    </div>
-                </div>
-
                 <div
-                    className={[
-                        "relative z-10 flex h-full min-w-0 items-center justify-center px-3 pb-14 pt-16 transition-[padding] duration-300 sm:px-16",
-                        detailsOpen ? "lg:pr-[430px]" : "",
-                    ].join(" ")}
+                    className="relative flex h-[min(860px,calc(100dvh-2rem))] w-[min(1280px,calc(100vw-2rem))] overflow-hidden rounded-[28px] border border-white/[0.18] bg-[#07101d]/[0.90] shadow-[0_28px_110px_rgba(0,0,0,0.46)]"
+                    onMouseDown={(event) => event.stopPropagation()}
                 >
-                    {activeItem.url ? (
-                        <img
-                            src={activeItem.url}
-                            alt={activeItem.alt}
-                            className="max-h-[calc(100dvh-7.5rem)] max-w-full select-none object-contain drop-shadow-[0_26px_70px_rgba(0,0,0,0.42)]"
-                            draggable={false}
-                        />
-                    ) : (
-                        <div className="flex h-56 w-72 items-center justify-center rounded-[18px] border border-white/[0.12] bg-white/[0.05] text-[11px] text-white/[0.54]">
-                            Preview unavailable
-                        </div>
-                    )}
+                    <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(108,143,216,0.18),transparent_36%),linear-gradient(180deg,rgba(255,255,255,0.06),transparent_28%)]" />
 
-                    {items.length > 1 ? (
-                        <>
-                            <button
-                                type="button"
-                                onClick={() => move(-1)}
-                                aria-label="Previous image"
-                                className="absolute left-3 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/[0.18] bg-[#07101c]/[0.54] text-white shadow-[0_14px_42px_rgba(0,0,0,0.26)] backdrop-blur-xl transition hover:scale-[1.06] hover:bg-[#07101c]/[0.84] sm:left-5"
-                            >
-                                <IconArrow direction="left" />
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => move(1)}
-                                aria-label="Next image"
-                                className={[
-                                    "absolute top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/[0.18] bg-[#07101c]/[0.54] text-white shadow-[0_14px_42px_rgba(0,0,0,0.26)] backdrop-blur-xl transition hover:scale-[1.06] hover:bg-[#07101c]/[0.84]",
-                                    detailsOpen ? "right-3 lg:right-[405px]" : "right-3 sm:right-5",
-                                ].join(" ")}
-                            >
-                                <IconArrow direction="right" />
-                            </button>
-                        </>
-                    ) : null}
+                    <div className="relative z-10 flex min-w-0 flex-1 flex-col">
+                        <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-white/[0.11] bg-[#07101c]/[0.70] px-3 text-white backdrop-blur-xl sm:px-4">
+                            <div className="min-w-0">
+                                <div className="truncate text-[12px] font-semibold">{activeItem.title}</div>
+                                <div className="mt-0.5 truncate text-[9.5px] text-white/[0.58]">
+                                    {activeItem.subtitle || `${Math.max(1, activeIndex + 1)} of ${items.length}`}
+                                </div>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-2">
+                                {topActions}
+                                <button
+                                    type="button"
+                                    onClick={onClose}
+                                    aria-label="Close viewer"
+                                    className="flex h-9 w-9 items-center justify-center rounded-full border border-white/[0.18] bg-white/[0.08] text-white transition hover:scale-[1.04] hover:bg-white/[0.16] active:scale-[0.97]"
+                                >
+                                    <IconClose />
+                                </button>
+                            </div>
+                        </header>
 
-                    <div className="absolute inset-x-0 bottom-3 z-20 flex items-center justify-center gap-2 text-[9.5px] text-white/[0.62]">
-                        <span>{Math.max(1, activeIndex + 1)} / {items.length}</span>
-                        {badges}
+                        <main className="relative flex min-h-0 flex-1 items-center justify-center px-14 py-6 sm:px-16">
+                            {activeItem.url ? (
+                                <img
+                                    src={activeItem.url}
+                                    alt={activeItem.alt}
+                                    className="block select-none rounded-[12px] object-contain shadow-[0_22px_70px_rgba(0,0,0,0.38)]"
+                                    style={{ maxWidth: "100%", maxHeight: "calc(100dvh - 10.5rem)" }}
+                                    draggable={false}
+                                />
+                            ) : (
+                                <div className="flex h-56 w-72 items-center justify-center rounded-[18px] border border-white/[0.12] bg-white/[0.05] text-[11px] text-white/[0.54]">
+                                    Preview unavailable
+                                </div>
+                            )}
+
+                            {items.length > 1 ? (
+                                <>
+                                    <button
+                                        type="button"
+                                        onClick={() => move(-1)}
+                                        aria-label="Previous image"
+                                        className="absolute left-3 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/[0.22] bg-[#07101c]/[0.58] text-white shadow-[0_14px_42px_rgba(0,0,0,0.26)] backdrop-blur-xl transition hover:scale-[1.06] hover:bg-[#07101c]/[0.84] sm:left-5"
+                                    >
+                                        <IconArrow direction="left" />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => move(1)}
+                                        aria-label="Next image"
+                                        className="absolute right-3 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/[0.22] bg-[#07101c]/[0.58] text-white shadow-[0_14px_42px_rgba(0,0,0,0.26)] backdrop-blur-xl transition hover:scale-[1.06] hover:bg-[#07101c]/[0.84] sm:right-5"
+                                    >
+                                        <IconArrow direction="right" />
+                                    </button>
+                                </>
+                            ) : null}
+
+                            <div className="absolute inset-x-0 bottom-3 z-20 flex items-center justify-center gap-2 text-[9.5px] text-white/[0.68]">
+                                <span className="rounded-full border border-white/[0.14] bg-white/[0.08] px-2 py-0.5 backdrop-blur-md">
+                                    {Math.max(1, activeIndex + 1)} / {items.length}
+                                </span>
+                                {badges}
+                            </div>
+                        </main>
                     </div>
-                </div>
 
-                {detailsOpen && detailsPanel ? (
-                    <aside className="absolute bottom-0 right-0 top-16 z-40 flex w-full max-w-[390px] flex-col border-l border-white/[0.14] bg-white/[0.94] shadow-[-24px_0_70px_rgba(0,0,0,0.26)] backdrop-blur-2xl">
-                        {detailsPanel}
-                    </aside>
-                ) : null}
+                    {detailsOpen && detailsPanel ? (
+                        <aside className="relative z-20 flex w-full max-w-[390px] shrink-0 flex-col border-l border-white/[0.14] bg-white/[0.94] shadow-[-24px_0_70px_rgba(0,0,0,0.24)] backdrop-blur-2xl">
+                            {detailsPanel}
+                        </aside>
+                    ) : null}
+                </div>
             </div>
         </BodyPortal>
     );
@@ -1189,12 +1194,13 @@ function InventorySection({
                         </div>
 
                         <div
-                            className="mt-2.5 flex min-h-16 flex-wrap items-center gap-2 overflow-hidden"
+                            className="mt-2.5 flex flex-wrap items-center gap-2 overflow-visible"
                             style={{ maxHeight: photos.length > 0 ? 156 : undefined }}
                         >
                             {photos.length === 0 ? (
-                                <div className="flex h-16 w-full items-center justify-center rounded-[12px] border border-dashed border-[#c4d1df] bg-white/[0.32] px-4 text-center text-[9.5px] text-[#7a90a8]">
-                                    {selectedItem ? "No photos yet." : "Save the item first, then add photos."}
+                                <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-[#d8e8f6]/80 bg-white/[0.46] px-3 py-1.5 text-[9.5px] text-[#7a90a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-[#a9b8c8]" />
+                                    {selectedItem ? "No photos added yet" : "Save the item first, then add photos"}
                                 </div>
                             ) : photos.map((attachment) => (
                                 <div
@@ -1225,11 +1231,25 @@ function InventorySection({
                                             Primary
                                         </span>
                                     ) : null}
-                                    <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-[#06101d]/[0.72] px-1.5 py-1 text-[7px] text-white opacity-0 transition group-hover:opacity-100">
+                                    <div className="absolute inset-x-1 bottom-1 grid grid-cols-2 gap-1 opacity-0 transition group-hover:opacity-100">
                                         {!attachment.is_primary ? (
-                                            <button type="button" onClick={() => void makePrimary(attachment)} className="font-semibold hover:underline">Primary</button>
+                                            <button
+                                                type="button"
+                                                onClick={(event) => { event.stopPropagation(); void makePrimary(attachment); }}
+                                                className="min-w-0 rounded-full border border-white/[0.58] bg-[#1560bc]/[0.76] px-1 py-0.5 text-center text-[6.5px] font-semibold leading-none text-white shadow-[0_5px_14px_rgba(0,0,0,0.18)] backdrop-blur-md transition hover:bg-[#1560bc]"
+                                                title="Set as primary"
+                                            >
+                                                Primary
+                                            </button>
                                         ) : <span />}
-                                        <button type="button" onClick={() => removeAttachment(attachment)} className="font-semibold hover:underline">Delete</button>
+                                        <button
+                                            type="button"
+                                            onClick={(event) => { event.stopPropagation(); removeAttachment(attachment); }}
+                                            className="min-w-0 rounded-full border border-white/[0.58] bg-[#9d2f2f]/[0.78] px-1 py-0.5 text-center text-[6.5px] font-semibold leading-none text-white shadow-[0_5px_14px_rgba(0,0,0,0.18)] backdrop-blur-md transition hover:bg-[#9d2f2f]"
+                                            title="Delete photo"
+                                        >
+                                            Delete
+                                        </button>
                                     </div>
                                 </div>
                             ))}
@@ -1260,7 +1280,10 @@ function InventorySection({
                         </div>
                         <div className="mt-2.5 grid gap-1.5 sm:grid-cols-2">
                             {warrantyDocuments.length === 0 ? (
-                                <div className="sm:col-span-2 flex h-16 items-center justify-center rounded-[12px] border border-dashed border-[#c4d1df] bg-white/[0.34] px-4 text-center text-[9.5px] text-[#7a90a8]">{selectedItem ? "No warranty document uploaded." : "Save the item first, then attach documents."}</div>
+                                <div className="sm:col-span-2 inline-flex w-fit max-w-full items-center gap-2 rounded-full border border-[#d8e8f6]/80 bg-white/[0.46] px-3 py-1.5 text-[9.5px] text-[#7a90a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-[#a9b8c8]" />
+                                    {selectedItem ? "No warranty document uploaded" : "Save the item first, then attach documents"}
+                                </div>
                             ) : warrantyDocuments.map((attachment) => (
                                 <AttachmentRow key={attachment.id} attachment={attachment} signedUrl={signedUrls[attachment.storage_path]} onDelete={() => removeAttachment(attachment)} />
                             ))}
