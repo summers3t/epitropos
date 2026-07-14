@@ -538,7 +538,8 @@ function MediaViewer({
                 role="dialog"
                 aria-modal="true"
                 aria-label={activeItem.title}
-                className="fixed inset-0 z-[9997] overflow-hidden bg-[#050a12]"
+                className="fixed inset-0 isolate overflow-hidden bg-[#050a12]"
+                style={{ zIndex: 2147483000 }}
             >
                 <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_16%,rgba(84,124,170,0.22),transparent_42%),linear-gradient(180deg,rgba(4,9,16,0.90),rgba(3,7,13,0.98))]" />
 
@@ -670,9 +671,6 @@ export default function ManagedPropertyAssetsPanel({ managedPropertyId, section,
     const hasLoadedRef = useRef(false);
     const {
         current: undoAction,
-        pendingCount: undoPendingCount,
-        remainingMs: undoRemainingMs,
-        remainingPercent: undoRemainingPercent,
         queueUndo: queueTimedUndo,
         undoLatest,
     } = useTimedUndoStack<AssetUndoAction>({
@@ -778,14 +776,17 @@ export default function ManagedPropertyAssetsPanel({ managedPropertyId, section,
                 )}
             </div>
 
+            <style>{`@keyframes shrinkUndo { from { width: 100%; } to { width: 0%; } }`}</style>
             {undoAction ? (
                 <BodyPortal>
                     <div
                         key={undoAction.id}
-                        className="fixed bottom-5 left-1/2 z-[9999] w-[min(360px,calc(100vw-24px))] -translate-x-1/2 overflow-hidden rounded-2xl border border-[#d96969]/[0.26] bg-white/[0.94] p-3 shadow-[0_20px_70px_rgba(6,16,29,0.24)] backdrop-blur-2xl"
+                        className="fixed bottom-5 left-1/2 z-[9998] w-[320px] -translate-x-1/2 overflow-hidden rounded-2xl border border-[#d96969]/[0.26] bg-white/[0.92] p-3 shadow-[0_20px_70px_rgba(6,16,29,0.18)] backdrop-blur-2xl"
                     >
                         <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#9d2f2f]">{undoAction.action}</div>
-                        <div className="mt-1 truncate text-[12px] text-[#607993]">{undoAction.label} {undoAction.action.toLowerCase()}.</div>
+                        <div className="mt-1 text-[12px] text-[#607993]">
+                            {undoAction.label} {undoAction.action.toLowerCase()}. Undo available for 5 seconds.
+                        </div>
                         <div className="mt-2 flex items-center justify-between gap-2">
                             <button
                                 type="button"
@@ -794,16 +795,10 @@ export default function ManagedPropertyAssetsPanel({ managedPropertyId, section,
                             >
                                 Undo
                             </button>
-                            <span className="text-[10px] text-[#7a90a8]">
-                                {Math.max(1, Math.ceil(undoRemainingMs / 1000))}s
-                                {undoPendingCount > 1 ? ` · ${undoPendingCount} pending` : ""}
-                            </span>
+                            <span className="text-[10px] text-[#7a90a8]">auto-confirms</span>
                         </div>
                         <div className="mt-2 h-1 overflow-hidden rounded-full bg-[#d96969]/[0.12]">
-                            <div
-                                className="h-full rounded-full bg-[#d96969]/[0.56] transition-[width] duration-200 ease-linear"
-                                style={{ width: `${undoRemainingPercent}%` }}
-                            />
+                            <div className="h-full rounded-full bg-[#d96969]/[0.56] animate-[shrinkUndo_5s_linear_forwards]" />
                         </div>
                     </div>
                 </BodyPortal>
@@ -1193,7 +1188,10 @@ function InventorySection({
                             </button>
                         </div>
 
-                        <div className="mt-2.5 flex min-h-16 flex-wrap items-center gap-2">
+                        <div
+                            className="mt-2.5 flex min-h-16 flex-wrap items-center gap-2 overflow-hidden"
+                            style={{ maxHeight: photos.length > 0 ? 156 : undefined }}
+                        >
                             {photos.length === 0 ? (
                                 <div className="flex h-16 w-full items-center justify-center rounded-[12px] border border-dashed border-[#c4d1df] bg-white/[0.32] px-4 text-center text-[9.5px] text-[#7a90a8]">
                                     {selectedItem ? "No photos yet." : "Save the item first, then add photos."}
@@ -1201,16 +1199,23 @@ function InventorySection({
                             ) : photos.map((attachment) => (
                                 <div
                                     key={attachment.id}
-                                    className="group relative h-16 w-20 shrink-0 overflow-hidden rounded-[10px] border border-white/[0.86] bg-[#eef3f8] shadow-[0_7px_18px_rgba(41,73,112,0.09)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_26px_rgba(41,73,112,0.14)]"
+                                    className="group relative shrink-0 overflow-hidden rounded-[10px] border border-white/[0.86] bg-[#eef3f8] shadow-[0_7px_18px_rgba(41,73,112,0.09)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_26px_rgba(41,73,112,0.14)]"
+                                    style={{ width: 82, height: 62 }}
                                 >
                                     <button
                                         type="button"
                                         onClick={() => setViewerPhotoId(attachment.id)}
-                                        className="h-full w-full"
+                                        className="block h-full w-full overflow-hidden"
+                                        style={{ width: 82, height: 62 }}
                                         aria-label={`Open ${attachment.file_name}`}
                                     >
                                         {signedUrls[attachment.storage_path] ? (
-                                            <img src={signedUrls[attachment.storage_path]} alt="" className="h-full w-full object-cover" />
+                                            <img
+                                                src={signedUrls[attachment.storage_path]}
+                                                alt=""
+                                                className="block"
+                                                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                                            />
                                         ) : (
                                             <span className="flex h-full w-full items-center justify-center text-[#91a4b8]"><IconImage /></span>
                                         )}
@@ -1406,8 +1411,20 @@ function InventorySection({
                         return (
                             <div key={item.id} className={["overflow-hidden rounded-[16px] border transition duration-200", expanded ? "border-[#2f80ed]/[0.28] bg-white/[0.70] shadow-[0_16px_38px_rgba(47,128,237,0.10)]" : "border-[#d8e8f6]/80 bg-white/[0.55] hover:-translate-y-0.5 hover:scale-[1.004] hover:border-[#2f80ed]/[0.18] hover:bg-white/[0.74] hover:shadow-[0_16px_36px_rgba(41,73,112,0.10)]"].join(" ")}>
                                 <button type="button" onClick={() => selectItem(item)} className="flex w-full items-center gap-3 px-3 py-3 text-left sm:px-4">
-                                    <div className="h-14 w-16 shrink-0 overflow-hidden rounded-[12px] border border-white/[0.84] bg-[#eef3f8] shadow-[0_8px_20px_rgba(41,73,112,0.08)]">
-                                        {itemPhoto && signedUrls[itemPhoto.storage_path] ? <img src={signedUrls[itemPhoto.storage_path]} alt="" className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]" /> : <div className="flex h-full items-center justify-center text-[#91a4b8]"><IconBox /></div>}
+                                    <div
+                                        className="shrink-0 overflow-hidden rounded-[12px] border border-white/[0.84] bg-[#eef3f8] shadow-[0_8px_20px_rgba(41,73,112,0.08)]"
+                                        style={{ width: 64, height: 56 }}
+                                    >
+                                        {itemPhoto && signedUrls[itemPhoto.storage_path] ? (
+                                            <img
+                                                src={signedUrls[itemPhoto.storage_path]}
+                                                alt=""
+                                                className="block transition duration-300 group-hover:scale-[1.03]"
+                                                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                                            />
+                                        ) : (
+                                            <div className="flex h-full items-center justify-center text-[#91a4b8]"><IconBox /></div>
+                                        )}
                                     </div>
                                     <div className="min-w-0 flex-1">
                                         <div className="flex flex-wrap items-center gap-1.5">
@@ -1871,33 +1888,67 @@ function GallerySection({
                     ) : filteredItems.length === 0 ? (
                         <EmptyState icon={<IconImage />} title={`No ${filter} photos`} text="Switch the filter or upload photos for this category." action={<button type="button" onClick={() => setFilter("all")} className={BUTTON_NEUTRAL}>Show all photos</button>} />
                     ) : (
-                        <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+                        <div
+                            className="grid gap-2.5"
+                            style={{ gridTemplateColumns: "repeat(auto-fill, minmax(154px, 1fr))" }}
+                        >
                             {filteredItems.map((item) => (
-                                <button
+                                <div
                                     key={item.id}
-                                    type="button"
                                     draggable
                                     onDragStart={(event) => { setDraggedId(item.id); event.dataTransfer.effectAllowed = "move"; }}
                                     onDragEnd={() => setDraggedId(null)}
                                     onDragOver={(event) => event.preventDefault()}
                                     onDrop={(event) => { event.preventDefault(); if (draggedId) void reorderGallery(draggedId, item.id); }}
-                                    onClick={() => selectGalleryItem(item)}
                                     className="group relative overflow-hidden rounded-[15px] border border-white/[0.78] bg-white/[0.56] text-left transition duration-200 hover:-translate-y-1 hover:scale-[1.008] hover:border-[#2f80ed]/[0.25] hover:bg-white/[0.82] hover:shadow-[0_18px_40px_rgba(41,73,112,0.13)]"
+                                    style={{ height: 132 }}
                                 >
-                                    <div className="relative aspect-[4/3] overflow-hidden bg-[#eef3f8]">
-                                        {signedUrls[item.storage_path] ? <img src={signedUrls[item.storage_path]} alt={item.caption || item.room_area || "Property photo"} className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.045]" /> : <div className="flex h-full items-center justify-center text-[#91a4b8]"><IconImage /></div>}
-                                        <div className="absolute inset-0 bg-gradient-to-t from-[#06101d]/[0.52] via-transparent to-[#06101d]/[0.10] opacity-75 transition group-hover:opacity-90" />
-                                        <div className="absolute left-2 top-2 flex gap-1">
-                                            <span className="rounded-full border border-white/[0.64] bg-[#07111f]/[0.56] px-2 py-0.5 text-[7.5px] font-semibold uppercase tracking-[0.08em] text-white backdrop-blur-md">{item.gallery_type}</span>
-                                            {item.is_cover ? <span className="rounded-full border border-[#e2c76c]/[0.72] bg-[#7d6620]/[0.72] px-2 py-0.5 text-[7.5px] font-semibold uppercase tracking-[0.08em] text-white backdrop-blur-md">Cover</span> : null}
+                                    <button
+                                        type="button"
+                                        onClick={() => selectGalleryItem(item)}
+                                        className="block h-full w-full overflow-hidden text-left"
+                                        aria-label={`Open ${item.file_name}`}
+                                    >
+                                        <div className="relative h-full w-full overflow-hidden bg-[#eef3f8]">
+                                            {signedUrls[item.storage_path] ? (
+                                                <img
+                                                    src={signedUrls[item.storage_path]}
+                                                    alt={item.caption || item.room_area || "Property photo"}
+                                                    className="block transition duration-300 group-hover:scale-[1.045]"
+                                                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                                                />
+                                            ) : (
+                                                <div className="flex h-full items-center justify-center text-[#91a4b8]"><IconImage /></div>
+                                            )}
+                                            <div className="absolute inset-0 bg-gradient-to-t from-[#06101d]/[0.58] via-transparent to-[#06101d]/[0.10] opacity-75 transition group-hover:opacity-90" />
+                                            <div className="absolute left-2 top-2 flex gap-1">
+                                                <span className="rounded-full border border-white/[0.64] bg-[#07111f]/[0.56] px-2 py-0.5 text-[7.5px] font-semibold uppercase tracking-[0.08em] text-white backdrop-blur-md">{item.gallery_type}</span>
+                                                {item.is_cover ? <span className="rounded-full border border-[#e2c76c]/[0.72] bg-[#7d6620]/[0.72] px-2 py-0.5 text-[7.5px] font-semibold uppercase tracking-[0.08em] text-white backdrop-blur-md">Cover</span> : null}
+                                            </div>
+                                            <span className="absolute right-2 top-2 flex h-7 w-7 cursor-grab items-center justify-center rounded-full border border-white/[0.50] bg-[#07111f]/[0.42] text-white opacity-0 backdrop-blur-md transition group-hover:opacity-100"><IconGrip /></span>
+                                            <div className="absolute inset-x-0 bottom-0 px-2.5 pb-2.5 pt-6 text-white">
+                                                <div className="truncate text-[10.5px] font-semibold">{item.room_area || "Unspecified area"}</div>
+                                                <div className="mt-0.5 truncate text-[8.5px] text-white/[0.74]">{item.caption || formatDate(item.photo_date)}</div>
+                                            </div>
                                         </div>
-                                        <span className="absolute right-2 top-2 flex h-7 w-7 cursor-grab items-center justify-center rounded-full border border-white/[0.50] bg-[#07111f]/[0.42] text-white opacity-0 backdrop-blur-md transition group-hover:opacity-100"><IconGrip /></span>
-                                        <div className="absolute inset-x-0 bottom-0 px-2.5 pb-2.5 pt-6 text-white">
-                                            <div className="truncate text-[10.5px] font-semibold">{item.room_area || "Unspecified area"}</div>
-                                            <div className="mt-0.5 truncate text-[8.5px] text-white/[0.74]">{item.caption || formatDate(item.photo_date)}</div>
-                                        </div>
+                                    </button>
+                                    <div className="pointer-events-none absolute inset-x-2 bottom-2 flex justify-end gap-1 opacity-0 transition group-hover:opacity-100">
+                                        <button
+                                            type="button"
+                                            onClick={(event) => { event.stopPropagation(); selectGalleryItem(item); setDetailsOpen(true); }}
+                                            className="pointer-events-auto rounded-full border border-white/[0.54] bg-[#07111f]/[0.62] px-2 py-1 text-[8px] font-semibold text-white backdrop-blur-md transition hover:bg-[#07111f]/[0.82]"
+                                        >
+                                            Edit
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={(event) => { event.stopPropagation(); removeGalleryItem(item); }}
+                                            className="pointer-events-auto rounded-full border border-white/[0.54] bg-[#8f2626]/[0.66] px-2 py-1 text-[8px] font-semibold text-white backdrop-blur-md transition hover:bg-[#8f2626]/[0.88]"
+                                        >
+                                            Delete
+                                        </button>
                                     </div>
-                                </button>
+                                </div>
                             ))}
                         </div>
                     )}
@@ -1924,6 +1975,24 @@ function GallerySection({
                                     Open original
                                 </a>
                             ) : null}
+                            {!selectedItem.is_cover ? (
+                                <button
+                                    type="button"
+                                    disabled={saving}
+                                    onClick={() => void makeCover(selectedItem)}
+                                    className="hidden rounded-full border border-[#e2c76c]/[0.34] bg-[#7d6620]/[0.20] px-3 py-2 text-[9.5px] font-semibold text-white transition hover:bg-[#7d6620]/[0.34] sm:inline-flex"
+                                >
+                                    Set cover
+                                </button>
+                            ) : null}
+                            <button
+                                type="button"
+                                disabled={saving}
+                                onClick={() => removeGalleryItem(selectedItem)}
+                                className="hidden rounded-full border border-[#d96969]/[0.34] bg-[#9d2f2f]/[0.20] px-3 py-2 text-[9.5px] font-semibold text-white transition hover:bg-[#9d2f2f]/[0.36] sm:inline-flex"
+                            >
+                                Delete
+                            </button>
                             <button
                                 type="button"
                                 onClick={() => setDetailsOpen((value) => !value)}
